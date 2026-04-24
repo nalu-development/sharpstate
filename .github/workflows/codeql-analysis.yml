@@ -1,0 +1,52 @@
+# CodeQL Code Scanning
+# https://docs.github.com/en/code-security/code-scanning
+name: "CodeQL"
+
+on:
+  push:
+    branches: [disabled]
+  pull_request:
+    branches: [disabled]
+
+jobs:
+  analyze:
+    name: Analyze
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["csharp"]
+
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v6
+        with:
+          lfs: true
+          fetch-depth: 0
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: "Setup .NET SDK"
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: "Dotnet Tool Restore"
+        run: dotnet tool restore
+        shell: pwsh
+      - name: "Dotnet Cake Build"
+        run: dotnet cake --target=Build
+        shell: pwsh
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4

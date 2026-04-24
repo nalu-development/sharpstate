@@ -1,0 +1,173 @@
+# Diagnostics & Troubleshooting
+
+The source generator emits targeted diagnostics instead of generating incorrect code. All of them live under the `Nalu.SharpState` category and share the `NSS00x` prefix, so you can filter or escalate them via `.editorconfig`:
+
+```ini
+# .editorconfig
+dotnet_diagnostic.NSS001.severity = error
+```
+
+Every diagnostic listed below is reported as **error** by default.
+
+## Generator diagnostics
+
+### `NSS001` — State machine class must be partial
+
+```
+Class 'DoorMachine' is marked with [StateMachineDefinition] but is not declared as partial
+```
+
+Add `partial` to the class declaration. The generator needs to contribute the `State`/`Trigger` enums, the `Actor`, and the `CreateActor` / `CreateActorWithState` entry points to the same type.
+
+```csharp
+// Wrong
+[StateMachineDefinition(typeof(DoorContext))]
+public class DoorMachine { ... }
+
+// Right
+[StateMachineDefinition(typeof(DoorContext))]
+public partial class DoorMachine { ... }
+```
+
+### `NSS002` — Duplicate trigger or state name
+
+```
+Duplicate state name 'Opened' in state machine 'DoorMachine'
+```
+
+Trigger names feed the `Trigger` enum, state property names feed the `State` enum. Each name must be unique **across** triggers and states of the same machine.
+
+### `NSS003` — Invalid state property return type
+
+```
+[StateDefinition] property 'Idle' must return the machine's IStateConfiguration type
+```
+
+`[StateDefinition]` properties must return the machine-scoped `IStateConfiguration` nested interface. Always build them with `ConfigureState()`:
+
+```csharp
+[StateDefinition]
+private static IStateConfiguration Idle { get; } = ConfigureState()
+    .OnStart(t => t.Target(State.Running));
+```
+
+### `NSS004` — Trigger method must be partial void
+
+```
+[StateTriggerDefinition] method 'Open' must be declared as 'partial void' ...
+```
+
+Triggers are always declared as `static partial void`. The generator emits the dispatch body behind that declaration; writing the return type yourself desynchronizes the declaration from what the generator needs to emit.
+
+```csharp
+// Right
+[StateTriggerDefinition] static partial void Open(string reason);
+```
+
+### `NSS005` — `[SubStateMachine]` class must be a nested partial class
+
+```
+[SubStateMachine] class 'ConnectedRegion' must be declared as a partial class nested inside
+a [StateMachineDefinition] class (directly or inside another [SubStateMachine] class)
+```
+
+A region is only valid when:
+
+- It is `partial`.
+- It is **nested** inside either the root `[StateMachineDefinition]` class or another `[SubStateMachine]` class.
+
+Free-standing regions or non-partial ones cannot participate in the generated registration.
+
+### `NSS006` — Containing type must be partial
+
+```
+State machine class 'DoorMachine' is nested inside non-partial type 'Sample'
+```
+
+When you nest a `[StateMachineDefinition]` class inside another type (for organization, not hierarchy), every enclosing type must also be `partial`, because the generator has to re-open them to emit the state machine body.
+
+```csharp
+// Wrong
+public static class Sample
+{
+    [StateMachineDefinition(typeof(Ctx))]
+    public partial class DoorMachine { ... }
+}
+
+// Right
+public static partial class Sample
+{
+    [StateMachineDefinition(typeof(Ctx))]
+    public partial class DoorMachine { ... }
+}
+```
+
+### `NSS007` — `[SubStateMachine]` parent must come from the enclosing region
+
+```
+[SubStateMachine] on 'AuthenticatedRegion' declares Parent 'Idle' which is not a state
+defined in the immediately enclosing region
+```
+
+The `parent` argument must be a `[StateDefinition]` declared in the **immediately enclosing** scope (root class or outer region). Pointing at an unrelated state, a leaf deeper in the tree, or a sibling region's state breaks strict nesting.
+
+```csharp
+// Wrong: Browsing lives inside ConnectedRegion, not at the root
+[SubStateMachine(parent: State.Browsing)]
+private partial class BadRegion { ... }
+```
+
+### `NSS008` — Every region must declare an initial state
+
+```
+Region '[SubStateMachine] 'ConnectedRegion'' must declare exactly one
+[StateDefinition(Initial = true)] state
+```
+
+Every root machine and every `[SubStateMachine(parent: ...)]` region must mark exactly one local state with `[StateDefinition(Initial = true)]`.
+
+```csharp
+[SubStateMachine(parent: State.Connected)]
+private partial class ConnectedRegion
+{
+    [StateDefinition(Initial = true)]
+    private static IStateConfiguration Authenticating { get; } = ConfigureState();
+}
+```
+
+### `NSS010` — Only one initial state is allowed per region
+
+```
+Region 'DoorMachine' declares multiple [StateDefinition(Initial = true)] states;
+only one is allowed
+```
+
+Mark only one local state per region as initial.
+
+### `NSS009` — Triggers cannot be declared inside a `[SubStateMachine]`
+
+```
+[StateTriggerDefinition] 'Authenticate' is declared inside [SubStateMachine] 'ConnectedRegion';
+triggers must live on the root [StateMachineDefinition] class
+```
+
+Regions describe structure, not new inputs. Move any `[StateTriggerDefinition]` up to the root machine; every region already sees the root's `Trigger` enum and can react to any of them.
+
+## Runtime exceptions
+
+On top of compile-time diagnostics, a few exceptions surface misconfigurations that cannot be caught by the generator (for example, when you hand-build a `StateMachineDefinition` for testing).
+
+| Exception | When | How to fix |
+|-----------|------|-----------|
+| `NotSupportedException: Trigger 'X' is not handled from state 'Y'` | A trigger fires with no matching transition on the leaf nor on any ancestor, **and** `OnUnhandled` is the default. | Either configure the transition, set `OnUnhandled` to a custom handler, or assign `OnUnhandled = null` to silence it. See [Unhandled triggers](index.md#unhandled-triggers). |
+| `KeyNotFoundException: State 'X' is not registered in the state machine definition` | You passed a `State` to `CreateActorWithState` that does not appear in the definition. | Use a value from the generated `State` enum; do not cast arbitrary integers to `State`. |
+| `ArgumentNullException` on `CreateActor` / `CreateActorWithState` | `context` or the internal `definition` was `null`. | Pass a non-null context. The definition is injected by the generator and is never null in practice. |
+| `InvalidOperationException: State 'X' declares parent 'Y' but 'Y' does not declare an initial child via a nested [SubStateMachine(parent: Y)] region with one [StateDefinition(Initial = true)] child.` | A runtime-built definition has a dangling parent reference. | For generated definitions this is enforced at compile time; for hand-built ones, always pair a parent with a region that has exactly one initial child. |
+
+## Common pitfalls
+
+- **Forgetting to declare a trigger on an ancestor that should handle it.** If `Connected` is the place where `Disconnect` should live, don't redeclare it on every child — let the hierarchy inherit it (see [Hierarchical State Machines](sharpstate-hierarchy.md#2-transitions-are-inherited-from-ancestors)).
+- **Entering a composite and expecting `CurrentState` to equal the composite.** It never does — `CurrentState` is always the leaf. Use `IsIn(composite)` for the ancestor check.
+- **Throwing from `Invoke(...)`.** The exception propagates out of `Fire(...)` and the state is **not** updated. Wrap the call in a `try`/`catch` if you want to recover, or keep inline actions side-effect free.
+- **Using `ReactAsync(...)` when you need transactional behavior.** `ReactAsync(...)` runs after the transition already committed. If the work must finish before the new state becomes visible, keep it in `Invoke(...)` instead. See [Post-Transition Reactions](sharpstate-async.md).
+- **Expecting `StateChanged` to fire for `.Stay()` transitions.** Internal transitions intentionally do not raise the event; only leaf-changing transitions do.

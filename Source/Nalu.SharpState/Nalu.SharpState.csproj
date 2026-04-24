@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <!-- VSTHRD200: ReactAsync is configuration syntax, not an awaitable call site. -->
+        <NoWarn>$(NoWarn);VSTHRD200</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Nalu.SharpState.Generators\Nalu.SharpState.Generators.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+    <Target Name="PackAnalyzer"
+            BeforeTargets="_GetPackageFiles"
+            DependsOnTargets="Build">
+        <PropertyGroup>
+            <_SharpStateAnalyzerPath>$(MSBuildThisFileDirectory)..\Nalu.SharpState.Generators\bin\$(Configuration)\netstandard2.0\Nalu.SharpState.Generators.dll</_SharpStateAnalyzerPath>
+        </PropertyGroup>
+
+        <Error Condition="!Exists('$(_SharpStateAnalyzerPath)')"
+               Text="Unable to locate Nalu.SharpState.Generators.dll during packing at '$(_SharpStateAnalyzerPath)'." />
+
+        <ItemGroup>
+            <None Include="$(_SharpStateAnalyzerPath)"
+                  Pack="true"
+                  PackagePath="analyzers/dotnet/cs"
+                  Visible="false" />
+        </ItemGroup>
+    </Target>
+
+</Project>

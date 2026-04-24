@@ -1,0 +1,38 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "./",
+          "files": [
+            "Source/Nalu.SharpState/Nalu.SharpState.csproj"
+          ]
+        }
+      ],
+      "dest": "api",
+      "properties": {
+        "TargetFramework": "net10.0"
+      }
+    }
+  ],
+  "build": {
+    "content": [
+      { "files": ["*.yml"], "src": "api", "dest": "api" },
+      { "files": ["*.md", "toc.yml"], "src": "docs" }
+    ],
+    "resource": [
+      { "files": ["assets/**"], "src": "docs" },
+      { "files": ["Images/Icon.png"] }
+    ],
+    "output": "_site",
+    "globalMetadata": {
+      "_appTitle": "Nalu.SharpState Documentation",
+      "_appFooter": "© Nalu Development - All rights reserved",
+      "_enableSearch": true,
+      "_appLogoPath": "Images/Icon.png",
+      "_appFaviconPath": "Images/Icon.png",
+      "_appBasePath": "/sharpstate"
+    },
+    "template": ["default", "modern", "site_template"]
+  }
+}

@@ -1,0 +1,31 @@
+<Project>
+
+  <PropertyGroup Label="Build">
+    <LangVersion>preview</LangVersion>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Package">
+    <Authors>Alberto Aldegheri</Authors>
+    <Company />
+    <Copyright>Copyright © Alberto Aldegheri. All rights Reserved</Copyright>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://nalu-development.github.io/sharpstate</PackageProjectUrl>
+    <PackageIcon>Icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/nalu-development/nalu-sharp-state-machine.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReleaseNotes>https://github.com/nalu-development/nalu-sharp-state-machine/releases</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup Label="Package References">
+    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers" PrivateAssets="all" Version="17.14.15" />
+    <PackageReference Include="MinVer" PrivateAssets="all" Version="6.0.0" />
+  </ItemGroup>
+
+</Project>
