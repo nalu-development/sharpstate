@@ -1,0 +1,9 @@
+{
+  "solution": {
+    "path": "Nalu.SharpState.slnx",
+    "projects": [
+      "Source\\Nalu.SharpState\\Nalu.SharpState.csproj",
+      "Tests\\Nalu.SharpState.Tests\\Nalu.SharpState.Tests.csproj"
+    ]
+  }
+}

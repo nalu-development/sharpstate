@@ -1,0 +1,159 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  MINVERBUILDMETADATA: build.${{github.run_number}}
+
+jobs:
+  build:
+    name: Build-${{matrix.os}}
+    runs-on: ${{matrix.os}}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v6
+        with:
+          lfs: true
+          fetch-depth: 0
+      - name: "Setup .NET SDK"
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: "Validate tooling"
+        shell: pwsh
+        run: |
+          dotnet --version
+      - name: "Dotnet Tool Restore"
+        run: dotnet tool restore
+        shell: pwsh
+      - name: "Dotnet Cake Build"
+        run: dotnet cake --target=Build
+        shell: pwsh
+      - name: "Dotnet Cake Test"
+        run: dotnet cake --target=Test
+        shell: pwsh
+      - name: "Dotnet Cake Pack"
+        run: dotnet cake --target=Pack
+        shell: pwsh
+
+      - name: Build Documentation Metadata
+        run: dotnet docfx metadata docfx.json
+        shell: pwsh
+      - name: Build Documentation
+        run: dotnet docfx build docfx.json
+        shell: pwsh
+      - name: Upload Documentation Site
+        uses: actions/upload-artifact@v7
+        with:
+          name: docfx-site
+          path: _site
+
+      - name: "Publish Artefacts"
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{matrix.os}}
+          path: "./Artefacts"
+      - name: "Publish Binlog"
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{matrix.os}}-binlog
+          path: "./Binlog"
+
+  push-github-packages:
+    name: "Push GitHub Packages"
+    needs: build
+    if: github.ref == 'refs/heads/main' || github.event_name == 'release'
+    environment:
+      name: "GitHub Packages"
+      url: https://github.com/nalu-development/nalu-sharp-state-machine
+    permissions:
+      packages: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Download Artefact"
+        uses: actions/download-artifact@v8
+        with:
+          name: "ubuntu-latest"
+      - name: "Dotnet NuGet Add Source"
+        # --store-password-in-clear-text: required on Linux/macOS (no DPAPI); see https://aka.ms/nuget-external-credential-provider
+        run: dotnet nuget add source https://nuget.pkg.github.com/nalu-development/index.json --name GitHub --username albyrock87 --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text
+        shell: pwsh
+      - name: "Dotnet NuGet Push"
+        run: dotnet nuget push ./*.nupkg --api-key ${{ github.token }} --source GitHub --skip-duplicate
+        shell: pwsh
+
+  push-nuget:
+    name: "Push NuGet Packages"
+    needs: build
+    permissions:
+      id-token: write
+    if: github.event_name == 'release'
+    environment:
+      name: "NuGet"
+      url: https://www.nuget.org/packages/Nalu.SharpState
+    runs-on: ubuntu-latest
+    steps:
+      - name: NuGet login (get temporary API key using OIDC)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{secrets.NUGET_USER}}
+      - name: "Download Artefact"
+        uses: actions/download-artifact@v8
+        with:
+          name: "ubuntu-latest"
+      - name: "Dotnet NuGet Push"
+        run: |
+          Get-ChildItem .\ -Filter *.nupkg |
+          Where-Object { !$_.Name.Contains('preview') } |
+          ForEach-Object { dotnet nuget push $_ --source https://api.nuget.org/v3/index.json --skip-duplicate --api-key ${{ steps.login.outputs.NUGET_API_KEY }} }
+        shell: pwsh
+
+  deploy-gh-pages:
+    name: Deploy GitHub Pages
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download Documentation Site
+        uses: actions/download-artifact@v8
+        with:
+          name: docfx-site
+          path: ./_site
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: './_site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
