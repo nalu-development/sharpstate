@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Nalu.SharpState;
 
 /// <summary>
@@ -53,8 +55,12 @@ public readonly struct TriggerArgs
         2 => [_arg0, _arg1],
         3 => [_arg0, _arg1, _arg2],
         4 => [_arg0, _arg1, _arg2, _arg3],
-        _ => throw new InvalidOperationException($"Unsupported trigger argument count '{Count}'."),
+        _ => ToArray_UnsupportedCount(),
     };
+
+    [ExcludeFromCodeCoverage]
+    private object?[] ToArray_UnsupportedCount()
+        => throw new InvalidOperationException($"Unsupported trigger argument count '{Count}'.");
 
     /// <summary>
     /// Creates a one-argument payload.

@@ -17,6 +17,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>Nalu.SharpState.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Keep Roslyn 4.x so the generator loads under the compiler shipped with .NET 8+ SDKs (CodeAnalysis 5.x targets newer csc; see CS9057). Match Tests/Nalu.SharpState.Tests Microsoft.CodeAnalysis.CSharp. -->
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />

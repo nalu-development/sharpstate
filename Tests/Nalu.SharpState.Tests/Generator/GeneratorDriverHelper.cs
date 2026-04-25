@@ -2,13 +2,68 @@ using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Nalu.SharpState.Generators;
+using Nalu.SharpState.Generators.Model;
 
 namespace Nalu.SharpState.Tests.Generator;
 
 internal static class GeneratorDriverHelper
 {
     private static readonly ImmutableArray<MetadataReference> _references = BuildReferences();
+
+    /// <summary>
+    /// Parses <paramref name="source"/>, compiles it, and builds a <see cref="StateMachineModel"/> for the first
+    /// <c>[StateMachineDefinition]</c> class declaration (metadata-only; the generator pipeline is not run).
+    /// </summary>
+    /// <summary>
+    /// Compiles a single source file with the same references as <see cref="RunGenerator"/> (no generator run).
+    /// </summary>
+    internal static CSharpCompilation CreateCompilation(string source, string assemblyName = "TestCompile")
+    {
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.Preview));
+        return CSharpCompilation.Create(
+            assemblyName,
+            syntaxTrees: [syntaxTree],
+            references: _references,
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
+    }
+
+    public static StateMachineModel GetStateMachineModel(string source, CancellationToken ct = default)
+    {
+        var syntaxTree = CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.Preview));
+        var compilation = CSharpCompilation.Create(
+            assemblyName: "ModelExtractionAssembly",
+            syntaxTrees: [syntaxTree],
+            references: _references,
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
+
+        var semanticModel = compilation.GetSemanticModel(syntaxTree);
+        foreach (var typeDecl in syntaxTree.GetRoot(ct).DescendantNodes().OfType<TypeDeclarationSyntax>())
+        {
+            if (typeDecl is not ClassDeclarationSyntax and not RecordDeclarationSyntax)
+            {
+                continue;
+            }
+
+            if (semanticModel.GetDeclaredSymbol(typeDecl, ct) is not INamedTypeSymbol named)
+            {
+                continue;
+            }
+
+            var hasDefinition = named.GetAttributes().Any(a =>
+                a.AttributeClass?.ToDisplayString() == "Nalu.SharpState.StateMachineDefinitionAttribute");
+            if (!hasDefinition)
+            {
+                continue;
+            }
+
+            return StateMachineModel.FromSymbol(named, typeDecl, ct)
+                ?? throw new InvalidOperationException("StateMachineModel.FromSymbol returned null.");
+        }
+
+        throw new InvalidOperationException("No [StateMachineDefinition] class or record found in source.");
+    }
 
     public static GeneratorDriverRunResult RunGenerator(string source, out Compilation outputCompilation)
     {

@@ -43,6 +43,86 @@ public class AsyncTests
     }
 
     [Fact]
+    public void Engine_Context_exposes_same_instance()
+    {
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.C] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        var ctx = new TestContext();
+        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(
+            new StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor>(map),
+            FlatState.A,
+            ctx,
+            new TestActor());
+
+        engine.Context.Should().BeSameAs(ctx);
+    }
+
+    [Fact]
+    public async Task Reaction_runs_on_thread_pool_when_no_synchronization_context()
+    {
+        var previous = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(null);
+        try
+        {
+            var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>();
+            var cfg = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+            var tcs = new TaskCompletionSource();
+            cfg.On(FlatTrigger.Go, TestTransition.ToTarget<TestContext, FlatState, TestActor>(
+                FlatState.B,
+                reactionAsync: async (_, _, _) =>
+                {
+                    await Task.Yield();
+                    tcs.SetResult();
+                }));
+            map[FlatState.A] = cfg;
+            map[FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+            map[FlatState.C] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+
+            var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(
+                new StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor>(map),
+                FlatState.A,
+                new TestContext(),
+                new TestActor());
+            engine.Fire(FlatTrigger.Go, TriggerArgs.Empty);
+            await tcs.Task;
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(previous);
+        }
+    }
+
+    [Fact]
+    public void ReactionFailed_subscriber_throw_is_ignored()
+    {
+        var syncContext = new RecordingSynchronizationContext();
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>();
+        var cfg = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        cfg.On(FlatTrigger.Go, TestTransition.ToTarget<TestContext, FlatState, TestActor>(
+            FlatState.B,
+            reactionAsync: async (_, _, _) =>
+            {
+                await Task.Yield();
+                throw new InvalidOperationException("reaction");
+            }));
+        map[FlatState.A] = cfg;
+        map[FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.C] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+
+        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(
+            new StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor>(map),
+            FlatState.A,
+            new TestContext(),
+            new TestActor());
+        engine.ReactionFailed += (_, _, _, _, _) => throw new Exception("sub");
+
+        RunOn(syncContext, () => engine.Fire(FlatTrigger.Go, TriggerArgs.Empty));
+        syncContext.Drain();
+    }
+
+    [Fact]
     public void ReactionFailed_is_raised_when_background_reaction_throws()
     {
         var syncContext = new RecordingSynchronizationContext();

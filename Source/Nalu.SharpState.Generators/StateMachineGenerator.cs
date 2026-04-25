@@ -16,17 +16,12 @@ public sealed class StateMachineGenerator : IIncrementalGenerator
     {
         var machines = context.SyntaxProvider.ForAttributeWithMetadataName(
                 "Nalu.SharpState.StateMachineDefinitionAttribute",
-                predicate: static (node, _) => node is ClassDeclarationSyntax,
+                predicate: static (node, _) => node is ClassDeclarationSyntax or RecordDeclarationSyntax,
                 transform: static (ctx, ct) =>
-                {
-                    if (ctx.TargetSymbol is not INamedTypeSymbol classSymbol
-                        || ctx.TargetNode is not ClassDeclarationSyntax classSyntax)
-                    {
-                        return null;
-                    }
-
-                    return StateMachineModel.FromSymbol(classSymbol, classSyntax, ct);
-                })
+                    StateMachineModel.FromSymbol(
+                        (INamedTypeSymbol)ctx.TargetSymbol,
+                        (TypeDeclarationSyntax)ctx.TargetNode,
+                        ct))
             .Where(static m => m is not null);
 
         context.RegisterSourceOutput(machines, static (spc, model) => StateMachineEmitter.Emit(spc, model!));

@@ -128,4 +128,50 @@ public class DefinitionValidationTests
             .Should()
             .Be(HierState.Connected);
     }
+
+    [Fact]
+    public void LowestCommonAncestor_of_identical_child_states_returns_that_state()
+    {
+        var definition = HierarchyTests.CreateStandardHierarchy();
+
+        definition.LowestCommonAncestor(HierState.Authenticated, HierState.Authenticated)
+            .Should()
+            .Be(HierState.Authenticated);
+    }
+
+    [Fact]
+    public void Initial_child_not_in_definition_throws()
+    {
+        var map = new Dictionary<HierState, TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>>
+        {
+            [HierState.Idle] = new(),
+            [HierState.Connected] = new TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>()
+                .AsStateMachine(HierState.Authenticating),
+            [HierState.Authenticated] = new(),
+            [HierState.Outside] = new()
+        };
+
+        // Authenticating is declared as the composite initial child of Connected, but is not present in the map.
+        var act = () => Build(map);
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*'Connected'*initial child*'Authenticating'*not registered*");
+    }
+
+    [Fact]
+    public void Second_WhenEntering_throws()
+    {
+        var act = () => new TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>()
+            .WhenEntering(_ => { })
+            .WhenEntering(_ => { });
+        act.Should().ThrowExactly<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Second_WhenExiting_throws()
+    {
+        var act = () => new TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>()
+            .WhenExiting(_ => { })
+            .WhenExiting(_ => { });
+        act.Should().ThrowExactly<InvalidOperationException>();
+    }
 }

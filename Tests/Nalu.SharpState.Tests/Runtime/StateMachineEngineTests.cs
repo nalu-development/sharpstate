@@ -292,6 +292,63 @@ public class StateMachineEngineTests
     }
 
     [Fact]
+    public void Constructor_throws_when_definition_is_null()
+    {
+        var act = () => new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(
+            null!,
+            FlatState.A,
+            new TestContext(),
+            new TestActor());
+        act.Should().ThrowExactly<ArgumentNullException>().WithParameterName("definition");
+    }
+
+    [Fact]
+    public void Constructor_throws_when_context_is_null()
+    {
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.C] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        var def = new StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor>(map);
+        var act = () => new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(def, FlatState.A, null!, new TestActor());
+        act.Should().ThrowExactly<ArgumentNullException>().WithParameterName("context");
+    }
+
+    [Fact]
+    public void Constructor_throws_when_initial_state_is_not_registered()
+    {
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        var def = new StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor>(map);
+        var act = () => new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(def, FlatState.C, new TestContext(), new TestActor());
+        act.Should().ThrowExactly<KeyNotFoundException>().WithMessage("*not registered*");
+    }
+
+    [Fact]
+    public void Fire_dynamic_to_same_leaf_invokes_SyncAction()
+    {
+        var definition = BuildFlat(map =>
+        {
+            map[FlatState.A]
+                .On(
+                    FlatTrigger.Go,
+                    TestTransition.ToDynamicTarget<TestContext, FlatState, TestActor>(
+                        (_, args) => (bool)args[0]! ? FlatState.A : FlatState.B,
+                        syncAction: (ctx, _) => ctx.Log.Add("inner")));
+            map[FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        });
+
+        var ctx = new TestContext();
+        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, ctx, new TestActor());
+
+        engine.Fire(FlatTrigger.Go, TriggerArgs.From(true));
+
+        engine.CurrentState.Should().Be(FlatState.A);
+        ctx.Log.Should().Equal("inner");
+    }
+
+    [Fact]
     public void Fire_throws_when_reentered_from_callback()
     {
         StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>? engine = null;

@@ -27,16 +27,16 @@ internal sealed record StateMachineModel(
 {
     public static StateMachineModel? FromSymbol(
         INamedTypeSymbol classSymbol,
-        ClassDeclarationSyntax classSyntax,
+        TypeDeclarationSyntax typeSyntax,
         CancellationToken ct)
     {
         var diagnostics = new List<DiagnosticInfo>();
 
-        if (!classSyntax.Modifiers.Any(m => m.ValueText == "partial"))
+        if (!typeSyntax.Modifiers.Any(m => m.ValueText == "partial"))
         {
             diagnostics.Add(DiagnosticInfo.Create(
                 Descriptors.MachineMustBePartial,
-                classSyntax.Identifier.GetLocation(),
+                typeSyntax.Identifier.GetLocation(),
                 classSymbol.Name));
         }
 
@@ -52,7 +52,7 @@ internal sealed record StateMachineModel(
             {
                 diagnostics.Add(DiagnosticInfo.Create(
                     Descriptors.ContainingTypeMustBePartial,
-                    classSyntax.Identifier.GetLocation(),
+                    typeSyntax.Identifier.GetLocation(),
                     classSymbol.Name,
                     ct2.Name));
             }
