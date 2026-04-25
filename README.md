@@ -1,6 +1,6 @@
 # Nalu.SharpState
 
-[![Nalu.SharpState NuGet Package](https://img.shields.io/nuget/v/Nalu.SharpState.svg)](https://www.nuget.org/packages/Nalu.SharpState/) [![Nalu.SharpState NuGet Package Downloads](https://img.shields.io/nuget/dt/Nalu.SharpState)](https://www.nuget.org/packages/Nalu.SharpState/)
+[![Nalu.SharpState NuGet Package](https://img.shields.io/nuget/v/Nalu.SharpState.svg)](https://www.nuget.org/packages/Nalu.SharpState/) [![Nalu.SharpState NuGet Package Downloads](https://img.shields.io/nuget/dt/Nalu.SharpState)](https://www.nuget.org/packages/Nalu.SharpState/) [![codecov](https://codecov.io/gh/nalu-development/nalu-sharp-state-machine/graph/badge.svg?branch=main)](https://codecov.io/gh/nalu-development/nalu-sharp-state-machine)
 
 **Nalu.SharpState** is a Roslyn source generator for **strongly typed, hierarchical state machines** in .NET: you declare states and triggers in a `public static partial` class, configure transitions with a fluent API, and the generator emits an `IActor` with typed trigger methods—no string dictionaries, no runtime reflection, AOT-friendly.
 

@@ -49,6 +49,7 @@ Task("Test")
                 project.ToString(),
                 new DotNetTestSettings()
                 {
+                    ArgumentCustomization = args => args.Append("--settings").Append("./coverlet.runsettings"),
                     Blame = true,
                     Collectors = new string[] { "Code Coverage", "XPlat Code Coverage" },
                     Configuration = configuration,

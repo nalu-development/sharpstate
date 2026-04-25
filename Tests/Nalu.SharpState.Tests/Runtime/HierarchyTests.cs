@@ -131,6 +131,70 @@ public class HierarchyTests
     }
 
     [Fact]
+    public void Entering_composite_from_outside_runs_parent_then_initial_child()
+    {
+        var definition = BuildHier(map =>
+        {
+            map[HierState.Idle]
+                .WhenExiting(ctx => ctx.Log.Add("exit:Idle"))
+                .On(HierTrigger.Connect, TestTransition.ToTarget<TestContext, HierState, TestActor>(HierState.Connected));
+            map[HierState.Connected]
+                .AsStateMachine(HierState.Authenticating)
+                .WhenEntering(ctx => ctx.Log.Add("enter:Connected"))
+                .On(HierTrigger.Disconnect, TestTransition.ToTarget<TestContext, HierState, TestActor>(HierState.Idle));
+            map[HierState.Authenticating]
+                .Parent(HierState.Connected)
+                .WhenEntering(ctx => ctx.Log.Add("enter:Authenticating"))
+                .On(HierTrigger.AuthOk, TestTransition.ToTarget<TestContext, HierState, TestActor>(HierState.Authenticated));
+            map[HierState.Authenticated]
+                .Parent(HierState.Connected)
+                .On(HierTrigger.Message, TestTransition.Stay<TestContext, HierState, TestActor>(syncAction: (ctx, args) => ctx.Log.Add((string) args[0]!)));
+            map[HierState.Outside].On(
+                HierTrigger.GoOutside,
+                TestTransition.ToTarget<TestContext, HierState, TestActor>(HierState.Outside));
+        });
+
+        var ctx = new TestContext();
+        var engine = new StateMachineEngine<TestContext, HierState, HierTrigger, TestActor>(definition, HierState.Idle, ctx, new TestActor());
+
+        engine.Fire(HierTrigger.Connect, TriggerArgs.Empty);
+
+        ctx.Log.Should().Equal("exit:Idle", "enter:Connected", "enter:Authenticating");
+    }
+
+    [Fact]
+    public void Leaving_composite_to_external_state_runs_exits_up_chain_then_target_entry()
+    {
+        var definition = BuildHier(map =>
+        {
+            map[HierState.Idle]
+                .WhenEntering(ctx => ctx.Log.Add("enter:Idle"))
+                .On(HierTrigger.Connect, TestTransition.ToTarget<TestContext, HierState, TestActor>(HierState.Connected));
+            map[HierState.Connected]
+                .AsStateMachine(HierState.Authenticating)
+                .WhenExiting(ctx => ctx.Log.Add("exit:Connected"))
+                .On(HierTrigger.Disconnect, TestTransition.ToTarget<TestContext, HierState, TestActor>(HierState.Idle));
+            map[HierState.Authenticating]
+                .Parent(HierState.Connected)
+                .On(HierTrigger.AuthOk, TestTransition.ToTarget<TestContext, HierState, TestActor>(HierState.Authenticated));
+            map[HierState.Authenticated]
+                .Parent(HierState.Connected)
+                .WhenExiting(ctx => ctx.Log.Add("exit:Authenticated"))
+                .On(HierTrigger.Message, TestTransition.Stay<TestContext, HierState, TestActor>(syncAction: (ctx, args) => ctx.Log.Add((string) args[0]!)));
+            map[HierState.Outside].On(
+                HierTrigger.GoOutside,
+                TestTransition.ToTarget<TestContext, HierState, TestActor>(HierState.Outside));
+        });
+
+        var ctx = new TestContext();
+        var engine = new StateMachineEngine<TestContext, HierState, HierTrigger, TestActor>(definition, HierState.Authenticated, ctx, new TestActor());
+
+        engine.Fire(HierTrigger.Disconnect, TriggerArgs.Empty);
+
+        ctx.Log.Should().Equal("exit:Authenticated", "exit:Connected", "enter:Idle");
+    }
+
+    [Fact]
     public void Exit_and_entry_actions_follow_hierarchy_path()
     {
         var definition = BuildHier(map =>
@@ -147,7 +211,9 @@ public class HierarchyTests
             map[HierState.Authenticated]
                 .Parent(HierState.Connected)
                 .WhenEntering(ctx => ctx.Log.Add("enter:Authenticated"));
-            map[HierState.Outside].WhenEntering(ctx => ctx.Log.Add("enter:Outside"));
+            map[HierState.Outside].On(
+                HierTrigger.GoOutside,
+                TestTransition.ToTarget<TestContext, HierState, TestActor>(HierState.Outside));
         });
 
         var ctx = new TestContext();

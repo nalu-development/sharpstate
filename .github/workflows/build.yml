@@ -19,6 +19,9 @@ jobs:
   build:
     name: Build-${{matrix.os}}
     runs-on: ${{matrix.os}}
+    permissions:
+      contents: read
+      id-token: write
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -47,6 +50,13 @@ jobs:
       - name: "Dotnet Cake Test"
         run: dotnet cake --target=Test
         shell: pwsh
+      - name: "Upload coverage to Codecov"
+        uses: codecov/codecov-action@v6
+        with:
+          use_oidc: true
+          directory: ./Artefacts
+          fail_ci_if_error: false
+          handle_no_reports_found: true
       - name: "Dotnet Cake Pack"
         run: dotnet cake --target=Pack
         shell: pwsh
