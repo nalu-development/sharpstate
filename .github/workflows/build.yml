@@ -90,7 +90,7 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.event_name == 'release'
     environment:
       name: "GitHub Packages"
-      url: https://github.com/nalu-development/nalu-sharp-state-machine
+      url: https://github.com/nalu-development/sharpstate
     permissions:
       packages: write
     runs-on: ubuntu-latest

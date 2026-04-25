@@ -18,9 +18,9 @@
     <PackageProjectUrl>https://nalu-development.github.io/sharpstate</PackageProjectUrl>
     <PackageIcon>Icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <RepositoryUrl>https://github.com/nalu-development/nalu-sharp-state-machine.git</RepositoryUrl>
+    <RepositoryUrl>https://github.com/nalu-development/sharpstate.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>https://github.com/nalu-development/nalu-sharp-state-machine/releases</PackageReleaseNotes>
+    <PackageReleaseNotes>https://github.com/nalu-development/sharpstate/releases</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup Label="Package References">
