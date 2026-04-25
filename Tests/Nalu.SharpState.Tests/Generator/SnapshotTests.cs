@@ -20,7 +20,7 @@ public class SnapshotTests
         }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class Flat
+        public static partial class Flat
         {
             [StateTriggerDefinition] static partial void Connect(string deviceId);
             [StateTriggerDefinition] static partial void Disconnect();
@@ -49,7 +49,7 @@ public class SnapshotTests
         public class Ctx { }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class ReactionMachine
+        public static partial class ReactionMachine
         {
             [StateTriggerDefinition] static partial void Start();
             [StateTriggerDefinition] static partial void Sync(long revision);
@@ -82,7 +82,7 @@ public class SnapshotTests
         }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class Hier
+        public static partial class Hier
         {
             [StateTriggerDefinition] static partial void Connect();
             [StateTriggerDefinition] static partial void Disconnect();
@@ -129,7 +129,7 @@ public class SnapshotTests
         }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class Deep
+        public static partial class Deep
         {
             [StateTriggerDefinition] static partial void Connect();
             [StateTriggerDefinition] static partial void Disconnect();
@@ -186,7 +186,7 @@ public class SnapshotTests
         public partial class Outer
         {
             [StateMachineDefinition(typeof(Ctx))]
-            internal partial class Machine
+            internal static partial class Machine
             {
                 [StateTriggerDefinition] static partial void Go();
 
@@ -218,7 +218,7 @@ public class SnapshotTests
         }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class Hooks
+        public static partial class Hooks
         {
             [StateTriggerDefinition] static partial void Start();
             [StateTriggerDefinition] static partial void Ping();
@@ -249,7 +249,7 @@ public class SnapshotTests
         public class Ctx { }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class Documented
+        public static partial class Documented
         {
             /// <summary>
             /// Opens the document.
@@ -286,7 +286,7 @@ public class SnapshotTests
         public class Ctx { }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class M
+        public static partial class M
         {
             [StateTriggerDefinition] static partial void Go();
 

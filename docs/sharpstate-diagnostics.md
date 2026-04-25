@@ -26,7 +26,7 @@ public class DoorMachine { ... }
 
 // Right
 [StateMachineDefinition(typeof(DoorContext))]
-public partial class DoorMachine { ... }
+public static partial class DoorMachine { ... }
 ```
 
 ### `NSS002` — Duplicate trigger or state name
@@ -91,14 +91,14 @@ When you nest a `[StateMachineDefinition]` class inside another type (for organi
 public static class Sample
 {
     [StateMachineDefinition(typeof(Ctx))]
-    public partial class DoorMachine { ... }
+    public static partial class DoorMachine { ... }
 }
 
 // Right
 public static partial class Sample
 {
     [StateMachineDefinition(typeof(Ctx))]
-    public partial class DoorMachine { ... }
+    public static partial class DoorMachine { ... }
 }
 ```
 
@@ -159,7 +159,7 @@ On top of compile-time diagnostics, a few exceptions surface misconfigurations t
 
 | Exception | When | How to fix |
 |-----------|------|-----------|
-| `NotSupportedException: Trigger 'X' is not handled from state 'Y'` | A trigger fires with no matching transition on the leaf nor on any ancestor, **and** `OnUnhandled` is the default. | Either configure the transition, set `OnUnhandled` to a custom handler, or assign `OnUnhandled = null` to silence it. See [Unhandled triggers](index.md#unhandled-triggers). |
+| `InvalidOperationException: Trigger 'X' is not handled from state 'Y'` | A trigger fires with no matching transition on the leaf nor on any ancestor, **and** `OnUnhandled` is the default. | Either configure the transition, set `OnUnhandled` to a custom handler, or assign `OnUnhandled = null` to silence it. See [Unhandled triggers](index.md#unhandled-triggers). |
 | `KeyNotFoundException: State 'X' is not registered in the state machine definition` | You passed a `State` to `CreateActorWithState` that does not appear in the definition. | Use a value from the generated `State` enum; do not cast arbitrary integers to `State`. |
 | `ArgumentNullException` on `CreateActor` / `CreateActorWithState` | `context` or the internal `definition` was `null`. | Pass a non-null context. The definition is injected by the generator and is never null in practice. |
 | `InvalidOperationException: State 'X' declares parent 'Y' but 'Y' does not declare an initial child via a nested [SubStateMachine(parent: Y)] region with one [StateDefinition(Initial = true)] child.` | A runtime-built definition has a dangling parent reference. | For generated definitions this is enforced at compile time; for hand-built ones, always pair a parent with a region that has exactly one initial child. |

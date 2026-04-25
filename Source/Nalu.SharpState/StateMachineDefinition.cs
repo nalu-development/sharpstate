@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Nalu.SharpState;
 
 /// <summary>
@@ -14,8 +16,8 @@ public sealed class StateMachineDefinition<TContext, TState, TTrigger, TActor>
     where TState : struct, Enum
     where TTrigger : struct, Enum
 {
-    private readonly IReadOnlyDictionary<TState, IStateConfiguration<TContext, TState, TTrigger, TActor>> _states;
-    private readonly Dictionary<TState, TState[]> _ancestorsCache;
+    private readonly InternalEnumMap<TState, IStateConfiguration<TContext, TState, TTrigger, TActor>> _states;
+    private readonly InternalEnumMap<TState, TState[]> _ancestors;
 
     /// <summary>
     /// Initializes a new <see cref="StateMachineDefinition{TContext, TState, TTrigger, TActor}"/> by freezing
@@ -25,12 +27,13 @@ public sealed class StateMachineDefinition<TContext, TState, TTrigger, TActor>
     /// <exception cref="ArgumentNullException"><paramref name="states"/> is <c>null</c>.</exception>
     /// <exception cref="InvalidOperationException">The hierarchy declared by the configurations is inconsistent
     /// (multi-parent, cycle, composite without children, child without a composite parent, etc.).</exception>
-    public StateMachineDefinition(IReadOnlyDictionary<TState, IStateConfiguration<TContext, TState, TTrigger, TActor>> states)
+    public StateMachineDefinition(InternalEnumMap<TState, IStateConfiguration<TContext, TState, TTrigger, TActor>> states)
     {
-        _states = states ?? throw new ArgumentNullException(nameof(states));
+        ArgumentNullException.ThrowIfNull(states);
+        _states = new InternalEnumMap<TState, IStateConfiguration<TContext, TState, TTrigger, TActor>>(states);
 
-        var parent = new Dictionary<TState, TState>();
-        var initialChild = new Dictionary<TState, TState>();
+        var parent = new InternalEnumMap<TState, TState>();
+        var initialChild = new InternalEnumMap<TState, TState>();
 
         foreach (var kvp in _states)
         {
@@ -51,29 +54,31 @@ public sealed class StateMachineDefinition<TContext, TState, TTrigger, TActor>
         InitialChild = initialChild;
         Validate();
 
-        _ancestorsCache = new Dictionary<TState, TState[]>();
+        _ancestors = new InternalEnumMap<TState, TState[]>();
         foreach (var state in _states.Keys)
         {
-            _ancestorsCache[state] = BuildAncestors(state);
+            _ancestors[state] = BuildAncestors(state);
         }
+
+        States = Enum.GetValues<TState>();
     }
 
     /// <summary>
     /// Mapping from each child state to its parent composite. States that are not children of any composite
     /// do not appear in the map.
     /// </summary>
-    public IReadOnlyDictionary<TState, TState> Parent { get; }
+    public InternalEnumMap<TState, TState> Parent { get; }
 
     /// <summary>
     /// Mapping from each composite state to the child entered by default when the composite is targeted.
     /// Leaf states do not appear in the map.
     /// </summary>
-    public IReadOnlyDictionary<TState, TState> InitialChild { get; }
+    public InternalEnumMap<TState, TState> InitialChild { get; }
 
     /// <summary>
     /// The full set of states known to this definition.
     /// </summary>
-    public IReadOnlyCollection<TState> States => (IReadOnlyCollection<TState>) _states.Keys;
+    public IReadOnlyCollection<TState> States { get; }
 
     /// <summary>
     /// Retrieves the <see cref="IStateConfiguration{TContext, TState, TTrigger, TActor}"/> for a given state.
@@ -82,8 +87,8 @@ public sealed class StateMachineDefinition<TContext, TState, TTrigger, TActor>
     /// <returns>The configuration associated with <paramref name="state"/>.</returns>
     /// <exception cref="KeyNotFoundException">No configuration exists for <paramref name="state"/>.</exception>
     public IStateConfiguration<TContext, TState, TTrigger, TActor> GetConfiguration(TState state)
-        => _states.TryGetValue(state, out var c)
-            ? c
+        => _states.TryGetValue(state, out var configuration)
+            ? configuration
             : throw new KeyNotFoundException($"State '{state}' is not registered in the state machine definition.");
 
     /// <summary>
@@ -92,8 +97,8 @@ public sealed class StateMachineDefinition<TContext, TState, TTrigger, TActor>
     /// <param name="state">The state to look up.</param>
     /// <param name="configuration">When the method returns <c>true</c>, the associated configuration.</param>
     /// <returns><c>true</c> if a configuration is registered for <paramref name="state"/>.</returns>
-    public bool TryGetConfiguration(TState state, out IStateConfiguration<TContext, TState, TTrigger, TActor> configuration)
-        => _states.TryGetValue(state, out configuration!);
+    public bool TryGetConfiguration(TState state, [NotNullWhen(true)] out IStateConfiguration<TContext, TState, TTrigger, TActor>? configuration)
+        => _states.TryGetValue(state, out configuration);
 
     /// <summary>
     /// Follows <see cref="InitialChild"/> from <paramref name="state"/> until a leaf state is reached.
@@ -119,7 +124,7 @@ public sealed class StateMachineDefinition<TContext, TState, TTrigger, TActor>
     /// <param name="state">The state whose ancestors should be enumerated.</param>
     /// <returns>An ordered list of ancestor states.</returns>
     public IReadOnlyList<TState> AncestorsOf(TState state)
-        => _ancestorsCache.TryGetValue(state, out var cached) ? cached : Array.Empty<TState>();
+        => _ancestors.TryGetValue(state, out var cached) ? cached : Array.Empty<TState>();
 
     /// <summary>
     /// Determines whether <paramref name="state"/> equals <paramref name="ancestor"/> or is a transitive child of it.
@@ -154,12 +159,21 @@ public sealed class StateMachineDefinition<TContext, TState, TTrigger, TActor>
     public TState? LowestCommonAncestor(TState a, TState b)
     {
         var comparer = EqualityComparer<TState>.Default;
-        var aChain = new List<TState> { a };
-        aChain.AddRange(AncestorsOf(a));
+        var aChain = AncestorsOf(a);
+
+        if (aChain.Count == 0)
+        {
+            return null;
+        }
 
         var current = b;
         while (true)
         {
+            if (comparer.Equals(a, current))
+            {
+                return a;
+            }
+            
             foreach (var x in aChain)
             {
                 if (comparer.Equals(x, current))

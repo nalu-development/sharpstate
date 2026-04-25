@@ -7,10 +7,13 @@ public class DefinitionValidationTests
     private static StateMachineDefinition<TestContext, HierState, HierTrigger, TestActor> Build(
         Dictionary<HierState, TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>> map)
     {
-        var readonlyMap = map.ToDictionary(
-            kv => kv.Key,
-            kv => (IStateConfiguration<TestContext, HierState, HierTrigger, TestActor>) kv.Value);
-        return new StateMachineDefinition<TestContext, HierState, HierTrigger, TestActor>(readonlyMap);
+        var forDef = new InternalEnumMap<HierState, IStateConfiguration<TestContext, HierState, HierTrigger, TestActor>>();
+        foreach (var kv in map)
+        {
+            forDef[kv.Key] = kv.Value;
+        }
+
+        return new StateMachineDefinition<TestContext, HierState, HierTrigger, TestActor>(forDef);
     }
 
     [Fact]

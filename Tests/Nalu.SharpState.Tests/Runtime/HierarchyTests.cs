@@ -5,21 +5,22 @@ namespace Nalu.SharpState.Tests.Runtime;
 public class HierarchyTests
 {
     private static StateMachineDefinition<TestContext, HierState, HierTrigger, TestActor> BuildHier(
-        Action<IDictionary<HierState, TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>>> setup)
+        Action<InternalEnumMap<HierState, TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>>> setup)
     {
-        var map = new Dictionary<HierState, TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>>
-        {
-            [HierState.Idle] = new(),
-            [HierState.Connected] = new(),
-            [HierState.Authenticating] = new(),
-            [HierState.Authenticated] = new(),
-            [HierState.Outside] = new()
-        };
+        var map = new InternalEnumMap<HierState, TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>>();
+        map[HierState.Idle] = new();
+        map[HierState.Connected] = new();
+        map[HierState.Authenticating] = new();
+        map[HierState.Authenticated] = new();
+        map[HierState.Outside] = new();
         setup(map);
-        var readonlyMap = map.ToDictionary(
-            kv => kv.Key,
-            kv => (IStateConfiguration<TestContext, HierState, HierTrigger, TestActor>) kv.Value);
-        return new StateMachineDefinition<TestContext, HierState, HierTrigger, TestActor>(readonlyMap);
+        var forDef = new InternalEnumMap<HierState, IStateConfiguration<TestContext, HierState, HierTrigger, TestActor>>();
+        foreach (var kvp in map)
+        {
+            forDef[kvp.Key] = kvp.Value;
+        }
+
+        return new StateMachineDefinition<TestContext, HierState, HierTrigger, TestActor>(forDef);
     }
 
     internal static StateMachineDefinition<TestContext, HierState, HierTrigger, TestActor> CreateStandardHierarchy()

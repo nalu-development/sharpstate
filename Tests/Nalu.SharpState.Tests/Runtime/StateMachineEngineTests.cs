@@ -5,20 +5,21 @@ namespace Nalu.SharpState.Tests.Runtime;
 public class StateMachineEngineTests
 {
     private static StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor> BuildFlat(
-        Action<IDictionary<FlatState, TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>>>? setup = null)
+        Action<InternalEnumMap<FlatState, TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>>>? setup = null)
     {
-        var map = new Dictionary<FlatState, TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>>
-        {
-            [FlatState.A] = new(),
-            [FlatState.B] = new(),
-            [FlatState.C] = new()
-        };
+        var map = new InternalEnumMap<FlatState, TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new();
+        map[FlatState.B] = new();
+        map[FlatState.C] = new();
         setup?.Invoke(map);
 
-        var readonlyMap = map.ToDictionary(
-            kv => kv.Key,
-            kv => (IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>) kv.Value);
-        return new StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor>(readonlyMap);
+        var forDef = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>();
+        foreach (var kvp in map)
+        {
+            forDef[kvp.Key] = kvp.Value;
+        }
+
+        return new StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor>(forDef);
     }
 
     [Fact]
@@ -109,7 +110,7 @@ public class StateMachineEngineTests
 
         var act = () => engine.Fire(FlatTrigger.NoMatch, TriggerArgs.Empty);
 
-        act.Should().Throw<NotSupportedException>();
+        act.Should().Throw<InvalidOperationException>();
         engine.CurrentState.Should().Be(FlatState.A);
     }
 

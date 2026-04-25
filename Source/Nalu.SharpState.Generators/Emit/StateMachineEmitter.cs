@@ -72,7 +72,8 @@ internal static class StateMachineEmitter
         var className = m.ClassName;
         var typeParams = m.TypeParameters;
 
-        w.WriteLine($"{m.ClassAccessibility} partial {m.ClassKeyword} {className}{typeParams}");
+        var staticModifier = m.IsStaticClass ? "static " : string.Empty;
+        w.WriteLine($"{m.ClassAccessibility} {staticModifier}partial {m.ClassKeyword} {className}{typeParams}");
         using (w.Block())
         {
             EmitStateEnum(w, m);
@@ -85,9 +86,15 @@ internal static class StateMachineEmitter
             w.WriteBlankLine();
             EmitActorInterface(w, context, m);
             w.WriteBlankLine();
+            if (m.Triggers.Count > 0)
+            {
+                EmitTriggerDefinitionReferenceConstructor(w, m);
+                w.WriteBlankLine();
+            }
+
             EmitCreateActorFactoryDelegates(w, context);
             w.WriteBlankLine();
-            w.WriteLine("protected static IStateConfigurator ConfigureState() => new GeneratedStateConfigurator();");
+            w.WriteLine("private static IStateConfigurator ConfigureState() => new GeneratedStateConfigurator();");
             w.WriteBlankLine();
             w.WriteLine($"private static readonly global::Nalu.SharpState.StateMachineDefinition<{context}, State, Trigger, IActor> _definition = BuildDefinition();");
             w.WriteBlankLine();
@@ -109,6 +116,45 @@ internal static class StateMachineEmitter
             w.WriteBlankLine();
             EmitGeneratedConfigurator(w, context, m);
             EmitRegionRegistrars(w, context, m);
+        }
+    }
+
+    private static void EmitTriggerDefinitionReferenceConstructor(SourceWriter w, StateMachineModel m)
+    {
+        var machineName = m.ClassName;
+
+        // Static classes cannot have instance constructors; everything else uses a private ctor so the machine type
+        // is not instantiable from user code while still referencing trigger parameters.
+        if (m.IsStaticClass)
+        {
+            w.WriteLine($"static {machineName}()");
+        }
+        else
+        {
+            w.WriteLine($"private {machineName}()");
+        }
+
+        using (w.Block())
+        {
+            w.WriteLine("#nullable disable");
+            foreach (var t in m.Triggers)
+            {
+                w.Write(t.Name);
+                w.Write("(");
+                for (var i = 0; i < t.Parameters.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        w.Write(", ");
+                    }
+
+                    w.Write("default");
+                }
+
+                w.WriteLine(");");
+            }
+
+            w.WriteLine("#nullable enable");
         }
     }
 
@@ -153,7 +199,7 @@ internal static class StateMachineEmitter
         using (w.Block())
         {
             w.WriteLine(
-                $"internal static void __Register(global::System.Collections.Generic.Dictionary<State, global::Nalu.SharpState.IStateConfiguration<{context}, State, Trigger, IActor>> map)");
+                $"internal static void __Register(global::Nalu.SharpState.InternalEnumMap<State, global::Nalu.SharpState.IStateConfiguration<{context}, State, Trigger, IActor>> map)");
             using (w.Block())
             {
                 foreach (var s in node.States)
@@ -346,7 +392,7 @@ internal static class StateMachineEmitter
         w.WriteLine($"private static global::Nalu.SharpState.StateMachineDefinition<{context}, State, Trigger, IActor> BuildDefinition()");
         using (w.Block())
         {
-            w.WriteLine($"var map = new Dictionary<State, global::Nalu.SharpState.IStateConfiguration<{context}, State, Trigger, IActor>>();");
+            w.WriteLine($"var map = new global::Nalu.SharpState.InternalEnumMap<State, global::Nalu.SharpState.IStateConfiguration<{context}, State, Trigger, IActor>>();");
 
             var root = BuildRegionTree(m);
             foreach (var s in root.States)

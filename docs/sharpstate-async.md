@@ -8,7 +8,7 @@
 
 ```csharp
 [StateMachineDefinition(typeof(InspectContext))]
-public partial class ReviewMachine
+public static partial class ReviewMachine
 {
     [StateTriggerDefinition] static partial void RequestApproval(string id);
     [StateTriggerDefinition] static partial void Approve();

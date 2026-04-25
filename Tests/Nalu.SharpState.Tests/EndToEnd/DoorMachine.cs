@@ -1,4 +1,3 @@
-#pragma warning disable IDE0060
 namespace Nalu.SharpState.Tests.EndToEnd;
 
 public class DoorContext
@@ -9,7 +8,7 @@ public class DoorContext
 }
 
 [StateMachineDefinition(typeof(DoorContext))]
-public partial class DoorMachine
+public static partial class DoorMachine
 {
     /// <summary>
     /// Opens the door.

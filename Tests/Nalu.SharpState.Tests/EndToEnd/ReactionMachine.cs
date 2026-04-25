@@ -6,7 +6,7 @@ public class InspectContext
 }
 
 [StateMachineDefinition(typeof(InspectContext))]
-public partial class ReactionMachine
+public static partial class ReactionMachine
 {
     [StateTriggerDefinition] static partial void Inspect();
 

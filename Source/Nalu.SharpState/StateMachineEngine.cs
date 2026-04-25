@@ -13,9 +13,9 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
     where TState : struct, Enum
     where TTrigger : struct, Enum
 {
-    private readonly object _gate = new();
     private readonly StateMachineDefinition<TContext, TState, TTrigger, TActor> _definition;
     private readonly TActor _actor;
+    private readonly TContext _context;
     private TState _currentState;
     private bool _isDispatching;
 
@@ -36,7 +36,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
         TActor actor)
     {
         _definition = definition ?? throw new ArgumentNullException(nameof(definition));
-        Context = context ?? throw new ArgumentNullException(nameof(context));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
         _actor = actor;
 
         if (!_definition.TryGetConfiguration(currentState, out _))
@@ -55,7 +55,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
     /// <summary>
     /// The user-supplied context passed to every guard and action.
     /// </summary>
-    public TContext Context { get; }
+    public TContext Context => _context;
 
     /// <summary>
     /// Raised after a transition has committed. Parameters are the source leaf, the new leaf, and the trigger that caused the change.
@@ -72,13 +72,13 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
     /// Callback invoked when a trigger fires but no transition matches (neither on the current leaf
     /// nor on any of its ancestors, or all guards returned <c>false</c>). Handlers receive the current
     /// leaf state, the trigger itself, and the arguments originally passed to it.
-    /// Defaults to a handler that throws <see cref="NotSupportedException"/>.
+    /// Defaults to a handler that throws <see cref="InvalidOperationException"/>.
     /// Set to <c>null</c> to silently ignore unhandled triggers, or assign a custom handler.
     /// </summary>
     public UnhandledTriggerHandler<TState, TTrigger>? OnUnhandled { get; set; } = DefaultUnhandled;
 
     private static void DefaultUnhandled(TState currentState, TTrigger trigger, object?[] args)
-        => throw new NotSupportedException(
+        => throw new InvalidOperationException(
             $"Trigger '{trigger}' is not handled from state '{currentState}'.");
 
     /// <summary>
@@ -95,32 +95,28 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
     /// </summary>
     public void Fire(TTrigger trigger, TriggerArgs args)
     {
-        lock (_gate)
+        if (_isDispatching)
         {
-            if (_isDispatching)
+            throw new InvalidOperationException(
+                $"Trigger '{trigger}' cannot be fired while another trigger is still being processed. Use ReactAsync(...) for post-transition work instead.");
+        }
+
+        _isDispatching = true;
+        try
+        {
+            var match = FindMatchingTransition(trigger, args);
+            if (match is null)
             {
-                throw new InvalidOperationException(
-                    $"Trigger '{trigger}' cannot be fired while another trigger is still being processed. Use ReactAsync(...) for post-transition work instead.");
+                OnUnhandled?.Invoke(_currentState, trigger, args.ToArray());
+                return;
             }
 
-            _isDispatching = true;
-            try
-            {
-                var synchronizationContext = System.Threading.SynchronizationContext.Current;
-                var match = FindMatchingTransition(trigger, args);
-                if (match is null)
-                {
-                    OnUnhandled?.Invoke(_currentState, trigger, args.ToArray());
-                    return;
-                }
-
-                var transition = match.Value.Transition;
-                CommitTransition(trigger, match.Value.Source, transition, args, synchronizationContext);
-            }
-            finally
-            {
-                _isDispatching = false;
-            }
+            var transition = match.Value.Transition;
+            CommitTransition(trigger, match.Value.Source, transition, args);
+        }
+        finally
+        {
+            _isDispatching = false;
         }
     }
 
@@ -128,13 +124,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
     /// Determines whether the specified trigger currently has a matching transition.
     /// Guards are evaluated against the current state and supplied arguments, but no actions run and no state changes are committed.
     /// </summary>
-    public bool CanFire(TTrigger trigger, TriggerArgs args)
-    {
-        lock (_gate)
-        {
-            return FindMatchingTransition(trigger, args).HasValue;
-        }
-    }
+    public bool CanFire(TTrigger trigger, TriggerArgs args) => FindMatchingTransition(trigger, args).HasValue;
 
     private (Transition<TContext, TState, TActor> Transition, TState Source)? FindMatchingTransition(TTrigger trigger, TriggerArgs args)
     {
@@ -147,7 +137,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
             {
                 foreach (var transition in transitions)
                 {
-                    if (transition.Guard is null || transition.Guard(Context, args))
+                    if (transition.Guard is null || transition.Guard(_context, args))
                     {
                         return (transition, source);
                     }
@@ -167,43 +157,42 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
         TTrigger trigger,
         TState source,
         Transition<TContext, TState, TActor> transition,
-        TriggerArgs args,
-        System.Threading.SynchronizationContext? synchronizationContext)
+        TriggerArgs args)
     {
         if (transition.TargetSelector is not null)
         {
-            var resolvedTarget = transition.TargetSelector(Context, args);
+            var resolvedTarget = transition.TargetSelector(_context, args);
             var resolvedLeaf = _definition.LeafOf(resolvedTarget);
             if (EqualityComparer<TState>.Default.Equals(resolvedLeaf, source))
             {
-                transition.SyncAction?.Invoke(Context, args);
-                ScheduleReaction(source, source, trigger, transition, args, synchronizationContext);
+                transition.SyncAction?.Invoke(_context, args);
+                ScheduleReaction(source, source, trigger, transition, args);
                 return;
             }
 
             InvokeExitActions(source, resolvedLeaf);
-            transition.SyncAction?.Invoke(Context, args);
+            transition.SyncAction?.Invoke(_context, args);
             _currentState = resolvedLeaf;
             InvokeEntryActions(source, resolvedLeaf);
             StateChanged?.Invoke(source, resolvedLeaf, trigger, args.ToArray());
-            ScheduleReaction(source, resolvedLeaf, trigger, transition, args, synchronizationContext);
+            ScheduleReaction(source, resolvedLeaf, trigger, transition, args);
             return;
         }
 
         if (transition.IsInternal)
         {
-            transition.SyncAction?.Invoke(Context, args);
-            ScheduleReaction(source, source, trigger, transition, args, synchronizationContext);
+            transition.SyncAction?.Invoke(_context, args);
+            ScheduleReaction(source, source, trigger, transition, args);
             return;
         }
 
         var newLeaf = _definition.LeafOf(transition.Target);
         InvokeExitActions(source, newLeaf);
-        transition.SyncAction?.Invoke(Context, args);
+        transition.SyncAction?.Invoke(_context, args);
         _currentState = newLeaf;
         InvokeEntryActions(source, newLeaf);
         StateChanged?.Invoke(source, newLeaf, trigger, args.ToArray());
-        ScheduleReaction(source, newLeaf, trigger, transition, args, synchronizationContext);
+        ScheduleReaction(source, newLeaf, trigger, transition, args);
     }
 
     private void InvokeExitActions(TState source, TState destination)
@@ -211,7 +200,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
         foreach (var state in EnumerateExitPath(source, destination))
         {
             var config = _definition.GetConfiguration(state);
-            config.ExitAction?.Invoke(Context);
+            config.ExitAction?.Invoke(_context);
         }
     }
 
@@ -220,7 +209,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
         foreach (var state in EnumerateEntryPath(source, destination))
         {
             var config = _definition.GetConfiguration(state);
-            config.EntryAction?.Invoke(Context);
+            config.EntryAction?.Invoke(_context);
         }
     }
 
@@ -229,14 +218,14 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
         TState destination,
         TTrigger trigger,
         Transition<TContext, TState, TActor> transition,
-        TriggerArgs args,
-        System.Threading.SynchronizationContext? synchronizationContext)
+        TriggerArgs args)
     {
         if (transition.ReactionAsync is null)
         {
             return;
         }
 
+        var synchronizationContext = SynchronizationContext.Current;
         var workItem = new ReactionWorkItem(this, transition.ReactionAsync, source, destination, trigger, args);
         if (synchronizationContext is null)
         {
@@ -260,7 +249,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
     {
         try
         {
-            await reactionAsync(_actor, Context, args);
+            await reactionAsync(_actor, _context, args);
         }
         catch (Exception exception)
         {
@@ -278,42 +267,32 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
     private IEnumerable<TState> EnumerateExitPath(TState source, TState destination)
     {
         var lca = _definition.LowestCommonAncestor(source, destination);
-        var current = source;
-        while (!lca.HasValue || !EqualityComparer<TState>.Default.Equals(current, lca.Value))
+
+        var ancestors = (TState[])_definition.AncestorsOf(source);
+        var lcaIndex = lca.HasValue ? Array.IndexOf(ancestors, lca.Value) : ancestors.Length;
+        
+        yield return source;
+
+        for (var i = 0; i < lcaIndex; i++)
         {
-            yield return current;
-
-            if (!_definition.Parent.TryGetValue(current, out var parent))
-            {
-                yield break;
-            }
-
-            current = parent;
+            yield return ancestors[i];
         }
     }
 
     private IEnumerable<TState> EnumerateEntryPath(TState source, TState destination)
     {
         var lca = _definition.LowestCommonAncestor(source, destination);
-        var stack = new Stack<TState>();
-        var current = destination;
 
-        while (!lca.HasValue || !EqualityComparer<TState>.Default.Equals(current, lca.Value))
+        var ancestors = (TState[])_definition.AncestorsOf(destination);
+        var lcaIndex = lca.HasValue ? Array.IndexOf(ancestors, lca.Value) : -1;
+
+        var ancestorsCount = ancestors.Length;
+        for (var i = ancestorsCount - 1; i > lcaIndex; i--)
         {
-            stack.Push(current);
-
-            if (!_definition.Parent.TryGetValue(current, out var parent))
-            {
-                break;
-            }
-
-            current = parent;
+            yield return ancestors[i];
         }
-
-        while (stack.Count > 0)
-        {
-            yield return stack.Pop();
-        }
+        
+        yield return destination;
     }
 
     private sealed class ReactionWorkItem

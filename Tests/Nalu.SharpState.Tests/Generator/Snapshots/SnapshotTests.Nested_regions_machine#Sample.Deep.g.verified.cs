@@ -10,7 +10,7 @@ using global::Nalu.SharpState;
 
 namespace Sample
 {
-    public partial class Deep
+    public static partial class Deep
     {
         public enum State
         {
@@ -185,6 +185,17 @@ namespace Sample
             void Save();
         }
         
+        static Deep()
+        {
+            #nullable disable
+            Connect();
+            Disconnect();
+            AuthOk();
+            StartEdit();
+            Save();
+            #nullable enable
+        }
+        
         /// <summary>
         /// Factory delegate that creates a new <see cref="IActor"/> at a given <see cref="State"/>, bound to this generated state machine definition.
         /// Useful for dependency injection and unit tests.
@@ -202,13 +213,13 @@ namespace Sample
         /// <returns>A new <see cref="IActor"/> instance.</returns>
         public delegate IActor CreateActorFactory(global::Sample.Ctx context);
         
-        protected static IStateConfigurator ConfigureState() => new GeneratedStateConfigurator();
+        private static IStateConfigurator ConfigureState() => new GeneratedStateConfigurator();
         
         private static readonly global::Nalu.SharpState.StateMachineDefinition<global::Sample.Ctx, State, Trigger, IActor> _definition = BuildDefinition();
         
         private static global::Nalu.SharpState.StateMachineDefinition<global::Sample.Ctx, State, Trigger, IActor> BuildDefinition()
         {
-            var map = new Dictionary<State, global::Nalu.SharpState.IStateConfiguration<global::Sample.Ctx, State, Trigger, IActor>>();
+            var map = new global::Nalu.SharpState.InternalEnumMap<State, global::Nalu.SharpState.IStateConfiguration<global::Sample.Ctx, State, Trigger, IActor>>();
             {
                 var c = (GeneratedStateConfigurator)Idle;
                 map[State.Idle] = c;
@@ -369,7 +380,7 @@ namespace Sample
         
         partial class ConnectedRegion
         {
-            internal static void __Register(global::System.Collections.Generic.Dictionary<State, global::Nalu.SharpState.IStateConfiguration<global::Sample.Ctx, State, Trigger, IActor>> map)
+            internal static void __Register(global::Nalu.SharpState.InternalEnumMap<State, global::Nalu.SharpState.IStateConfiguration<global::Sample.Ctx, State, Trigger, IActor>> map)
             {
                 {
                     var c = (GeneratedStateConfigurator)Authenticating;
@@ -387,7 +398,7 @@ namespace Sample
             
             partial class AuthenticatedRegion
             {
-                internal static void __Register(global::System.Collections.Generic.Dictionary<State, global::Nalu.SharpState.IStateConfiguration<global::Sample.Ctx, State, Trigger, IActor>> map)
+                internal static void __Register(global::Nalu.SharpState.InternalEnumMap<State, global::Nalu.SharpState.IStateConfiguration<global::Sample.Ctx, State, Trigger, IActor>> map)
                 {
                     {
                         var c = (GeneratedStateConfigurator)Browsing;

@@ -15,7 +15,7 @@ public abstract class StateConfigurator<TContext, TState, TTrigger, TActor>
     where TState : struct, Enum
     where TTrigger : struct, Enum
 {
-    private readonly Dictionary<TTrigger, List<Transition<TContext, TState, TActor>>> _transitions = new();
+    private readonly InternalEnumMap<TTrigger, List<Transition<TContext, TState, TActor>>> _transitions = new();
     private TState? _parent;
     private TState? _initialChild;
     private Action<TContext>? _entryAction;

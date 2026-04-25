@@ -6,7 +6,7 @@ public class NetworkContext
 }
 
 [StateMachineDefinition(typeof(NetworkContext))]
-public partial class NetworkMachine
+public static partial class NetworkMachine
 {
     [StateTriggerDefinition] static partial void Connect();
 

@@ -44,7 +44,7 @@ public class DiagnosticTests
         public class Ctx { }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class DupTrigger
+        public static partial class DupTrigger
         {
             [StateTriggerDefinition] static partial void Go();
             [StateTriggerDefinition] static partial void Go(int x);
@@ -66,7 +66,7 @@ public class DiagnosticTests
         public class Ctx { }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class WrongState
+        public static partial class WrongState
         {
             [StateTriggerDefinition] static partial void Go();
 
@@ -87,7 +87,7 @@ public class DiagnosticTests
         public class Ctx { }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class GenericConfigReturnType
+        public static partial class GenericConfigReturnType
         {
             [StateTriggerDefinition] static partial void Go();
 
@@ -110,7 +110,7 @@ public class DiagnosticTests
         public class Ctx { }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class BadTrigger
+        public static partial class BadTrigger
         {
             [StateTriggerDefinition] static void Go() { }
             [StateDefinition(Initial = true)] private static IStateConfiguration A { get; } = ConfigureState();
@@ -130,7 +130,7 @@ public class DiagnosticTests
         public class Ctx { }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class M
+        public static partial class M
         {
             [StateTriggerDefinition] static partial void Go();
 
@@ -157,7 +157,7 @@ public class DiagnosticTests
         public class Outer
         {
             [StateMachineDefinition(typeof(Ctx))]
-            public partial class M
+            public static partial class M
             {
                 [StateTriggerDefinition] static partial void Go();
                 [StateDefinition(Initial = true)] private static IStateConfiguration A { get; } = ConfigureState();
@@ -178,7 +178,7 @@ public class DiagnosticTests
         public class Ctx { }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class M
+        public static partial class M
         {
             [StateTriggerDefinition] static partial void Go();
 
@@ -205,7 +205,7 @@ public class DiagnosticTests
         public class Ctx { }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class M
+        public static partial class M
         {
             [StateTriggerDefinition] static partial void Go();
 
@@ -232,7 +232,7 @@ public class DiagnosticTests
         public class Ctx { }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class M
+        public static partial class M
         {
             [StateTriggerDefinition] static partial void Go();
 
@@ -264,7 +264,7 @@ public class DiagnosticTests
         }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class DynamicMachine
+        public static partial class DynamicMachine
         {
             [StateTriggerDefinition] static partial void Go(int step);
 
@@ -296,7 +296,7 @@ public class DiagnosticTests
         public class Ctx { }
 
         [StateMachineDefinition(typeof(Ctx))]
-        public partial class M
+        public static partial class M
         {
             [StateTriggerDefinition] static partial void Go();
 

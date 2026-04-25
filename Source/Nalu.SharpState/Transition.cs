@@ -21,7 +21,7 @@ public sealed class Transition<TContext, TState, TActor>
         Action<TContext, TriggerArgs>? syncAction,
         Func<TActor, TContext, TriggerArgs, ValueTask>? reactionAsync)
     {
-        _target = target;
+        Target = target;
         TargetSelector = targetSelector;
         IsInternal = isInternal;
         Guard = guard;
@@ -29,8 +29,6 @@ public sealed class Transition<TContext, TState, TActor>
         SyncAction = syncAction;
         ReactionAsync = reactionAsync;
     }
-
-    private readonly TState _target;
 
     /// <summary>
     /// When <c>true</c>, the transition does not change the current state; only the action runs.
@@ -47,7 +45,7 @@ public sealed class Transition<TContext, TState, TActor>
             ? throw new InvalidOperationException("Internal transitions do not have a target state.")
             : TargetSelector is not null
                 ? throw new InvalidOperationException("Dynamic transitions resolve their target state at dispatch time.")
-                : _target;
+                : field;
 
     /// <summary>
     /// Optional target selector resolved at dispatch time before any state change is committed.

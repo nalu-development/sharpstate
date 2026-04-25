@@ -104,7 +104,7 @@ public class EndToEndTests
     {
         var ctx = new InspectContext();
         var machine = ReactionMachine.CreateActorWithState(ctx, ReactionMachine.State.Idle);
-        var syncContext = new RecordingSynchronizationContext();
+        var syncContext = new MySynchronizationContext();
 
         RunOn(syncContext, machine.Inspect);
 
@@ -120,7 +120,7 @@ public class EndToEndTests
     {
         var ctx = new InspectContext();
         var machine = ReactionMachine.CreateActorWithState(ctx, ReactionMachine.State.Idle);
-        var syncContext = new RecordingSynchronizationContext();
+        var syncContext = new MySynchronizationContext();
 
         RunOn(syncContext, machine.Finish);
 
@@ -253,7 +253,7 @@ public class EndToEndTests
         ctx.Log.Should().BeEmpty();
     }
 
-    private static void RunOn(RecordingSynchronizationContext synchronizationContext, Action action)
+    private static void RunOn(MySynchronizationContext synchronizationContext, Action action)
     {
         var previous = SynchronizationContext.Current;
         SynchronizationContext.SetSynchronizationContext(synchronizationContext);
@@ -267,7 +267,7 @@ public class EndToEndTests
         }
     }
 
-    private sealed class RecordingSynchronizationContext : SynchronizationContext
+    private sealed class MySynchronizationContext : SynchronizationContext
     {
         private readonly Queue<(SendOrPostCallback Callback, object? State)> _queue = new();
 

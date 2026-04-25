@@ -10,23 +10,21 @@ public class AsyncTests
         var syncContext = new RecordingSynchronizationContext();
         var actor = new TestActor();
         TestActor? observedActor = null;
-        var map = new Dictionary<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>
-        {
-            [FlatState.A] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>()
-                .WhenExiting(ctx => ctx.Log.Add("exit:A"))
-                .On(FlatTrigger.Go, TestTransition.ToTarget<TestContext, FlatState, TestActor>(
-                    FlatState.B,
-                    syncAction: (ctx, _) => ctx.Log.Add("invoke"),
-                    reactionAsync: async (reactionActor, ctx, _) =>
-                    {
-                        observedActor = reactionActor;
-                        await Task.Yield();
-                        ctx.Log.Add("react");
-                    })),
-            [FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>()
-                .WhenEntering(ctx => ctx.Log.Add("enter:B")),
-            [FlatState.C] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>()
-        };
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>()
+            .WhenExiting(ctx => ctx.Log.Add("exit:A"))
+            .On(FlatTrigger.Go, TestTransition.ToTarget<TestContext, FlatState, TestActor>(
+                FlatState.B,
+                syncAction: (ctx, _) => ctx.Log.Add("invoke"),
+                reactionAsync: async (reactionActor, ctx, _) =>
+                {
+                    observedActor = reactionActor;
+                    await Task.Yield();
+                    ctx.Log.Add("react");
+                }));
+        map[FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>()
+            .WhenEntering(ctx => ctx.Log.Add("enter:B"));
+        map[FlatState.C] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
 
         var ctx = new TestContext();
         var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(
@@ -57,12 +55,10 @@ public class AsyncTests
                 throw new InvalidOperationException("boom");
             }));
 
-        var map = new Dictionary<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>
-        {
-            [FlatState.A] = cfg,
-            [FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>(),
-            [FlatState.C] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>()
-        };
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = cfg;
+        map[FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.C] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
 
         var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(
             new StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor>(map),
@@ -88,12 +84,10 @@ public class AsyncTests
     [Fact]
     public void Fire_unhandled_trigger_invokes_callback()
     {
-        var map = new Dictionary<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>
-        {
-            [FlatState.A] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>(),
-            [FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>(),
-            [FlatState.C] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>()
-        };
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.C] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
 
         var definition = new StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor>(map);
         var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor());
@@ -111,19 +105,17 @@ public class AsyncTests
     [Fact]
     public void Fire_unhandled_with_default_callback_throws()
     {
-        var map = new Dictionary<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>
-        {
-            [FlatState.A] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>(),
-            [FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>(),
-            [FlatState.C] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>()
-        };
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.C] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
 
         var definition = new StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor>(map);
         var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor());
 
         var act = () => engine.Fire(FlatTrigger.NoMatch, TriggerArgs.Empty);
 
-        act.Should().Throw<NotSupportedException>();
+        act.Should().Throw<InvalidOperationException>();
     }
 
     private static void RunOn(RecordingSynchronizationContext synchronizationContext, Action action)

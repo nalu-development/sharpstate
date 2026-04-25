@@ -10,7 +10,7 @@ using global::Nalu.SharpState;
 
 namespace Sample
 {
-    public partial class Documented
+    public static partial class Documented
     {
         public enum State
         {
@@ -125,6 +125,14 @@ namespace Sample
             void Close();
         }
         
+        static Documented()
+        {
+            #nullable disable
+            Open(default);
+            Close();
+            #nullable enable
+        }
+        
         /// <summary>
         /// Factory delegate that creates a new <see cref="IActor"/> at a given <see cref="State"/>, bound to this generated state machine definition.
         /// Useful for dependency injection and unit tests.
@@ -142,13 +150,13 @@ namespace Sample
         /// <returns>A new <see cref="IActor"/> instance.</returns>
         public delegate IActor CreateActorFactory(global::Sample.Ctx context);
         
-        protected static IStateConfigurator ConfigureState() => new GeneratedStateConfigurator();
+        private static IStateConfigurator ConfigureState() => new GeneratedStateConfigurator();
         
         private static readonly global::Nalu.SharpState.StateMachineDefinition<global::Sample.Ctx, State, Trigger, IActor> _definition = BuildDefinition();
         
         private static global::Nalu.SharpState.StateMachineDefinition<global::Sample.Ctx, State, Trigger, IActor> BuildDefinition()
         {
-            var map = new Dictionary<State, global::Nalu.SharpState.IStateConfiguration<global::Sample.Ctx, State, Trigger, IActor>>();
+            var map = new global::Nalu.SharpState.InternalEnumMap<State, global::Nalu.SharpState.IStateConfiguration<global::Sample.Ctx, State, Trigger, IActor>>();
             {
                 var c = (GeneratedStateConfigurator)Closed;
                 map[State.Closed] = c;

@@ -22,7 +22,8 @@ internal sealed record StateMachineModel(
     string? RootInitialState,
     EquatableArray<StateModel> States,
     EquatableArray<TriggerModel> Triggers,
-    EquatableArray<DiagnosticInfo> Diagnostics)
+    EquatableArray<DiagnosticInfo> Diagnostics,
+    bool IsStaticClass)
 {
     public static StateMachineModel? FromSymbol(
         INamedTypeSymbol classSymbol,
@@ -128,7 +129,8 @@ internal sealed record StateMachineModel(
             rootInitialState,
             new EquatableArray<StateModel>(states.ToImmutableArray()),
             new EquatableArray<TriggerModel>(triggers.ToImmutable()),
-            new EquatableArray<DiagnosticInfo>(diagnostics.ToImmutableArray()));
+            new EquatableArray<DiagnosticInfo>(diagnostics.ToImmutableArray()),
+            IsStaticClass: classSymbol.IsStatic);
     }
 
     private static string? CollectRegion(

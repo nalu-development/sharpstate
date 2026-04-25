@@ -2,7 +2,7 @@
 
 [![Nalu.SharpState NuGet Package](https://img.shields.io/nuget/v/Nalu.SharpState.svg)](https://www.nuget.org/packages/Nalu.SharpState/) [![Nalu.SharpState NuGet Package Downloads](https://img.shields.io/nuget/dt/Nalu.SharpState)](https://www.nuget.org/packages/Nalu.SharpState/)
 
-**Nalu.SharpState** is a Roslyn source generator for **strongly typed, hierarchical state machines** in .NET: you declare states and triggers in a `partial` class, configure transitions with a fluent API, and the generator emits an `IActor` with typed trigger methods—no string dictionaries, no runtime reflection, AOT-friendly.
+**Nalu.SharpState** is a Roslyn source generator for **strongly typed, hierarchical state machines** in .NET: you declare states and triggers in a `public static partial` class, configure transitions with a fluent API, and the generator emits an `IActor` with typed trigger methods—no string dictionaries, no runtime reflection, AOT-friendly.
 
 ## Install
 
@@ -14,7 +14,7 @@ The package includes the analyzer; no extra registration call is required.
 
 ## At a glance
 
-Define a context (with eventual service dependencies), mark a `partial` class with `[StateMachineDefinition]`, add `[StateTriggerDefinition]` methods for inputs and `[StateDefinition]` properties for states, then wire transitions with `ConfigureState()` (see the full [door sample](Tests/Nalu.SharpState.Tests/EndToEnd/DoorMachine.cs) in the test suite):
+Define a context (with eventual service dependencies), mark a `public static partial` class with `[StateMachineDefinition]`, add `[StateTriggerDefinition]` methods for inputs and `[StateDefinition]` properties for states, then wire transitions with `ConfigureState()` (see the full [door sample](Tests/Nalu.SharpState.Tests/EndToEnd/DoorMachine.cs) in the test suite):
 
 ```csharp
 public class DoorContext
@@ -24,7 +24,7 @@ public class DoorContext
 }
 
 [StateMachineDefinition(typeof(DoorContext))]
-public partial class DoorMachine
+public static partial class DoorMachine
 {
     [StateTriggerDefinition] static partial void Open(string reason);
     [StateTriggerDefinition] static partial void Close();

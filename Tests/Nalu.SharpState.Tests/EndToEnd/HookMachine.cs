@@ -6,7 +6,7 @@ public class HookContext
 }
 
 [StateMachineDefinition(typeof(HookContext))]
-public partial class HookMachine
+public static partial class HookMachine
 {
     [StateTriggerDefinition] static partial void Start();
 

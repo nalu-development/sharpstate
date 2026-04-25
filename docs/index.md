@@ -27,7 +27,7 @@ The package bundles the source generator, so no additional setup or `UseXxx(...)
 
 ## Anatomy of a machine
 
-A machine lives in a single `partial class` marked with `[StateMachineDefinition]`. It is made of three building blocks:
+A machine lives in a single `static partial class` (for example `public static partial class MyMachine`) marked with `[StateMachineDefinition]`. It is made of three building blocks:
 
 | Building block | Declared as | Role |
 |----------------|-------------|------|
@@ -47,7 +47,7 @@ public class DoorContext
 }
 
 [StateMachineDefinition(typeof(DoorContext))]
-public partial class DoorMachine
+public static partial class DoorMachine
 {
     [StateTriggerDefinition] static partial void Open(string reason);
     [StateTriggerDefinition] static partial void Close();
@@ -168,6 +168,22 @@ Console.WriteLine(door.IsIn(DoorMachine.State.Opened)); // true
 | `Can<Trigger>(...)` | Returns whether the corresponding trigger currently has a matching transition for the supplied arguments. |
 | `<Trigger>(...)` | One strongly-typed `void` method per trigger. |
 
+### Benchmarks
+
+Here's a comparison with the most popular .NET State Machine library ([Benchmarks Here](https://github.com/nalu-development/sharpstate/tree/main/Tests/Nalu.SharpState.Benchmarks))
+where you can see at least **4x to 8x faster execution** and **7x to 12x less memory allocation**.
+
+| Method             | StateChanges | Mean        | Error     | StdDev    | Gen0      | Gen1     | Allocated   |
+|------------------- |------------- |------------:|----------:|----------:|----------:|---------:|------------:|
+| SingletonActor     | 100          |    10.32 us |  0.029 us |  0.025 us |    4.3945 |        - |    35.94 KB |
+| SingletonStateless | 100          |    41.63 us |  0.484 us |  0.404 us |   30.0293 |        - |   245.31 KB |
+| TransientActor     | 100          |    11.27 us |  0.027 us |  0.023 us |    5.9204 |        - |    48.44 KB |
+| TransientStateless | 100          |    89.98 us |  1.224 us |  1.022 us |   75.0732 |   1.3428 |   614.08 KB |
+| SingletonActor     | 10000        | 1,020.74 us |  6.633 us |  5.539 us |  439.4531 |        - |  3593.75 KB |
+| SingletonStateless | 10000        | 3,956.54 us | 41.182 us | 38.521 us | 2953.1250 |        - | 24140.63 KB |
+| TransientActor     | 10000        | 1,120.78 us |  6.764 us |  5.648 us |  591.7969 |        - |  4843.75 KB |
+| TransientStateless | 10000        | 8,699.77 us | 87.558 us | 77.618 us | 7468.7500 | 140.6250 | 61016.85 KB |
+
 ### Graphviz export
 
 Every generated machine also exposes `ToDot()`, which returns a **Graphviz** DOT string. Pass it to the `dot` tool (e.g. `dot -Tpng -o door.png`) or any compatible viewer to visualize transitions, guard labels, and hierarchy.
@@ -270,13 +286,13 @@ actor.Received().Open("delivery");
 
 ### Unhandled triggers
 
-`OnUnhandled` defaults to a handler that throws `NotSupportedException` with the current state and trigger in the message. This surfaces programming mistakes early (e.g. firing `Close` while the door is already closed and no `.OnClose` is configured for that state).
+`OnUnhandled` defaults to a handler that throws `InvalidOperationException` with the current state and trigger in the message. This surfaces programming mistakes early (e.g. firing `Close` while the door is already closed and no `.OnClose` is configured for that state).
 
 You have three options:
 
 ```csharp
 // 1) Default: throws on unhandled
-door.Open("again");  // NotSupportedException if not configured
+door.Open("again");  // InvalidOperationException if not configured
 
 // 2) Custom handler (logging, metrics, retries...)
 door.OnUnhandled = (state, trigger, args) =>
@@ -366,7 +382,6 @@ For external transitions, the order is:
 
 ## What next?
 
-- [Benchmarks](https://github.com/nalu-development/sharpstate/tree/main/Tests/Nalu.SharpState.Benchmarks) — measure trigger dispatch and allocations on your machine.
 - [Hierarchical State Machines](sharpstate-hierarchy.md) — nested composite states via `[SubStateMachine]`.
 - [Post-Transition Reactions](sharpstate-async.md) — background `ReactAsync(...)` work and `ReactionFailed`.
 - [Diagnostics & Troubleshooting](sharpstate-diagnostics.md) — generator errors (`NSS001`-`NSS010`) and common pitfalls.
