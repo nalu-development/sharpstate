@@ -59,7 +59,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
 
     /// <summary>
     /// Raised after a transition has committed. Parameters are the source leaf, the new leaf, and the trigger that caused the change.
-    /// Not raised for internal transitions (<see cref="Transition{TContext, TState, TActor}.IsInternal"/>) or unhandled triggers.
+    /// Not risen for internal transitions (<see cref="Transition{TContext, TState, TActor}.IsInternal"/>) or unhandled triggers.
     /// </summary>
     public event StateChangedHandler<TState, TTrigger>? StateChanged;
 
@@ -77,7 +77,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
     /// </summary>
     public UnhandledTriggerHandler<TState, TTrigger>? OnUnhandled { get; set; } = DefaultUnhandled;
 
-    private static void DefaultUnhandled(TState currentState, TTrigger trigger, object?[] args)
+    private static void DefaultUnhandled(TState currentState, TTrigger trigger, TriggerArgs args)
         => throw new InvalidOperationException(
             $"Trigger '{trigger}' is not handled from state '{currentState}'.");
 
@@ -107,7 +107,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
             var match = FindMatchingTransition(trigger, args);
             if (match is null)
             {
-                OnUnhandled?.Invoke(_currentState, trigger, args.ToArray());
+                OnUnhandled?.Invoke(_currentState, trigger, args);
                 return;
             }
 
@@ -174,7 +174,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
             transition.SyncAction?.Invoke(_context, args);
             _currentState = resolvedLeaf;
             InvokeEntryActions(source, resolvedLeaf);
-            StateChanged?.Invoke(source, resolvedLeaf, trigger, args.ToArray());
+            StateChanged?.Invoke(source, resolvedLeaf, trigger, args);
             ScheduleReaction(source, resolvedLeaf, trigger, transition, args);
             return;
         }
@@ -191,7 +191,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
         transition.SyncAction?.Invoke(_context, args);
         _currentState = newLeaf;
         InvokeEntryActions(source, newLeaf);
-        StateChanged?.Invoke(source, newLeaf, trigger, args.ToArray());
+        StateChanged?.Invoke(source, newLeaf, trigger, args);
         ScheduleReaction(source, newLeaf, trigger, transition, args);
     }
 
@@ -255,7 +255,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
         {
             try
             {
-                ReactionFailed?.Invoke(source, destination, trigger, args.ToArray(), exception);
+                ReactionFailed?.Invoke(source, destination, trigger, args, exception);
             }
             catch
             {

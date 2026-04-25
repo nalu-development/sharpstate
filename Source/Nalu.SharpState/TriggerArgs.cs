@@ -11,15 +11,13 @@ public readonly struct TriggerArgs
     private readonly object? _arg0;
     private readonly object? _arg1;
     private readonly object? _arg2;
-    private readonly object? _arg3;
 
-    private TriggerArgs(int count, object? arg0, object? arg1, object? arg2, object? arg3)
+    private TriggerArgs(int count, object? arg0, object? arg1, object? arg2)
     {
         Count = count;
         _arg0 = arg0;
         _arg1 = arg1;
         _arg2 = arg2;
-        _arg3 = arg3;
     }
 
     /// <summary>
@@ -36,14 +34,29 @@ public readonly struct TriggerArgs
     /// Gets an argument by position.
     /// </summary>
     /// <param name="index">Zero-based argument index.</param>
-    public object? this[int index] => index switch
+    /// <typeparam name="T">The parameter type.</typeparam>
+    /// <returns>The parameter value.</returns>
+    /// <exception cref="IndexOutOfRangeException">The index is out of range.</exception>
+    public T Get<T>(int index)
     {
-        0 when Count > 0 => _arg0,
-        1 when Count > 1 => _arg1,
-        2 when Count > 2 => _arg2,
-        3 when Count > 3 => _arg3,
-        _ => throw new IndexOutOfRangeException($"Trigger argument index {index} is out of range for {Count} argument(s)."),
-    };
+        var i = index;
+        if (i >= Count)
+        {
+            i = -1;
+        }
+        
+        return i switch
+        {
+            0 => (T)_arg0!,
+            1 => (T)_arg1!,
+            2 => (T)_arg2!,
+            _ => (T)ThrowIndexOutOfRangeException(index)
+        };
+    }
+
+    [ExcludeFromCodeCoverage]
+    private object ThrowIndexOutOfRangeException(int index)
+        => throw new IndexOutOfRangeException($"Trigger argument index {index} is out of range for {Count} argument(s).");
 
     /// <summary>
     /// Materializes the arguments into a boxed array for public callbacks.
@@ -54,35 +67,28 @@ public readonly struct TriggerArgs
         1 => [_arg0],
         2 => [_arg0, _arg1],
         3 => [_arg0, _arg1, _arg2],
-        4 => [_arg0, _arg1, _arg2, _arg3],
-        _ => ToArray_UnsupportedCount(),
+        _ => ThrowUnsupportedParametersCount(),
     };
 
     [ExcludeFromCodeCoverage]
-    private object?[] ToArray_UnsupportedCount()
+    private object?[] ThrowUnsupportedParametersCount()
         => throw new InvalidOperationException($"Unsupported trigger argument count '{Count}'.");
 
     /// <summary>
     /// Creates a one-argument payload.
     /// </summary>
     public static TriggerArgs From(object? arg0)
-        => new(1, arg0, null, null, null);
+        => new(1, arg0, null, null);
 
     /// <summary>
     /// Creates a two-argument payload.
     /// </summary>
     public static TriggerArgs From(object? arg0, object? arg1)
-        => new(2, arg0, arg1, null, null);
+        => new(2, arg0, arg1, null);
 
     /// <summary>
     /// Creates a three-argument payload.
     /// </summary>
     public static TriggerArgs From(object? arg0, object? arg1, object? arg2)
-        => new(3, arg0, arg1, arg2, null);
-
-    /// <summary>
-    /// Creates a four-argument payload.
-    /// </summary>
-    public static TriggerArgs From(object? arg0, object? arg1, object? arg2, object? arg3)
-        => new(4, arg0, arg1, arg2, arg3);
+        => new(3, arg0, arg1, arg2);
 }

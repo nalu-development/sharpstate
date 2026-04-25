@@ -178,7 +178,7 @@ public sealed class StateTriggerBuilder<TContext, TState, TActor, TArg0> :
     ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0> ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0>.Target(Func<TContext, TArg0, TState> targetSelector)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
-        SetTarget((context, args) => targetSelector(context, (TArg0)args[0]!));
+        SetTarget((context, args) => targetSelector(context, args.Get<TArg0>(0)));
         return this;
     }
 
@@ -196,21 +196,21 @@ public sealed class StateTriggerBuilder<TContext, TState, TActor, TArg0> :
     ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0> ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0>.When(Func<TContext, TArg0, bool> guard, string? label)
     {
         ArgumentNullException.ThrowIfNull(guard);
-        SetGuard((context, args) => guard(context, (TArg0)args[0]!), label);
+        SetGuard((context, args) => guard(context, args.Get<TArg0>(0)), label);
         return this;
     }
 
     ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0> ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0>.Invoke(Action<TContext, TArg0> action)
     {
         ArgumentNullException.ThrowIfNull(action);
-        SetSyncAction((context, args) => action(context, (TArg0)args[0]!));
+        SetSyncAction((context, args) => action(context, args.Get<TArg0>(0)));
         return this;
     }
 
     ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0> ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0>.ReactAsync(Func<TActor, TContext, TArg0, ValueTask> action)
     {
         ArgumentNullException.ThrowIfNull(action);
-        SetReactionAsync((actor, context, args) => action(actor, context, (TArg0)args[0]!));
+        SetReactionAsync((actor, context, args) => action(actor, context, args.Get<TArg0>(0)));
         return this;
     }
 }
@@ -234,7 +234,7 @@ public sealed class StateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1> 
     ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1> ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1>.Target(Func<TContext, TArg0, TArg1, TState> targetSelector)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
-        SetTarget((context, args) => targetSelector(context, (TArg0)args[0]!, (TArg1)args[1]!));
+        SetTarget((context, args) => targetSelector(context, args.Get<TArg0>(0), args.Get<TArg1>(1)));
         return this;
     }
 
@@ -252,21 +252,21 @@ public sealed class StateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1> 
     ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1> ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1>.When(Func<TContext, TArg0, TArg1, bool> guard, string? label)
     {
         ArgumentNullException.ThrowIfNull(guard);
-        SetGuard((context, args) => guard(context, (TArg0)args[0]!, (TArg1)args[1]!), label);
+        SetGuard((context, args) => guard(context, args.Get<TArg0>(0), args.Get<TArg1>(1)), label);
         return this;
     }
 
     ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1> ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1>.Invoke(Action<TContext, TArg0, TArg1> action)
     {
         ArgumentNullException.ThrowIfNull(action);
-        SetSyncAction((context, args) => action(context, (TArg0)args[0]!, (TArg1)args[1]!));
+        SetSyncAction((context, args) => action(context, args.Get<TArg0>(0), args.Get<TArg1>(1)));
         return this;
     }
 
     ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1> ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1>.ReactAsync(Func<TActor, TContext, TArg0, TArg1, ValueTask> action)
     {
         ArgumentNullException.ThrowIfNull(action);
-        SetReactionAsync((actor, context, args) => action(actor, context, (TArg0)args[0]!, (TArg1)args[1]!));
+        SetReactionAsync((actor, context, args) => action(actor, context, args.Get<TArg0>(0), args.Get<TArg1>(1)));
         return this;
     }
 }
@@ -290,7 +290,7 @@ public sealed class StateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, 
     ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2> ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2>.Target(Func<TContext, TArg0, TArg1, TArg2, TState> targetSelector)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
-        SetTarget((context, args) => targetSelector(context, (TArg0)args[0]!, (TArg1)args[1]!, (TArg2)args[2]!));
+        SetTarget((context, args) => targetSelector(context, args.Get<TArg0>(0), args.Get<TArg1>(1), args.Get<TArg2>(2)));
         return this;
     }
 
@@ -308,81 +308,21 @@ public sealed class StateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, 
     ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2> ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2>.When(Func<TContext, TArg0, TArg1, TArg2, bool> guard, string? label)
     {
         ArgumentNullException.ThrowIfNull(guard);
-        SetGuard((context, args) => guard(context, (TArg0)args[0]!, (TArg1)args[1]!, (TArg2)args[2]!), label);
+        SetGuard((context, args) => guard(context, args.Get<TArg0>(0), args.Get<TArg1>(1), args.Get<TArg2>(2)), label);
         return this;
     }
 
     ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2> ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2>.Invoke(Action<TContext, TArg0, TArg1, TArg2> action)
     {
         ArgumentNullException.ThrowIfNull(action);
-        SetSyncAction((context, args) => action(context, (TArg0)args[0]!, (TArg1)args[1]!, (TArg2)args[2]!));
+        SetSyncAction((context, args) => action(context, args.Get<TArg0>(0), args.Get<TArg1>(1), args.Get<TArg2>(2)));
         return this;
     }
 
     ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2> ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2>.ReactAsync(Func<TActor, TContext, TArg0, TArg1, TArg2, ValueTask> action)
     {
         ArgumentNullException.ThrowIfNull(action);
-        SetReactionAsync((actor, context, args) => action(actor, context, (TArg0)args[0]!, (TArg1)args[1]!, (TArg2)args[2]!));
-        return this;
-    }
-}
-
-/// <summary>
-/// Concrete builder for four-argument triggers.
-/// </summary>
-public sealed class StateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3> :
-    StateTriggerBuilderBase<TContext, TState, TActor>,
-    ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3>,
-    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3>
-    where TContext : class
-    where TState : struct, Enum
-{
-    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3> ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3>.Target(TState target)
-    {
-        SetTarget(target);
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3> ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3>.Target(Func<TContext, TArg0, TArg1, TArg2, TArg3, TState> targetSelector)
-    {
-        ArgumentNullException.ThrowIfNull(targetSelector);
-        SetTarget((context, args) =>
-            targetSelector(context, (TArg0)args[0]!, (TArg1)args[1]!, (TArg2)args[2]!, (TArg3)args[3]!));
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3> ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3>.Stay()
-    {
-        SetStay();
-        return this;
-    }
-
-    void ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3>.Ignore() => SetStay();
-
-    ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3> ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3>.When(Func<TContext, TArg0, TArg1, TArg2, TArg3, bool> guard)
-        => ((ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3>) this).When(guard, null);
-
-    ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3> ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3>.When(Func<TContext, TArg0, TArg1, TArg2, TArg3, bool> guard, string? label)
-    {
-        ArgumentNullException.ThrowIfNull(guard);
-        SetGuard((context, args) =>
-            guard(context, (TArg0)args[0]!, (TArg1)args[1]!, (TArg2)args[2]!, (TArg3)args[3]!), label);
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3> ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3>.Invoke(Action<TContext, TArg0, TArg1, TArg2, TArg3> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        SetSyncAction((context, args) =>
-            action(context, (TArg0)args[0]!, (TArg1)args[1]!, (TArg2)args[2]!, (TArg3)args[3]!));
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3> ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3>.ReactAsync(Func<TActor, TContext, TArg0, TArg1, TArg2, TArg3, ValueTask> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        SetReactionAsync((actor, context, args) =>
-            action(actor, context, (TArg0)args[0]!, (TArg1)args[1]!, (TArg2)args[2]!, (TArg3)args[3]!));
+        SetReactionAsync((actor, context, args) => action(actor, context, args.Get<TArg0>(0), args.Get<TArg1>(1), args.Get<TArg2>(2)));
         return this;
     }
 }

@@ -86,7 +86,7 @@ public class EndToEndTests
     public void Close_transitions_back_and_StateChanged_fires()
     {
         var door = DoorMachine.CreateActorWithState(new DoorContext(), DoorMachine.State.Opened);
-        (DoorMachine.State from, DoorMachine.State to, DoorMachine.Trigger trigger, object?[] args)? captured = null;
+        (DoorMachine.State from, DoorMachine.State to, DoorMachine.Trigger trigger, TriggerArgs args)? captured = null;
         door.StateChanged += (f, t, tr, args) => captured = (f, t, tr, args);
 
         door.Close();
@@ -96,7 +96,7 @@ public class EndToEndTests
         captured!.Value.from.Should().Be(DoorMachine.State.Opened);
         captured.Value.to.Should().Be(DoorMachine.State.Closed);
         captured.Value.trigger.Should().Be(DoorMachine.Trigger.Close);
-        captured.Value.args.Should().BeEmpty();
+        captured.Value.args.Count.Should().Be(0);
     }
 
     [Fact]
@@ -134,7 +134,7 @@ public class EndToEndTests
     public void OnUnhandled_override_captures_unhandled_triggers()
     {
         var door = DoorMachine.CreateActorWithState(new DoorContext(), DoorMachine.State.Opened);
-        (DoorMachine.State state, DoorMachine.Trigger trigger, object?[] args)? captured = null;
+        (DoorMachine.State state, DoorMachine.Trigger trigger, TriggerArgs args)? captured = null;
         door.OnUnhandled = (s, t, a) => captured = (s, t, a);
 
         door.Open("ignored");
@@ -142,7 +142,7 @@ public class EndToEndTests
         captured.Should().NotBeNull();
         captured!.Value.state.Should().Be(DoorMachine.State.Opened);
         captured.Value.trigger.Should().Be(DoorMachine.Trigger.Open);
-        captured.Value.args.Should().Equal("ignored");
+        captured.Value.args.Get<string>(0).Should().Be("ignored");
         door.CurrentState.Should().Be(DoorMachine.State.Opened);
     }
 

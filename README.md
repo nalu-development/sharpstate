@@ -2,7 +2,11 @@
 
 [![Nalu.SharpState NuGet Package](https://img.shields.io/nuget/v/Nalu.SharpState.svg)](https://www.nuget.org/packages/Nalu.SharpState/) [![Nalu.SharpState NuGet Package Downloads](https://img.shields.io/nuget/dt/Nalu.SharpState)](https://www.nuget.org/packages/Nalu.SharpState/) [![codecov](https://codecov.io/gh/nalu-development/nalu-sharp-state-machine/graph/badge.svg?branch=main)](https://codecov.io/gh/nalu-development/nalu-sharp-state-machine)
 
-**Nalu.SharpState** is a Roslyn source generator for **strongly typed, hierarchical state machines** in .NET: you declare states and triggers in a `public static partial` class, configure transitions with a fluent API, and the generator emits an `IActor` with typed trigger methods—no string dictionaries, no runtime reflection, AOT-friendly.
+**Nalu.SharpState** is a Roslyn source generator for **declarative, strongly typed, hierarchical** state machines in .NET: you declare states and triggers on a `public static partial` class, configure transitions with a **fluent API**, and the generator emits compile-time registration tables and an `IActor` with typed trigger methods.
+
+Optional **`ReactAsync(...)`** callbacks run *after* a transition commits; they receive the generated actor so you can **await I/O and then fire more triggers** transitioning to new states.
+
+Dispatch does not use string dictionaries or runtime reflection, so the machine stays **AOT and trim-friendly** with a **small CPU and memory footprint** on the hot path.
 
 ## Install
 
@@ -72,6 +76,23 @@ private static IStateConfiguration Pending { get; } = ConfigureState()
 
 Details and ordering: [Post-Transition Reactions](https://nalu-development.github.io/sharpstate/sharpstate-async.html).
 
+### Benchmarks
+
+Outperform the industry standard ([Stateless](https://github.com/dotnet-state-machine/stateless)) with **4x to 8x faster execution** and **7x to 12x** lower memory overhead depending on the usage.
+
+| Method             | StateChanges | Mean        | Error     | StdDev    | Gen0      | Gen1     | Allocated   |
+|------------------- |------------- |------------:|----------:|----------:|----------:|---------:|------------:|
+| SingletonActor     | 100          |    10.32 us |  0.029 us |  0.025 us |    4.3945 |        - |    35.94 KB |
+| SingletonStateless | 100          |    41.63 us |  0.484 us |  0.404 us |   30.0293 |        - |   245.31 KB |
+| TransientActor     | 100          |    11.27 us |  0.027 us |  0.023 us |    5.9204 |        - |    48.44 KB |
+| TransientStateless | 100          |    89.98 us |  1.224 us |  1.022 us |   75.0732 |   1.3428 |   614.08 KB |
+| SingletonActor     | 10000        | 1,020.74 us |  6.633 us |  5.539 us |  439.4531 |        - |  3593.75 KB |
+| SingletonStateless | 10000        | 3,956.54 us | 41.182 us | 38.521 us | 2953.1250 |        - | 24140.63 KB |
+| TransientActor     | 10000        | 1,120.78 us |  6.764 us |  5.648 us |  591.7969 |        - |  4843.75 KB |
+| TransientStateless | 10000        | 8,699.77 us | 87.558 us | 77.618 us | 7468.7500 | 140.6250 | 61016.85 KB |
+
+See the [benchmarks](https://github.com/nalu-development/sharpstate/tree/main/Tests/Nalu.SharpState.Benchmarks) for more details.
+
 ### Dependency Injection and Unit Testing
 
 The generator adds `CreateActorFactory` and `CreateActorWithStateFactory` (aligned with `CreateActor` / `CreateActorWithState`) so you can register the delegate in a container, inject it where you build actors, and stub `IActor` in tests—`CreateActorFactory` is the typical choice when the default initial state is enough. The context you pass into every transition can hold your services, so async reactions such as the `ReactAsync` block above keep dependencies mockable. See [Testability](https://nalu-development.github.io/sharpstate/index.html#testability) in the full guide.
@@ -80,10 +101,10 @@ The generator adds `CreateActorFactory` and `CreateActorWithStateFactory` (align
 
 The same type also emits a **Graphviz** diagram as text: `DoorMachine.ToDot()` returns a `digraph` you can pass to the `dot` tool (for example `dot -Tpng -o door.png`) or paste into any Graphviz-compatible viewer—useful for documentation, reviews, or debugging transitions and guards.
 
-For the door sample above, that call produces the DOT below; the diagram is the same graph rendered with Graphviz (`dot -Tpng`).
+For the door sample above, that call produces the DOT below; the diagram is the same graph rendered with Graphviz (`dot -Tsvg`).
 
 <table>
-<tr valign="top">
+<tr valign="middle">
 <td>
 
 <pre>
@@ -107,7 +128,7 @@ digraph G {
 </td>
 <td width="35%">
 
-<img src="docs/assets/images/door-machine.png" alt="DoorMachine state diagram (Graphviz render of ToDot output)" style="max-height: 380px" />
+<img src="docs/assets/images/door-machine.svg" alt="DoorMachine state diagram (Graphviz render of ToDot output)" style="max-height: 380px" />
 
 </td>
 </tr>

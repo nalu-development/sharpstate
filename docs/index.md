@@ -12,10 +12,11 @@ Classic state machine libraries rely on reflection, dictionaries keyed by string
 
 - **Declarative**: states and triggers are C# constructs (a `static partial` method is a trigger, a `static` property is a state).
 - **Strongly typed**: trigger parameters become method parameters on the generated actor. Guards and actions see the exact types you declared.
-- **Compile-time validated**: duplicate names, unreachable hierarchies, and misconfigured sub-machines become build errors via dedicated `NSS001`-`NSS010` diagnostics.
+- **Compile-time validated**: duplicate names, unreachable hierarchies, and misconfigured sub-machines become build errors via dedicated `NSS001`–`NSS011` diagnostics.
 - **AOT / trim friendly**: zero reflection at runtime. The generator emits the registration tables at compile time.
 - **Hierarchical**: composite states are modeled as nested `[SubStateMachine]` partial classes with strict scoping rules.
 - **Sync-first**: generated actors stay synchronous, with optional fire-and-forget `ReactAsync(...)` callbacks for post-transition work.
+- **Lightweight on CPU and memory**: tables are emitted at compile time and dispatch is direct, so transitions spend less time on the hot path and allocate far less than typical reflection- or dictionary-heavy approaches. The [Benchmarks](#benchmarks) section compares `Nalu.SharpState` to [Stateless](https://github.com/dotnet-state-machine/stateless) on the same scenarios.
 
 ## Installation
 
@@ -32,7 +33,7 @@ A machine lives in a single `static partial class` (for example `public static p
 | Building block | Declared as | Role |
 |----------------|-------------|------|
 | **Context** | Any class you own | Carries data into every guard and action. Passed as a type argument to `[StateMachineDefinition]`. |
-| **Triggers** | `[StateTriggerDefinition] static partial void` methods | Inputs to the machine. Their parameter list becomes the dispatch signature. |
+| **Triggers** | `[StateTriggerDefinition] static partial void` methods | Inputs to the machine. Their parameter list becomes the dispatch signature. At most **three** parameters; group additional values in a `record struct`, a named tuple, or similar and pass that as one parameter (see `NSS011`). |
 | **States** | `[StateDefinition] static IStateConfiguration` properties | Nodes of the machine. The property body configures outgoing transitions. |
 
 Here is a minimal door:
@@ -170,8 +171,7 @@ Console.WriteLine(door.IsIn(DoorMachine.State.Opened)); // true
 
 ### Benchmarks
 
-Here's a comparison with the most popular .NET State Machine library ([Benchmarks Here](https://github.com/nalu-development/sharpstate/tree/main/Tests/Nalu.SharpState.Benchmarks))
-where you can see at least **4x to 8x faster execution** and **7x to 12x less memory allocation**.
+Outperform the industry standard ([Stateless](https://github.com/dotnet-state-machine/stateless)) with **4x to 8x faster execution** and **7x to 12x** lower memory overhead depending on the usage.
 
 | Method             | StateChanges | Mean        | Error     | StdDev    | Gen0      | Gen1     | Allocated   |
 |------------------- |------------- |------------:|----------:|----------:|----------:|---------:|------------:|
@@ -183,6 +183,8 @@ where you can see at least **4x to 8x faster execution** and **7x to 12x less me
 | SingletonStateless | 10000        | 3,956.54 us | 41.182 us | 38.521 us | 2953.1250 |        - | 24140.63 KB |
 | TransientActor     | 10000        | 1,120.78 us |  6.764 us |  5.648 us |  591.7969 |        - |  4843.75 KB |
 | TransientStateless | 10000        | 8,699.77 us | 87.558 us | 77.618 us | 7468.7500 | 140.6250 | 61016.85 KB |
+
+See the [benchmarks](https://github.com/nalu-development/sharpstate/tree/main/Tests/Nalu.SharpState.Benchmarks) for more details.
 
 ### Graphviz export
 
@@ -196,7 +198,7 @@ Console.WriteLine(dot);
 The first example on this page is the [door sample](https://github.com/nalu-development/sharpstate/tree/main/Tests/Nalu.SharpState.Tests/EndToEnd/DoorMachine.cs) (`DoorMachine` / `DoorContext`). The DOT below is what `DoorMachine.ToDot()` emits; the image is the same file rendered with `dot -Tpng`.
 
 <table>
-<tr valign="top">
+<tr valign="middle">
 <td>
 
 <pre>
@@ -220,7 +222,7 @@ digraph G {
 </td>
 <td width="35%">
 
-<img src="assets/images/door-machine.png" alt="DoorMachine state diagram (Graphviz render of ToDot output)" style="max-height: 380px" />
+<img src="assets/images/door-machine.svg" alt="DoorMachine state diagram (Graphviz render of ToDot output)" style="max-height: 380px" />
 
 </td>
 </tr>
@@ -312,7 +314,10 @@ private static IStateConfiguration Running { get; } = ConfigureState()
 
 ### StateChanged
 
-`StateChanged` fires once per committed transition, with the original leaf, the new leaf, the trigger, and the boxed arguments.
+`StateChanged` fires once per committed transition, with the original leaf, the new leaf, the trigger, and a `TriggerArgs` value carrying the trigger payload.
+
+- Use `args.Get<T>(index)` to read the *n*th argument with the type you expect (the same `T` the trigger was fired with at that position).
+- Use `args.ToArray()` when you need a conventional `object?[]` (for example logging every value without knowing arity up front). Up to **three** arguments are stored inline; you normally do not need the array in application code.
 
 ```csharp
 door.StateChanged += (from, to, trigger, args) => { /* log, react, ... */ };
@@ -384,4 +389,4 @@ For external transitions, the order is:
 
 - [Hierarchical State Machines](sharpstate-hierarchy.md) — nested composite states via `[SubStateMachine]`.
 - [Post-Transition Reactions](sharpstate-async.md) — background `ReactAsync(...)` work and `ReactionFailed`.
-- [Diagnostics & Troubleshooting](sharpstate-diagnostics.md) — generator errors (`NSS001`-`NSS010`) and common pitfalls.
+- [Diagnostics & Troubleshooting](sharpstate-diagnostics.md) — generator errors (`NSS001`–`NSS011`) and common pitfalls.

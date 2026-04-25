@@ -361,6 +361,19 @@ internal sealed record StateMachineModel(
                     method.Name));
             }
 
+            if (method.Parameters.Length > 3)
+            {
+                var loc = methodSyntax?.ParameterList?.GetLocation()
+                    ?? methodSyntax?.Identifier.GetLocation()
+                    ?? method.Locations.FirstOrDefault();
+                diagnostics.Add(DiagnosticInfo.Create(
+                    Descriptors.TriggerTooManyParameters,
+                    loc,
+                    method.Name,
+                    method.Parameters.Length.ToString()));
+                continue;
+            }
+
             if (!seenTriggers.Add(method.Name))
             {
                 var loc = methodSyntax?.Identifier.GetLocation() ?? method.Locations.FirstOrDefault();

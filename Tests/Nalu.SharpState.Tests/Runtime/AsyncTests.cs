@@ -145,7 +145,7 @@ public class AsyncTests
             FlatState.A,
             new TestContext(),
             new TestActor());
-        (FlatState from, FlatState to, FlatTrigger trigger, object?[] args, Exception exception)? failure = null;
+        (FlatState from, FlatState to, FlatTrigger trigger, TriggerArgs args, Exception exception)? failure = null;
         engine.ReactionFailed += (from, to, trigger, args, exception) => failure = (from, to, trigger, args, exception);
 
         RunOn(syncContext, () => engine.Fire(FlatTrigger.Go, TriggerArgs.From(5)));
@@ -156,7 +156,7 @@ public class AsyncTests
         failure!.Value.from.Should().Be(FlatState.A);
         failure.Value.to.Should().Be(FlatState.B);
         failure.Value.trigger.Should().Be(FlatTrigger.Go);
-        failure.Value.args.Should().Equal(5);
+        failure.Value.args.Get<int>(0).Should().Be(5);
         failure.Value.exception.Should().BeOfType<InvalidOperationException>()
             .Which.Message.Should().Be("boom");
     }
@@ -171,7 +171,7 @@ public class AsyncTests
 
         var definition = new StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor>(map);
         var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor());
-        (FlatState state, FlatTrigger trigger, object?[] args)? captured = null;
+        (FlatState state, FlatTrigger trigger, TriggerArgs args)? captured = null;
         engine.OnUnhandled = (state, trigger, args) => captured = (state, trigger, args);
 
         engine.Fire(FlatTrigger.NoMatch, TriggerArgs.From(5));
@@ -179,7 +179,7 @@ public class AsyncTests
         captured.Should().NotBeNull();
         captured!.Value.state.Should().Be(FlatState.A);
         captured.Value.trigger.Should().Be(FlatTrigger.NoMatch);
-        captured.Value.args.Should().Equal(5);
+        captured.Value.args.Get<int>(0).Should().Be(5);
     }
 
     [Fact]

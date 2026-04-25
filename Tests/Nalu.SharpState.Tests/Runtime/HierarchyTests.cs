@@ -37,7 +37,7 @@ public class HierarchyTests
                 .On(HierTrigger.AuthOk, TestTransition.ToTarget<TestContext, HierState, TestActor>(HierState.Authenticated));
             map[HierState.Authenticated]
                 .Parent(HierState.Connected)
-                .On(HierTrigger.Message, TestTransition.Stay<TestContext, HierState, TestActor>(syncAction: (ctx, args) => ctx.Log.Add((string) args[0]!)));
+                .On(HierTrigger.Message, TestTransition.Stay<TestContext, HierState, TestActor>(syncAction: (ctx, args) => ctx.Log.Add(args.Get<string>(0))));
             map[HierState.Outside].On(
                 HierTrigger.GoOutside,
                 TestTransition.ToTarget<TestContext, HierState, TestActor>(HierState.Outside));
@@ -148,7 +148,7 @@ public class HierarchyTests
                 .On(HierTrigger.AuthOk, TestTransition.ToTarget<TestContext, HierState, TestActor>(HierState.Authenticated));
             map[HierState.Authenticated]
                 .Parent(HierState.Connected)
-                .On(HierTrigger.Message, TestTransition.Stay<TestContext, HierState, TestActor>(syncAction: (ctx, args) => ctx.Log.Add((string) args[0]!)));
+                .On(HierTrigger.Message, TestTransition.Stay<TestContext, HierState, TestActor>(syncAction: (ctx, args) => ctx.Log.Add(args.Get<string>(0))));
             map[HierState.Outside].On(
                 HierTrigger.GoOutside,
                 TestTransition.ToTarget<TestContext, HierState, TestActor>(HierState.Outside));
@@ -180,7 +180,7 @@ public class HierarchyTests
             map[HierState.Authenticated]
                 .Parent(HierState.Connected)
                 .WhenExiting(ctx => ctx.Log.Add("exit:Authenticated"))
-                .On(HierTrigger.Message, TestTransition.Stay<TestContext, HierState, TestActor>(syncAction: (ctx, args) => ctx.Log.Add((string) args[0]!)));
+                .On(HierTrigger.Message, TestTransition.Stay<TestContext, HierState, TestActor>(syncAction: (ctx, args) => ctx.Log.Add(args.Get<string>(0))));
             map[HierState.Outside].On(
                 HierTrigger.GoOutside,
                 TestTransition.ToTarget<TestContext, HierState, TestActor>(HierState.Outside));

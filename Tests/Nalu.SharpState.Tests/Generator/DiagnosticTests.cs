@@ -307,4 +307,25 @@ public class DiagnosticTests
 
         GetDiagnostics(source).Should().Contain(d => d.Id == "NSS010");
     }
+
+    [Fact]
+    public void NSS011_reported_when_trigger_has_more_than_three_parameters()
+    {
+        var source = """
+        using Nalu.SharpState;
+
+        namespace Sample;
+
+        public class Ctx { }
+
+        [StateMachineDefinition(typeof(Ctx))]
+        public static partial class M
+        {
+            [StateTriggerDefinition] static partial void TooMany(int a, int b, int c, int d);
+
+            [StateDefinition(Initial = true)] private static IStateConfiguration A { get; } = ConfigureState();
+        }
+        """;
+        GetDiagnostics(source).Should().Contain(d => d.Id == "NSS011");
+    }
 }

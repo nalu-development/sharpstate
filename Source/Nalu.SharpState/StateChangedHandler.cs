@@ -10,6 +10,6 @@ namespace Nalu.SharpState;
 /// <param name="to">The new leaf state the machine settled into after the transition.</param>
 /// <param name="trigger">The trigger that caused the transition.</param>
 /// <param name="args">The arguments originally passed to the trigger, boxed into an array.</param>
-public delegate void StateChangedHandler<TState, TTrigger>(TState from, TState to, TTrigger trigger, object?[] args)
+public delegate void StateChangedHandler<TState, TTrigger>(TState from, TState to, TTrigger trigger, TriggerArgs args)
     where TState : struct, Enum
     where TTrigger : struct, Enum;

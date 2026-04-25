@@ -9,6 +9,6 @@ namespace Nalu.SharpState;
 /// <param name="currentState">The current leaf state that could not process <paramref name="trigger"/>.</param>
 /// <param name="trigger">The trigger that was fired without a matching transition.</param>
 /// <param name="args">The arguments originally passed to the trigger, boxed into an array.</param>
-public delegate void UnhandledTriggerHandler<TState, TTrigger>(TState currentState, TTrigger trigger, object?[] args)
+public delegate void UnhandledTriggerHandler<TState, TTrigger>(TState currentState, TTrigger trigger, TriggerArgs args)
     where TState : struct, Enum
     where TTrigger : struct, Enum;

@@ -14,7 +14,7 @@ public delegate void ReactionFailedHandler<in TState, in TTrigger>(
     TState from,
     TState to,
     TTrigger trigger,
-    object?[] args,
+    TriggerArgs args,
     Exception exception)
     where TState : struct, Enum
     where TTrigger : struct, Enum;

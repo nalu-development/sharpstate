@@ -278,23 +278,6 @@ public class StateTriggerBuilderTests
     }
 
     [Fact]
-    public void Four_arg_builder_Invoke_unrolls_arguments()
-    {
-        var builder = new StateTriggerBuilder<TestContext, FlatState, TestActor, int, int, int, int>();
-        ISyncStateTriggerBuilder<TestContext, FlatState, TestActor, int, int, int, int> sync = builder;
-        sync
-            .When((_, a, b, c, d) => a * b * c * d == 0)
-            .Target(FlatState.B)
-            .Invoke((ctx, a, b, c, d) => ctx.Log.Add($"args:{a}{b}{c}{d}"));
-        builder.Validate();
-
-        var t = builder.BuildTransitions()[0];
-        var ctx = new TestContext();
-        t.SyncAction!(ctx, TriggerArgs.From(1, 2, 0, 4));
-        ctx.Log.Should().Equal("args:1204");
-    }
-
-    [Fact]
     public void Zero_arg_builder_Invoke_with_Action_of_Context()
     {
         var builder = new StateTriggerBuilder<TestContext, FlatState, TestActor>();
@@ -379,40 +362,5 @@ public class StateTriggerBuilderTests
         var ctx = new TestContext();
         b.BuildTransitions()[0].SyncAction!(ctx, TriggerArgs.From(1, 2, 3));
         ctx.Log.Should().Equal("123");
-    }
-
-    [Fact]
-    public async Task Four_arg_dynamic_target_Stay_Ignore_ReactAsync()
-    {
-        var b = new StateTriggerBuilder<TestContext, FlatState, TestActor, int, int, int, int>();
-        ISyncStateTriggerBuilder<TestContext, FlatState, TestActor, int, int, int, int> t = b;
-        t.Target(
-            (ctx, a, _, _, _) => ctx.Counter == a ? FlatState.A : FlatState.B);
-        b.Validate();
-        b.BuildTransitions()[0].TargetSelector!(new TestContext { Counter = 1 }, TriggerArgs.From(1, 0, 0, 0))
-            .Should().Be(FlatState.A);
-
-        b = new();
-        t = b;
-        t.Stay();
-        b.Validate();
-
-        b = new();
-        t = b;
-        t.Ignore();
-        b.Validate();
-
-        b = new();
-        t = b;
-        t.Target(FlatState.B)
-            .ReactAsync(async (_, ctx, a, b0, c, d) =>
-            {
-                await Task.Yield();
-                ctx.Log.Add($"{a}{b0}{c}{d}");
-            });
-        b.Validate();
-        var ctx = new TestContext();
-        await b.BuildTransitions()[0].ReactionAsync!(new TestActor(), ctx, TriggerArgs.From(4, 3, 2, 1));
-        ctx.Log.Should().Equal("4321");
     }
 }

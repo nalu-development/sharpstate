@@ -106,30 +106,4 @@ public interface ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1
     void Ignore();
 }
 
-/// <summary>
-/// Continuation builder for a configured transition with four trigger parameters.
-/// </summary>
-public interface ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3>
-    where TContext : class
-    where TState : struct, Enum
-{
-    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3> Invoke(Action<TContext, TArg0, TArg1, TArg2, TArg3> action);
-    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3> ReactAsync(Func<TActor, TContext, TArg0, TArg1, TArg2, TArg3, ValueTask> action);
-}
-
-/// <summary>
-/// Fluent builder for triggers that take four parameters.
-/// </summary>
-public interface ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3>
-    where TContext : class
-    where TState : struct, Enum
-{
-    ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3> When(Func<TContext, TArg0, TArg1, TArg2, TArg3, bool> guard);
-    ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3> When(Func<TContext, TArg0, TArg1, TArg2, TArg3, bool> guard, string? label);
-    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3> Target(TState target);
-    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3> Target(Func<TContext, TArg0, TArg1, TArg2, TArg3, TState> targetSelector);
-    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2, TArg3> Stay();
-    void Ignore();
-}
-
 #pragma warning restore CS1591

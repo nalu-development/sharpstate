@@ -33,7 +33,7 @@ public class StateMachineEngineTests
         });
 
         var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor());
-        (FlatState from, FlatState to, FlatTrigger trigger, object?[] args)? captured = null;
+        (FlatState from, FlatState to, FlatTrigger trigger, TriggerArgs args)? captured = null;
         engine.StateChanged += (from, to, trig, args) => captured = (from, to, trig, args);
 
         engine.Fire(FlatTrigger.Go, TriggerArgs.From(42, "payload"));
@@ -43,7 +43,8 @@ public class StateMachineEngineTests
         captured!.Value.from.Should().Be(FlatState.A);
         captured.Value.to.Should().Be(FlatState.B);
         captured.Value.trigger.Should().Be(FlatTrigger.Go);
-        captured.Value.args.Should().Equal(42, "payload");
+        captured.Value.args.Get<int>(0).Should().Be(42);
+        captured.Value.args.Get<string>(1).Should().Be("payload");
     }
 
     [Fact]
@@ -51,7 +52,7 @@ public class StateMachineEngineTests
     {
         var definition = BuildFlat();
         var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor());
-        (FlatState state, FlatTrigger trigger, object?[] args)? captured = null;
+        (FlatState state, FlatTrigger trigger, TriggerArgs args)? captured = null;
         engine.OnUnhandled = (s, t, a) => captured = (s, t, a);
 
         engine.Fire(FlatTrigger.NoMatch, TriggerArgs.From(123));
@@ -59,7 +60,7 @@ public class StateMachineEngineTests
         captured.Should().NotBeNull();
         captured!.Value.state.Should().Be(FlatState.A);
         captured.Value.trigger.Should().Be(FlatTrigger.NoMatch);
-        captured.Value.args.Should().Equal(123);
+        captured.Value.args.Get<int>(0).Should().Be(123);
         engine.CurrentState.Should().Be(FlatState.A);
     }
 
@@ -88,7 +89,7 @@ public class StateMachineEngineTests
                 FlatTrigger.Go,
                 TestTransition.ToTarget<TestContext, FlatState, TestActor>(
                     FlatState.B,
-                    guard: (ctx, args) => ctx.Counter == (int)args[0]!));
+                    guard: (ctx, args) => ctx.Counter == args.Get<int>(0)));
         });
 
         var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(
@@ -154,7 +155,7 @@ public class StateMachineEngineTests
                 FlatTrigger.Go,
                 TestTransition.ToTarget<TestContext, FlatState, TestActor>(
                     FlatState.B,
-                    guard: (ctx, args) => args[0] is int i && i == ctx.Counter));
+                    guard: (ctx, args) => args.Get<int>(0) == ctx.Counter));
         });
 
         var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext { Counter = 42 }, new TestActor())
@@ -197,7 +198,7 @@ public class StateMachineEngineTests
             map[FlatState.A].On(
                 FlatTrigger.Go,
                 TestTransition.ToDynamicTarget<TestContext, FlatState, TestActor>(
-                    (ctx, args) => (int)args[0]! == ctx.Counter ? FlatState.B : FlatState.C));
+                    (ctx, args) => args.Get<int>(0) == ctx.Counter ? FlatState.B : FlatState.C));
         });
 
         var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(
@@ -221,7 +222,7 @@ public class StateMachineEngineTests
                 .On(
                     FlatTrigger.Go,
                     TestTransition.ToDynamicTarget<TestContext, FlatState, TestActor>(
-                        (_, args) => (bool)args[0]! ? FlatState.A : FlatState.B,
+                        (_, args) => args.Get<bool>(0) ? FlatState.A : FlatState.B,
                         syncAction: (ctx, _) => ctx.Log.Add("invoke")));
             map[FlatState.B]
                 .WhenEntering(ctx => ctx.Log.Add("enter:B"));
@@ -334,7 +335,7 @@ public class StateMachineEngineTests
                 .On(
                     FlatTrigger.Go,
                     TestTransition.ToDynamicTarget<TestContext, FlatState, TestActor>(
-                        (_, args) => (bool)args[0]! ? FlatState.A : FlatState.B,
+                        (_, args) => args.Get<bool>(0) ? FlatState.A : FlatState.B,
                         syncAction: (ctx, _) => ctx.Log.Add("inner")));
             map[FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
         });
