@@ -146,6 +146,4 @@ Full guides (transitions, hierarchy, `ReactAsync`, diagnostics, API reference) l
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## License
 
-[MIT](LICENSE.md)
