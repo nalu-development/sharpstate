@@ -58,13 +58,17 @@ public class EndToEndTests
         dot.Should().Contain("subgraph cluster_");
         dot.Should().Contain("label = \"Connected\";");
         dot.Should().Contain("label = \"Authenticated\";");
+        dot.Should().Contain("cluster_0_anchor [shape=point, style=invis];");
+        dot.Should().Contain("cluster_1_anchor [shape=point, style=invis];");
+        dot.Should().Contain("shape=ellipse,label=\"Message\"");
+        dot.Should().MatchRegex(@"trigger_\d+ -> cluster_1_anchor;");
+        dot.Should().MatchRegex(@"cluster_1_anchor -> trigger_\d+;");
         dot.Should().NotContain("shape=rectangle,label=\"Idle\"");
         dot.Should().NotContain("shape=rectangle,label=\"Connected\"");
         dot.Should().NotContain("shape=rectangle,label=\"Authenticated\"");
         dot.Should().Contain("shape=Mdiamond,label=\"Authenticating\"");
         dot.Should().Contain("shape=Mdiamond,label=\"Browsing\"");
         dot.Should().Contain("-> start;");
-        dot.Should().NotContain("label=\"Message\"");
         dot.Should().NotContain("end [shape=Msquare]");
     }
 

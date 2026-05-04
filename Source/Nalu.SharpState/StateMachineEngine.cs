@@ -174,6 +174,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
             transition.SyncAction?.Invoke(_context, args);
             _currentState = resolvedLeaf;
             InvokeEntryActions(source, resolvedLeaf);
+            NotifyContextAboutStateChange(resolvedLeaf);
             StateChanged?.Invoke(source, resolvedLeaf, trigger, args);
             ScheduleReaction(source, resolvedLeaf, trigger, transition, args);
             return;
@@ -191,9 +192,12 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
         transition.SyncAction?.Invoke(_context, args);
         _currentState = newLeaf;
         InvokeEntryActions(source, newLeaf);
+        NotifyContextAboutStateChange(newLeaf);
         StateChanged?.Invoke(source, newLeaf, trigger, args);
         ScheduleReaction(source, newLeaf, trigger, transition, args);
     }
+
+    private void NotifyContextAboutStateChange(TState resolvedLeaf) => (_context as IStateAwareContext<TState>)?.OnStateChanged(resolvedLeaf);
 
     private void InvokeExitActions(TState source, TState destination)
     {

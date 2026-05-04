@@ -33,7 +33,7 @@ namespace Sample.Nested.Deep
             {
                 /// <summary>
                 /// Declares a synchronous callback to run after the machine enters this state.
-                /// See <see cref="global::Nalu.SharpState.StateConfigurator<global::Sample.Nested.Deep.Ctx, State, Trigger, IActor>.SetEntryAction(Action<global::Sample.Nested.Deep.Ctx>)"/>.
+                /// See <see cref="global::Nalu.SharpState.StateConfigurator{global::Sample.Nested.Deep.Ctx, State, Trigger, IActor}.SetEntryAction(Action{global::Sample.Nested.Deep.Ctx})"/>.
                 /// </summary>
                 /// <param name="action">The callback to run after the state is entered.</param>
                 /// <returns>The same configurator for chaining.</returns>
@@ -41,7 +41,7 @@ namespace Sample.Nested.Deep
                 
                 /// <summary>
                 /// Declares a synchronous callback to run before the machine exits this state.
-                /// See <see cref="global::Nalu.SharpState.StateConfigurator<global::Sample.Nested.Deep.Ctx, State, Trigger, IActor>.SetExitAction(Action<global::Sample.Nested.Deep.Ctx>)"/>.
+                /// See <see cref="global::Nalu.SharpState.StateConfigurator{global::Sample.Nested.Deep.Ctx, State, Trigger, IActor}.SetExitAction(Action{global::Sample.Nested.Deep.Ctx})"/>.
                 /// </summary>
                 /// <param name="action">The callback to run before the state is exited.</param>
                 /// <returns>The same configurator for chaining.</returns>
@@ -50,7 +50,7 @@ namespace Sample.Nested.Deep
                 /// <summary>
                 /// Configures what happens when <see cref="IActor.Go()"/> is invoked.
                 /// </summary>
-                /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Nested.Deep.Ctx, State, IActor>"/> used by <see cref="IActor.Go()"/>.</param>
+                /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Nested.Deep.Ctx, State, IActor}"/> used by <see cref="IActor.Go()"/>.</param>
                 /// <returns>The same configurator for chaining.</returns>
                 IStateConfigurator OnGo(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Nested.Deep.Ctx, State, IActor>> configure);
             }

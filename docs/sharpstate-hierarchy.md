@@ -173,6 +173,10 @@ Sub-state machines only make sense when they describe a strict containment tree.
 
 See [Diagnostics & Troubleshooting](sharpstate-diagnostics.md) for the full list.
 
+## Graphviz and nested regions
+
+`ToDot()` renders clusters for each `[SubStateMachine]` region. Triggers with **dynamic** targets can list optional state values after the selector so the graph shows real destinations (see the [Graphviz export](index.md#graphviz-export) section on the home page). A **Stay** on a composite is drawn with a hidden anchor node inside the cluster so Graphviz’s subgraph rules are satisfied; see the same section for details.
+
 ## When to use hierarchy
 
 Regions pay off when:

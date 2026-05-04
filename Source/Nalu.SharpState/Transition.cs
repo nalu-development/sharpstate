@@ -19,7 +19,8 @@ public sealed class Transition<TContext, TState, TActor>
         Func<TContext, TriggerArgs, bool>? guard,
         List<string>? guardLabels,
         Action<TContext, TriggerArgs>? syncAction,
-        Func<TActor, TContext, TriggerArgs, ValueTask>? reactionAsync)
+        Func<TActor, TContext, TriggerArgs, ValueTask>? reactionAsync,
+        TState[]? dynamicTargetStates = null)
     {
         Target = target;
         TargetSelector = targetSelector;
@@ -28,6 +29,7 @@ public sealed class Transition<TContext, TState, TActor>
         GuardLabels = guardLabels;
         SyncAction = syncAction;
         ReactionAsync = reactionAsync;
+        DynamicTargetStates = dynamicTargetStates;
     }
 
     /// <summary>
@@ -51,6 +53,12 @@ public sealed class Transition<TContext, TState, TActor>
     /// Optional target selector resolved at dispatch time before any state change is committed.
     /// </summary>
     public Func<TContext, TriggerArgs, TState>? TargetSelector { get; }
+
+    /// <summary>
+    /// When this transition uses <see cref="TargetSelector"/>, optional states from the dynamic <c>Target(..., params TState[])</c>
+    /// overloads—documentation only (for example Graphviz export). Does not affect runtime resolution.
+    /// </summary>
+    public TState[]? DynamicTargetStates { get; }
 
     /// <summary>
     /// Optional guard predicate. When <c>null</c>, the transition always fires.

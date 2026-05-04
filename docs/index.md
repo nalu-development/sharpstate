@@ -98,11 +98,10 @@ Inside each `[StateDefinition]` property body you call `ConfigureState()` and ch
 | Method | Purpose |
 |--------|---------|
 | `Target(State s)` | Move to `s` when the trigger fires. If `s` is composite, its initial-child chain is resolved to a leaf. |
-| `Target((ctx, args...) => State.X)` | Compute the target at fire time from the context and trigger arguments. |
+| `Target((ctx, targetStates...) => State.X, params State[] visualizationHints)` | Compute the target at fire time from the context and trigger arguments. Optional trailing enum values are **not** used at runtime; they only hint possible destinations for `ToDot()` so Graphviz can draw arrows to concrete states instead of a single **Dynamic target** placeholder. Omit the extras when you do not need that. |
 | `Stay()` | Run the action but keep the current state (internal transition). `StateChanged` is **not** raised. |
 | `Ignore()` | Syntax sugar for `Stay()` with no action, useful when a trigger should be accepted but do nothing. This ends the fluent chain. |
-| `When(predicate)` | Available on the trigger builder before `Target(...)` or `Stay()`. Guards the transition. The predicate receives the context and trigger arguments. Repeated calls are combined with logical AND in declaration order. |
-| `When(predicate, "label")` | Same as `When(predicate)`, but also records the label for DOT graph rendering (only non-null labels are stored). If the transition has a guard but no stored labels, the graph uses a single `Unnamed guard 1` placeholder in the trigger node; multiple stored labels are joined with ` & `. |
+| `When(predicate, label = null)` | Guards the transition before `Target(...)` or `Stay()`. The predicate receives the context and trigger arguments. Repeated calls are combined with logical AND in declaration order. When `label` is non-null, it is stored for DOT graph rendering (multiple labels are joined with ` & `). If every contributing guard omits a label, the graph uses `Unnamed guard 1` (and higher) placeholders in the trigger node. |
 | `Invoke(action)` | Available after `Target(...)` or `Stay()`. Runs side effects before the state commits. Repeated calls run in declaration order. |
 | `ReactAsync(action)` | Available after `Target(...)` or `Stay()`. Schedules fire-and-forget work after the transition commits and after `StateChanged` fires. Repeated calls run sequentially in declaration order. |
 
@@ -169,6 +168,17 @@ Console.WriteLine(door.IsIn(DoorMachine.State.Opened)); // true
 | `Can<Trigger>(...)` | Returns whether the corresponding trigger currently has a matching transition for the supplied arguments. |
 | `<Trigger>(...)` | One strongly-typed `void` method per trigger. |
 
+### Context notifications (`IStateAwareContext`)
+
+If your context class implements `IStateAwareContext<State>`, the runtime invokes `OnStateChanged(State)` with the new **leaf** after exit/sync/entry work completes and **before** `StateChanged` is raised. Use this when the context should track the active leaf without subscribing to the event. It applies only to external transitions that change the leaf—not internal `Stay()`, fires where a dynamic `Target` resolves to the same leaf, or unhandled triggers.
+
+```csharp
+public sealed class MyContext : IStateAwareContext<MyMachine.State>
+{
+    public void OnStateChanged(MyMachine.State state) { /* mirror leaf on context */ }
+}
+```
+
 ### Benchmarks
 
 Outperform the industry standard ([Stateless](https://github.com/dotnet-state-machine/stateless)) with **4x to 8x faster execution** and **7x to 12x** lower memory overhead depending on the usage.
@@ -228,7 +238,11 @@ digraph G {
 </tr>
 </table>
 
-More generally, the export uses rectangles for states, ellipses for triggers, and appends `When(..., "label")` text inside the trigger label (for example `Open\n[Not spying]`), as in the [transition table](#describing-transitions) above. Cluster subgraphs represent nested regions; `start` and `end` mark the root initial state and terminal states when your machine has them.
+More generally, the export uses rectangles for states, ellipses for triggers, and incorporates guard labels from `When(..., label)` inside the trigger label (for example `Open\n[Not spying]`), as in the [transition table](#describing-transitions) above. Cluster subgraphs represent nested regions; `start` marks the root initial state when applicable; terminal states with no outgoing transitions use `Msquare`.
+
+**Dynamic targets.** If you use `Target(selector)` without passing optional state hints, the diagram shows a single **Dynamic target** rectangle because the engine cannot know branches statically. Pass trailing enum values—`Target(selector, State.A, State.B)`—to document possible destinations; `ToDot()` then draws one arrow per distinct resolved leaf from the trigger (hints affect diagrams only, not runtime).
+
+**Stay on a composite.** Graphviz does not support edges that start or end on a subgraph border. For an internal transition configured on a composite state, the exporter adds an invisible point node inside that cluster and renders the trigger plus `trigger → anchor → trigger` **after** the subgraph’s closing brace so the layout stays valid while still showing the self-loop semantics.
 
 ### Testability
 
@@ -314,7 +328,7 @@ private static IStateConfiguration Running { get; } = ConfigureState()
 
 ### StateChanged
 
-`StateChanged` fires once per committed transition, with the original leaf, the new leaf, the trigger, and a `TriggerArgs` value carrying the trigger payload.
+`StateChanged` fires once per committed transition, with the original leaf, the new leaf, the trigger, and a `TriggerArgs` value carrying the trigger payload. If the context implements `IStateAwareContext<State>`, `OnStateChanged` on the context runs **first** (see [Context notifications](#context-notifications-istateawarecontext)).
 
 - Use `args.Get<T>(index)` to read the *n*th argument with the type you expect (the same `T` the trigger was fired with at that position).
 - Use `args.ToArray()` when you need a conventional `object?[]` (for example logging every value without knowing arity up front). Up to **three** arguments are stored inline; you normally do not need the array in application code.

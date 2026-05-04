@@ -55,10 +55,19 @@ internal static class TestTransition
         Func<TContext, TriggerArgs, bool>? guard = null,
         List<string>? guardLabels = null,
         Action<TContext, TriggerArgs>? syncAction = null,
-        Func<TActor, TContext, TriggerArgs, ValueTask>? reactionAsync = null)
+        Func<TActor, TContext, TriggerArgs, ValueTask>? reactionAsync = null,
+        params TState[] targetStates)
         where TContext : class
         where TState : struct, Enum
-        => new(default!, targetSelector, false, guard, guardLabels, syncAction, reactionAsync);
+        => new(
+            default!,
+            targetSelector,
+            false,
+            guard,
+            guardLabels,
+            syncAction,
+            reactionAsync,
+            targetStates.Length > 0 ? targetStates : null);
 
     public static Transition<TContext, TState, TActor> Stay<TContext, TState, TActor>(
         Action<TContext, TriggerArgs>? syncAction = null,

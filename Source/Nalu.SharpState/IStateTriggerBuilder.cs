@@ -20,10 +20,9 @@ public interface ISyncStateTriggerBuilder<TContext, TState, TActor>
     where TContext : class
     where TState : struct, Enum
 {
-    ISyncStateTriggerBuilder<TContext, TState, TActor> When(Func<TContext, bool> guard);
-    ISyncStateTriggerBuilder<TContext, TState, TActor> When(Func<TContext, bool> guard, string? label);
+    ISyncStateTriggerBuilder<TContext, TState, TActor> When(Func<TContext, bool> guard, string? label = null);
     ISyncStateTransitionBuilder<TContext, TState, TActor> Target(TState target);
-    ISyncStateTransitionBuilder<TContext, TState, TActor> Target(Func<TContext, TState> targetSelector);
+    ISyncStateTransitionBuilder<TContext, TState, TActor> Target(Func<TContext, TState> targetSelector, params TState[] targetStates);
     ISyncStateTransitionBuilder<TContext, TState, TActor> Stay();
     void Ignore();
 }
@@ -46,10 +45,9 @@ public interface ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0>
     where TContext : class
     where TState : struct, Enum
 {
-    ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0> When(Func<TContext, TArg0, bool> guard);
-    ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0> When(Func<TContext, TArg0, bool> guard, string? label);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0> When(Func<TContext, TArg0, bool> guard, string? label = null);
     ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0> Target(TState target);
-    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0> Target(Func<TContext, TArg0, TState> targetSelector);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0> Target(Func<TContext, TArg0, TState> targetSelector, params TState[] targetStates);
     ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0> Stay();
     void Ignore();
 }
@@ -72,10 +70,9 @@ public interface ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1
     where TContext : class
     where TState : struct, Enum
 {
-    ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1> When(Func<TContext, TArg0, TArg1, bool> guard);
-    ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1> When(Func<TContext, TArg0, TArg1, bool> guard, string? label);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1> When(Func<TContext, TArg0, TArg1, bool> guard, string? label = null);
     ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1> Target(TState target);
-    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1> Target(Func<TContext, TArg0, TArg1, TState> targetSelector);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1> Target(Func<TContext, TArg0, TArg1, TState> targetSelector, params TState[] targetStates);
     ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1> Stay();
     void Ignore();
 }
@@ -98,10 +95,9 @@ public interface ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1
     where TContext : class
     where TState : struct, Enum
 {
-    ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2> When(Func<TContext, TArg0, TArg1, TArg2, bool> guard);
-    ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2> When(Func<TContext, TArg0, TArg1, TArg2, bool> guard, string? label);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2> When(Func<TContext, TArg0, TArg1, TArg2, bool> guard, string? label = null);
     ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2> Target(TState target);
-    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2> Target(Func<TContext, TArg0, TArg1, TArg2, TState> targetSelector);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2> Target(Func<TContext, TArg0, TArg1, TArg2, TState> targetSelector, params TState[] targetStates);
     ISyncStateTransitionBuilder<TContext, TState, TActor, TArg0, TArg1, TArg2> Stay();
     void Ignore();
 }

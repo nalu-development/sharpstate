@@ -36,7 +36,7 @@ namespace Sample
         {
             /// <summary>
             /// Declares a synchronous callback to run after the machine enters this state.
-            /// See <see cref="global::Nalu.SharpState.StateConfigurator<global::Sample.Ctx, State, Trigger, IActor>.SetEntryAction(Action<global::Sample.Ctx>)"/>.
+            /// See <see cref="global::Nalu.SharpState.StateConfigurator{global::Sample.Ctx, State, Trigger, IActor}.SetEntryAction(Action{global::Sample.Ctx})"/>.
             /// </summary>
             /// <param name="action">The callback to run after the state is entered.</param>
             /// <returns>The same configurator for chaining.</returns>
@@ -44,7 +44,7 @@ namespace Sample
             
             /// <summary>
             /// Declares a synchronous callback to run before the machine exits this state.
-            /// See <see cref="global::Nalu.SharpState.StateConfigurator<global::Sample.Ctx, State, Trigger, IActor>.SetExitAction(Action<global::Sample.Ctx>)"/>.
+            /// See <see cref="global::Nalu.SharpState.StateConfigurator{global::Sample.Ctx, State, Trigger, IActor}.SetExitAction(Action{global::Sample.Ctx})"/>.
             /// </summary>
             /// <param name="action">The callback to run before the state is exited.</param>
             /// <returns>The same configurator for chaining.</returns>
@@ -53,28 +53,28 @@ namespace Sample
             /// <summary>
             /// Configures what happens when <see cref="IActor.Connect()"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor>"/> used by <see cref="IActor.Connect()"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor}"/> used by <see cref="IActor.Connect()"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
             IStateConfigurator OnConnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor>> configure);
             
             /// <summary>
             /// Configures what happens when <see cref="IActor.Disconnect()"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor>"/> used by <see cref="IActor.Disconnect()"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor}"/> used by <see cref="IActor.Disconnect()"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
             IStateConfigurator OnDisconnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor>> configure);
             
             /// <summary>
             /// Configures what happens when <see cref="IActor.AuthOk()"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor>"/> used by <see cref="IActor.AuthOk()"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor}"/> used by <see cref="IActor.AuthOk()"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
             IStateConfigurator OnAuthOk(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor>> configure);
             
             /// <summary>
             /// Configures what happens when <see cref="IActor.Message(string)"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, string>"/> used by <see cref="IActor.Message(string)"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor, string}"/> used by <see cref="IActor.Message(string)"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
             IStateConfigurator OnMessage(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, string>> configure);
         }

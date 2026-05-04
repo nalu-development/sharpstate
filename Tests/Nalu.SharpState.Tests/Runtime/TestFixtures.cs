@@ -9,6 +9,23 @@ internal sealed class TestContext
     public List<string> Log { get; } = [];
 }
 
+// Test double implementing IStateAwareContext to record OnStateChanged calls.
+internal sealed class StateAwareTestContext<TState> : IStateAwareContext<TState>
+    where TState : struct, Enum
+{
+    public int Counter { get; set; }
+
+    public List<string> Log { get; } = [];
+
+    public List<TState> NotifiedStates { get; } = [];
+
+    public void OnStateChanged(TState state)
+    {
+        NotifiedStates.Add(state);
+        Log.Add("notify:" + state);
+    }
+}
+
 internal enum FlatState
 {
     A,

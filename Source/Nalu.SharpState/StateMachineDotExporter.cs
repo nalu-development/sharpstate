@@ -4,6 +4,8 @@ namespace Nalu.SharpState;
 
 /// <summary>
 /// Renders frozen state-machine definitions as Graphviz DOT graphs.
+/// Hierarchical regions are <c>subgraph</c> clusters; region-level internal (Stay) transitions use an invisible
+/// anchor node inside the cluster, with the trigger node and its edges emitted after the cluster closing brace.
 /// </summary>
 public static class StateMachineDotExporter
 {
@@ -97,16 +99,32 @@ public static class StateMachineDotExporter
                 }
 
                 var clusterPath = parentContainerPath.Concat([state]).ToArray();
-                WriteLine(indent, $"subgraph cluster_{clusterCounter++} {{");
+                // Graphviz cannot attach edges to a subgraph; use an invisible point node inside the cluster and emit
+                // region-level Stay triggers and their edges after the cluster closes (still linking to that anchor).
+                var clusterId = clusterCounter++;
+                WriteLine(indent, $"subgraph cluster_{clusterId} {{");
                 WriteLine(indent + 1, "style=rounded;");
                 WriteLine(indent + 1, "color=lightgrey;");
                 WriteLine(indent + 1, $"label = \"{Escape(state.ToString())}\";");
+                var clusterAnchorId = $"cluster_{clusterId}_anchor";
+                WriteLine(indent + 1, $"{clusterAnchorId} [shape=point, style=invis];");
 
                 EmitCompositeChildren(children, indent + 1, clusterPath);
-                EmitTransitions(state, indent + 1, sourceNodeId: null, currentContainerPath: clusterPath);
+                var compositeStayOutsideSubgraph = new List<string>();
+                EmitTransitions(
+                    state,
+                    indent + 1,
+                    sourceNodeId: null,
+                    currentContainerPath: clusterPath,
+                    compositeClusterAnchorId: clusterAnchorId,
+                    compositeStayOutsideSubgraph: compositeStayOutsideSubgraph);
                 FlushDeferredEdges(clusterPath, indent + 1);
 
                 WriteLine(indent, "}");
+                foreach (var line in compositeStayOutsideSubgraph)
+                {
+                    WriteLine(indent, line);
+                }
             }
         }
 
@@ -150,7 +168,9 @@ public static class StateMachineDotExporter
             TState sourceState,
             int indent,
             string? sourceNodeId,
-            IReadOnlyList<TState> currentContainerPath)
+            IReadOnlyList<TState> currentContainerPath,
+            string? compositeClusterAnchorId = null,
+            List<string>? compositeStayOutsideSubgraph = null)
         {
             var configuration = definition.GetConfiguration(sourceState);
 
@@ -163,13 +183,58 @@ public static class StateMachineDotExporter
 
                 foreach (var transition in transitions)
                 {
-                    var targetNodeId = ResolveTargetNodeId(sourceState, transition, indent);
+                    if (transition.TargetSelector is not null
+                        && transition.DynamicTargetStates is { Length: > 0 } hintTargets)
+                    {
+                        var hintTriggerId = NextAuxiliaryId("trigger");
+                        WriteLine(indent, $"{hintTriggerId} [shape=ellipse,label=\"{Escape(BuildTriggerLabel(trigger, transition))}\"];");
+                        if (sourceNodeId is not null)
+                        {
+                            WriteLine(indent, $"{sourceNodeId} -> {hintTriggerId};");
+                        }
+
+                        var seenTargetNodes = new HashSet<string>(StringComparer.Ordinal);
+                        foreach (var hintState in hintTargets)
+                        {
+                            var leaf = definition.LeafOf(hintState);
+                            var nodeId = NodeIdFor(leaf);
+                            if (!seenTargetNodes.Add(nodeId))
+                            {
+                                continue;
+                            }
+
+                            var scopePath = LowestCommonContainerPath(currentContainerPath, GetVisualContainerPath(leaf));
+                            EnqueueDeferredEdge(scopePath, $"{hintTriggerId} -> {nodeId};");
+                        }
+
+                        continue;
+                    }
+
+                    var targetNodeId = ResolveTargetNodeId(sourceState, transition, indent, compositeClusterAnchorId);
                     if (sourceNodeId is null && targetNodeId is null)
                     {
                         continue;
                     }
 
                     var triggerId = NextAuxiliaryId("trigger");
+
+                    var isCompositeRegionStay = transition.IsInternal
+                        && childrenByParent.ContainsKey(sourceState)
+                        && compositeClusterAnchorId is not null
+                        && compositeStayOutsideSubgraph is not null
+                        && targetNodeId is not null
+                        && string.Equals(targetNodeId, compositeClusterAnchorId, StringComparison.Ordinal);
+
+                    if (isCompositeRegionStay)
+                    {
+                        var outside = compositeStayOutsideSubgraph!;
+                        var anchorId = targetNodeId!;
+                        outside.Add($"{triggerId} [shape=ellipse,label=\"{Escape(BuildTriggerLabel(trigger, transition))}\"];");
+                        outside.Add($"{triggerId} -> {anchorId};");
+                        outside.Add($"{anchorId} -> {triggerId};");
+                        continue;
+                    }
+
                     WriteLine(indent, $"{triggerId} [shape=ellipse,label=\"{Escape(BuildTriggerLabel(trigger, transition))}\"];");
                     if (sourceNodeId is not null)
                     {
@@ -184,13 +249,20 @@ public static class StateMachineDotExporter
             }
         }
 
-        string? ResolveTargetNodeId(TState sourceState, Transition<TContext, TState, TActor> transition, int indent)
+        string? ResolveTargetNodeId(
+            TState sourceState,
+            Transition<TContext, TState, TActor> transition,
+            int indent,
+            string? compositeClusterAnchorId)
         {
             if (transition.IsInternal)
             {
-                return childrenByParent.ContainsKey(sourceState)
-                    ? null
-                    : NodeIdFor(sourceState);
+                if (childrenByParent.ContainsKey(sourceState))
+                {
+                    return compositeClusterAnchorId;
+                }
+
+                return NodeIdFor(sourceState);
             }
 
             if (transition.TargetSelector is not null)
@@ -204,6 +276,18 @@ public static class StateMachineDotExporter
         }
 
         string NextAuxiliaryId(string prefix) => $"{prefix}_{auxiliaryNodeCounter++}";
+
+        void EnqueueDeferredEdge(IReadOnlyList<TState> scopePath, string edge)
+        {
+            var key = ScopeKey(scopePath);
+            if (!deferredEdges.TryGetValue(key, out var edges))
+            {
+                edges = [];
+                deferredEdges[key] = edges;
+            }
+
+            edges.Add(edge);
+        }
 
         void DeferTargetEdge(
             IReadOnlyList<TState> currentContainerPath,
@@ -221,14 +305,7 @@ public static class StateMachineDotExporter
                 scopePath = LowestCommonContainerPath(currentContainerPath, GetVisualContainerPath(targetLeaf));
             }
 
-            var key = ScopeKey(scopePath);
-            if (!deferredEdges.TryGetValue(key, out var edges))
-            {
-                edges = [];
-                deferredEdges[key] = edges;
-            }
-
-            edges.Add(edge);
+            EnqueueDeferredEdge(scopePath, edge);
         }
 
         IReadOnlyList<TState> LowestCommonContainerPath(IReadOnlyList<TState> sourcePath, IReadOnlyList<TState> targetPath)

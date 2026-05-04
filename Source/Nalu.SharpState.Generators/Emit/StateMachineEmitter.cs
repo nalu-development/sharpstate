@@ -305,12 +305,13 @@ internal static class StateMachineEmitter
 
     private static void EmitActorInterface(SourceWriter w, string context, StateMachineModel m)
     {
-        var machineTypeCref = MachineTypeCref(m);
+        var machineTypeCref = ToDocCref(MachineTypeCref(m));
+        var contextCref = ToDocCref(context);
         w.WriteLine("/// <summary>");
         w.WriteLine($"/// <see cref=\"{machineTypeCref}\"/> runtime actor.");
         w.WriteLine("/// </summary>");
         w.WriteLine("/// <remarks>");
-        w.WriteLine($"/// Use <see cref=\"CreateActor({context})\"/> or <see cref=\"CreateActorWithState({context}, State)\"/> to create an instance.");
+        w.WriteLine($"/// Use <see cref=\"CreateActor({contextCref})\"/> or <see cref=\"CreateActorWithState({contextCref}, State)\"/> to create an instance.");
         w.WriteLine("/// </remarks>");
         w.WriteLine("public interface IActor");
         using (w.Block())
@@ -370,7 +371,7 @@ internal static class StateMachineEmitter
         w.WriteLine("/// Factory delegate that creates a new <see cref=\"IActor\"/> at a given <see cref=\"State\"/>, bound to this generated state machine definition.");
         w.WriteLine("/// Useful for dependency injection and unit tests.");
         w.WriteLine("/// </summary>");
-        w.WriteLine($"/// <param name=\"context\">The shared <see cref=\"{context}\"/> passed to guards, actions, and reactions.</param>");
+        w.WriteLine($"/// <param name=\"context\">The shared <see cref=\"{ToDocCref(context)}\"/> passed to guards, actions, and reactions.</param>");
         w.WriteLine("/// <param name=\"state\">The starting state. Composite states resolve to their initial leaf.</param>");
         w.WriteLine("/// <returns>A new <see cref=\"IActor\"/> instance.</returns>");
         w.WriteLine($"public delegate IActor CreateActorWithStateFactory({context} context, State state);");
@@ -382,7 +383,7 @@ internal static class StateMachineEmitter
         w.WriteLine("/// Factory delegate that creates a new <see cref=\"IActor\"/> starting at <see cref=\"GetInitialState()\"/>, bound to this generated state machine definition.");
         w.WriteLine("/// Useful for dependency injection and unit tests.");
         w.WriteLine("/// </summary>");
-        w.WriteLine($"/// <param name=\"context\">The shared <see cref=\"{context}\"/> passed to guards, actions, and reactions.</param>");
+        w.WriteLine($"/// <param name=\"context\">The shared <see cref=\"{ToDocCref(context)}\"/> passed to guards, actions, and reactions.</param>");
         w.WriteLine("/// <returns>A new <see cref=\"IActor\"/> instance.</returns>");
         w.WriteLine($"public delegate IActor CreateActorFactory({context} context);");
     }
@@ -577,7 +578,7 @@ internal static class StateMachineEmitter
         w.WriteLine("/// <summary>");
         w.WriteLine("/// Creates a new <see cref=\"IActor\"/> bound to this generated state machine definition.");
         w.WriteLine("/// </summary>");
-        w.WriteLine($"/// <param name=\"context\">The shared <see cref=\"{context}\"/> passed to guards, actions, and reactions.</param>");
+        w.WriteLine($"/// <param name=\"context\">The shared <see cref=\"{ToDocCref(context)}\"/> passed to guards, actions, and reactions.</param>");
         w.WriteLine("/// <param name=\"state\">The starting state. Composite states resolve to their initial leaf.</param>");
         w.WriteLine("/// <returns>A new <see cref=\"IActor\"/> instance.</returns>");
     }
@@ -587,7 +588,7 @@ internal static class StateMachineEmitter
         w.WriteLine("/// <summary>");
         w.WriteLine("/// Creates a new <see cref=\"IActor\"/> bound to this generated state machine definition.");
         w.WriteLine("/// </summary>");
-        w.WriteLine($"/// <param name=\"context\">The shared <see cref=\"{context}\"/> used to create an actor starting from <see cref=\"GetInitialState()\"/>.</param>");
+        w.WriteLine($"/// <param name=\"context\">The shared <see cref=\"{ToDocCref(context)}\"/> used to create an actor starting from <see cref=\"GetInitialState()\"/>.</param>");
         w.WriteLine("/// <returns>A new <see cref=\"IActor\"/> instance at the machine's initial state.</returns>");
     }
 
@@ -603,7 +604,8 @@ internal static class StateMachineEmitter
     {
         w.WriteLine("/// <summary>");
         w.WriteLine("/// Declares a synchronous callback to run after the machine enters this state.");
-        w.WriteLine($"/// See <see cref=\"global::Nalu.SharpState.StateConfigurator<{context}, State, Trigger, IActor>.SetEntryAction(Action<{context}>)\"/>.");
+        w.WriteLine(
+            $"/// See <see cref=\"{ToDocCref($"global::Nalu.SharpState.StateConfigurator<{context}, State, Trigger, IActor>.SetEntryAction(Action<{context}>)")}\"/>.");
         w.WriteLine("/// </summary>");
         w.WriteLine("/// <param name=\"action\">The callback to run after the state is entered.</param>");
         w.WriteLine("/// <returns>The same configurator for chaining.</returns>");
@@ -613,7 +615,8 @@ internal static class StateMachineEmitter
     {
         w.WriteLine("/// <summary>");
         w.WriteLine("/// Declares a synchronous callback to run before the machine exits this state.");
-        w.WriteLine($"/// See <see cref=\"global::Nalu.SharpState.StateConfigurator<{context}, State, Trigger, IActor>.SetExitAction(Action<{context}>)\"/>.");
+        w.WriteLine(
+            $"/// See <see cref=\"{ToDocCref($"global::Nalu.SharpState.StateConfigurator<{context}, State, Trigger, IActor>.SetExitAction(Action<{context}>)")}\"/>.");
         w.WriteLine("/// </summary>");
         w.WriteLine("/// <param name=\"action\">The callback to run before the state is exited.</param>");
         w.WriteLine("/// <returns>The same configurator for chaining.</returns>");
@@ -622,11 +625,11 @@ internal static class StateMachineEmitter
     private static void EmitConfiguratorTriggerDocs(SourceWriter w, string context, TriggerModel t)
     {
         var actorMethodCref = ActorMethodCref(t);
-        var builderType = BuilderInterfaceType(context, t);
+        var builderCref = ToDocCref(BuilderInterfaceType(context, t));
         w.WriteLine("/// <summary>");
         w.WriteLine($"/// Configures what happens when <see cref=\"{actorMethodCref}\"/> is invoked.");
         w.WriteLine("/// </summary>");
-        w.WriteLine($"/// <param name=\"configure\">Configures the <see cref=\"{builderType}\"/> used by <see cref=\"{actorMethodCref}\"/>.</param>");
+        w.WriteLine($"/// <param name=\"configure\">Configures the <see cref=\"{builderCref}\"/> used by <see cref=\"{actorMethodCref}\"/>.</param>");
         w.WriteLine("/// <returns>The same configurator for chaining.</returns>");
     }
 
@@ -672,8 +675,12 @@ internal static class StateMachineEmitter
         }
 
         var parameterTypes = string.Join(", ", t.Parameters.Select(p => p.TypeDisplay));
-        return $"IActor.{t.Name}({parameterTypes})";
+        return ToDocCref($"IActor.{t.Name}({parameterTypes})");
     }
+
+    // XML documentation cref attributes use { } for type arguments, not C# < >.
+    private static string ToDocCref(string csharpTypeOrMemberId) =>
+        csharpTypeOrMemberId.Replace('<', '{').Replace('>', '}');
 
     private static string MachineTypeCref(StateMachineModel m)
     {
