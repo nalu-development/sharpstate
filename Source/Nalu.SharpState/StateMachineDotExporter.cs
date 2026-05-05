@@ -107,7 +107,6 @@ public static class StateMachineDotExporter
                 WriteLine(indent + 1, "color=lightgrey;");
                 WriteLine(indent + 1, $"label = \"{Escape(state.ToString())}\";");
                 var clusterAnchorId = $"cluster_{clusterId}_anchor";
-                WriteLine(indent + 1, $"{clusterAnchorId} [shape=point, style=invis];");
 
                 EmitCompositeChildren(children, indent + 1, clusterPath);
                 var compositeStayOutsideSubgraph = new List<string>();
@@ -119,6 +118,8 @@ public static class StateMachineDotExporter
                     compositeClusterAnchorId: clusterAnchorId,
                     compositeStayOutsideSubgraph: compositeStayOutsideSubgraph);
                 FlushDeferredEdges(clusterPath, indent + 1);
+
+                WriteLine(indent + 1, $"{clusterAnchorId} [shape=point, style=invis];");
 
                 WriteLine(indent, "}");
                 foreach (var line in compositeStayOutsideSubgraph)
