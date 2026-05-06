@@ -1,0 +1,13 @@
+﻿---
+title: "Flat"
+---
+stateDiagram-v2
+
+  state "A" as state_0
+  state "B" as state_1
+  state "C" as state_2
+  [*] --> state_0
+  state choice_0 <<choice>>
+  state_0 --> choice_0 : Go
+  choice_0 --> state_1 : [Flag is true]
+  choice_0 --> state_2 : [Flag is false]

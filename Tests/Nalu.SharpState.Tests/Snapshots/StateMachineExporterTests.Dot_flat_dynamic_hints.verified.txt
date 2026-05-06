@@ -1,0 +1,14 @@
+﻿digraph G {
+  label = "Flat";
+  labelloc = t;
+  compound = true;
+  start [shape=Mdiamond,label="A"];
+
+  state_1 [shape=Msquare,label="B"];
+  state_2 [shape=Msquare,label="C"];
+  trigger_0 [shape=ellipse,label="Go"];
+  start -> trigger_0;
+
+  trigger_0 -> state_1 [label="[Flag is true]"];
+  trigger_0 -> state_2 [label="[Flag is false]"];
+}

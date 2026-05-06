@@ -1,0 +1,18 @@
+﻿---
+title: "Hier"
+---
+stateDiagram-v2
+
+  state "Idle" as state_0
+  state "Connected" as state_1
+  state state_1 {
+    [*] --> state_2
+    state "Authenticating" as state_2
+    state "Authenticated" as state_3
+  }
+  state choice_0 <<choice>>
+  state_1 --> state_1 : Disconnect
+  state_1 --> choice_0 : Message
+  choice_0 --> state_1 : [Has message]
+  state "Outside" as state_4
+  [*] --> state_0

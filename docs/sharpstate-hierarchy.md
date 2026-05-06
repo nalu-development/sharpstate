@@ -173,9 +173,25 @@ Sub-state machines only make sense when they describe a strict containment tree.
 
 See [Diagnostics & Troubleshooting](sharpstate-diagnostics.md) for the full list.
 
-## Graphviz and nested regions
+## Graphviz, Mermaid, and nested regions
 
-`ToDot()` renders clusters for each `[SubStateMachine]` region. Triggers with **dynamic** targets can list optional state values after the selector so the graph shows real destinations (see the [Graphviz export](index.md#graphviz-export) section on the home page). A **Stay** on a composite is drawn with a hidden anchor node inside the cluster so Graphviz’s subgraph rules are satisfied; see the same section for details.
+`ToDot()` renders clusters for each `[SubStateMachine]` region. `ToMermaid()` renders the same hierarchy with Mermaid composite `state ... { ... }` blocks. Both are generated on every machine.
+
+For **dynamic** targets, pass labeled hints after the selector so the diagrams show real branches instead of a generic **Dynamic target** placeholder:
+
+```csharp
+.OnRoute(t => t.Target(
+    (ctx, request) => request.IsAdmin ? State.AdminDashboard : State.UserDashboard,
+    (State.AdminDashboard, "Admin request"),
+    (State.UserDashboard, "Standard request")))
+```
+
+Hints are documentation only; runtime still uses the selector result. See the [diagram export](index.md#graphviz-and-mermaid-export) section on the home page for DOT and Mermaid examples.
+
+A **Stay** on a composite is rendered differently per format:
+
+- Graphviz uses a hidden anchor node because subgraph borders cannot be edge endpoints.
+- Mermaid emits a self-loop on the composite state after the composite block closes, which keeps nested diagrams valid.
 
 ## When to use hierarchy
 

@@ -1,0 +1,15 @@
+﻿---
+title: "Hier"
+---
+stateDiagram-v2
+
+  state "Idle" as state_0
+  state "Connected" as state_1
+  state state_1 {
+    [*] --> state_2
+    state "Authenticating" as state_2
+    state "Authenticated" as state_3
+  }
+  state_1 --> state_1 : Disconnect / Message
+  state "Outside" as state_4
+  [*] --> state_0

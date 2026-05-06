@@ -56,7 +56,7 @@ internal static class TestTransition
         List<string>? guardLabels = null,
         Action<TContext, TriggerArgs>? syncAction = null,
         Func<TActor, TContext, TriggerArgs, ValueTask>? reactionAsync = null,
-        params TState[] targetStates)
+        params (TState Target, string Label)[] targetHints)
         where TContext : class
         where TState : struct, Enum
         => new(
@@ -67,7 +67,7 @@ internal static class TestTransition
             guardLabels,
             syncAction,
             reactionAsync,
-            targetStates.Length > 0 ? targetStates : null);
+            targetHints.Length > 0 ? targetHints : null);
 
     public static Transition<TContext, TState, TActor> Stay<TContext, TState, TActor>(
         Action<TContext, TriggerArgs>? syncAction = null,

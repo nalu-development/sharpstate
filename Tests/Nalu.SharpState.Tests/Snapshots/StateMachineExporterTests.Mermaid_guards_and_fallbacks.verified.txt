@@ -1,0 +1,16 @@
+﻿---
+title: "Flat"
+---
+stateDiagram-v2
+
+  state "A" as state_0
+  state "B" as state_1
+  state "C" as state_2
+  [*] --> state_0
+  state choice_0 <<choice>>
+  state_0 --> choice_0 : Go
+  state choice_1 <<choice>>
+  state_0 --> choice_1 : Alt
+  choice_0 --> state_1 : [Named guard]
+  choice_0 --> state_2
+  choice_1 --> state_1 : [Unnamed guard 1]

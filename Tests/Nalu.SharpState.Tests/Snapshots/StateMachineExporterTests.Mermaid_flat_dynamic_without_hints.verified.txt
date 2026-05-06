@@ -1,0 +1,11 @@
+﻿---
+title: "Flat"
+---
+stateDiagram-v2
+
+  state "A" as state_0
+  state "B" as state_1
+  state "C" as state_2
+  [*] --> state_0
+  state "Dynamic target" as dynamic_target_0
+  state_0 --> dynamic_target_0 : Go

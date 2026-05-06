@@ -99,7 +99,12 @@ The generator adds `CreateActorFactory` and `CreateActorWithStateFactory` (align
 
 ### Visualize the configured state machine
 
-The same type also emits a **Graphviz** diagram as text: `DoorMachine.ToDot()` returns a `digraph` you can pass to the `dot` tool (for example `dot -Tpng -o door.png`) or paste into any Graphviz-compatible viewer—useful for documentation, reviews, or debugging transitions and guards.
+The same type also emits diagrams as text:
+
+- `DoorMachine.ToDot()` returns a **Graphviz DOT** `digraph` you can pass to the `dot` tool (for example `dot -Tpng -o door.png`) or paste into any Graphviz-compatible viewer.
+- `DoorMachine.ToMermaid()` returns a **Mermaid** `stateDiagram-v2` document you can paste into Markdown, documentation sites, or Mermaid-compatible viewers.
+
+Both exports are useful for documentation, reviews, or debugging transitions and guards.
 
 For the door sample above, that call produces the DOT below; the diagram is the same graph rendered with Graphviz (`dot -Tsvg`).
 
@@ -133,6 +138,60 @@ digraph G {
 </td>
 </tr>
 </table>
+
+Mermaid export is often more convenient in Markdown documentation:
+
+<table>
+<tr valign="middle">
+<td>
+
+<pre>
+---
+title: "DoorMachine"
+---
+stateDiagram-v2
+
+  state "Closed" as state_0
+  state "Opened" as state_1
+  [*] --> state_0
+  state choice_0 &lt;&lt;choice&gt;&gt;
+  state_0 --> choice_0 : Open
+  choice_0 --> state_1 : [Not spying]
+  state_1 --> state_0 : Close
+</pre>
+
+</td>
+<td width="35%">
+
+```mermaid
+---
+title: "DoorMachine"
+---
+stateDiagram-v2
+
+  state "Closed" as state_0
+  state "Opened" as state_1
+  [*] --> state_0
+  state choice_0 <<choice>>
+  state_0 --> choice_0 : Open
+  choice_0 --> state_1 : [Not spying]
+  state_1 --> state_0 : Close
+```
+
+</td>
+</tr>
+</table>
+
+For dynamic targets, pass labeled hints so diagrams can document the possible runtime branches:
+
+```csharp
+.OnRoute(t => t.Target(
+    (ctx, request) => request.IsAdmin ? State.Admin : State.Standard,
+    (State.Admin, "Admin request"),
+    (State.Standard, "Standard request")))
+```
+
+The hint labels are documentation only: they do not affect runtime target resolution.
 
 ## Documentation
 

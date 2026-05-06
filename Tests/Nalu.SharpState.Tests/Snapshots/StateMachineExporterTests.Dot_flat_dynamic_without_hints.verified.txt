@@ -1,0 +1,14 @@
+﻿digraph G {
+  label = "Flat";
+  labelloc = t;
+  compound = true;
+  start [shape=Mdiamond,label="A"];
+
+  state_1 [shape=Msquare,label="B"];
+  state_2 [shape=Msquare,label="C"];
+  dynamic_target_0 [shape=rectangle,label="Dynamic target"];
+  trigger_1 [shape=ellipse,label="Go"];
+  start -> trigger_1;
+
+  trigger_1 -> dynamic_target_0;
+}

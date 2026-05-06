@@ -104,7 +104,10 @@ internal static class StateMachineEmitter
             w.WriteLine($"public static State GetInitialState() => State.{m.RootInitialState};");
             w.WriteBlankLine();
             EmitToDotDocs(w);
-            w.WriteLine($"public static string ToDot() => global::Nalu.SharpState.StateMachineDotExporter.ToDot(_definition, GetInitialState(), \"{m.ClassName}\");");
+            w.WriteLine($"public static string ToDot() => global::Nalu.SharpState.StateMachineExporter.ToDot(_definition, GetInitialState(), \"{m.ClassName}\");");
+            w.WriteBlankLine();
+            EmitToMermaidDocs(w);
+            w.WriteLine($"public static string ToMermaid() => global::Nalu.SharpState.StateMachineExporter.ToMermaid(_definition, GetInitialState(), \"{m.ClassName}\");");
             w.WriteBlankLine();
             EmitCreateActorWithStateMethodDocs(w, context);
             w.WriteLine($"public static IActor CreateActorWithState({context} context, State state) => new Actor(_definition, state, context);");
@@ -598,6 +601,14 @@ internal static class StateMachineEmitter
         w.WriteLine("/// Renders this generated state machine as a Graphviz DOT graph.");
         w.WriteLine("/// </summary>");
         w.WriteLine("/// <returns>The DOT source representing the machine graph.</returns>");
+    }
+
+    private static void EmitToMermaidDocs(SourceWriter w)
+    {
+        w.WriteLine("/// <summary>");
+        w.WriteLine("/// Renders this generated state machine as a Mermaid state diagram.");
+        w.WriteLine("/// </summary>");
+        w.WriteLine("/// <returns>The Mermaid state diagram source representing the machine graph.</returns>");
     }
 
     private static void EmitWhenEnteringDocs(SourceWriter w, string context)

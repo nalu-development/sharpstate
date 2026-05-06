@@ -1,0 +1,40 @@
+﻿digraph G {
+  label = "NetworkMachine";
+  labelloc = t;
+  compound = true;
+  start [shape=Mdiamond,label="Idle"];
+
+  trigger_0 [shape=ellipse,label="Connect"];
+  start -> trigger_0;
+
+  subgraph cluster_0 {
+    style=rounded;
+    color=lightgrey;
+    label = "Connected";
+    state_2 [shape=Mdiamond,label="Authenticating"];
+    trigger_1 [shape=ellipse,label="AuthOk"];
+    state_2 -> trigger_1;
+    subgraph cluster_1 {
+      style=rounded;
+      color=lightgrey;
+      label = "Authenticated";
+      state_4 [shape=Mdiamond,label="Browsing"];
+      trigger_2 [shape=ellipse,label="StartEdit"];
+      state_4 -> trigger_2;
+      state_5 [shape=rectangle,label="Editing"];
+      trigger_3 [shape=ellipse,label="Save"];
+      state_5 -> trigger_3;
+      trigger_2 -> state_5;
+      trigger_3 -> state_4;
+      cluster_1_anchor [shape=point, style=invis];
+    }
+    trigger_4 [shape=ellipse,label="Message"];
+    trigger_4 -> cluster_1_anchor;
+    cluster_1_anchor -> trigger_4;
+    trigger_5 [shape=ellipse,label="Disconnect"];
+    trigger_1 -> state_4;
+    cluster_0_anchor [shape=point, style=invis];
+  }
+  trigger_0 -> state_2;
+  trigger_5 -> start;
+}

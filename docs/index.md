@@ -77,6 +77,7 @@ The generator produces:
 - Nested `public delegate IActor CreateActorFactory(DoorContext context)` and `public delegate IActor CreateActorWithStateFactory(DoorContext context, State state)` for dependency injection and tests.
 - A `public static State GetInitialState()` helper for the root machine.
 - A `public static string ToDot()` helper that renders the machine as a Graphviz DOT graph.
+- A `public static string ToMermaid()` helper that renders the machine as a Mermaid `stateDiagram-v2`.
 - A `public static IActor CreateActor(DoorContext context)` helper that starts from the root initial state.
 - A `public static IActor CreateActorWithState(DoorContext context, State state)` helper for a non-default starting state.
 
@@ -98,10 +99,10 @@ Inside each `[StateDefinition]` property body you call `ConfigureState()` and ch
 | Method | Purpose |
 |--------|---------|
 | `Target(State s)` | Move to `s` when the trigger fires. If `s` is composite, its initial-child chain is resolved to a leaf. |
-| `Target((ctx, targetStates...) => State.X, params State[] visualizationHints)` | Compute the target at fire time from the context and trigger arguments. Optional trailing enum values are **not** used at runtime; they only hint possible destinations for `ToDot()` so Graphviz can draw arrows to concrete states instead of a single **Dynamic target** placeholder. Omit the extras when you do not need that. |
+| `Target((ctx, args...) => State.X, params (State Target, string Label)[] targetHints)` | Compute the target at fire time from the context and trigger arguments. Optional trailing target hints are **not** used at runtime; they document possible destinations and branch labels for `ToDot()` and `ToMermaid()` instead of a single **Dynamic target** placeholder. Omit the hints when you do not need that. |
 | `Stay()` | Run the action but keep the current state (internal transition). `StateChanged` is **not** raised. |
 | `Ignore()` | Syntax sugar for `Stay()` with no action, useful when a trigger should be accepted but do nothing. This ends the fluent chain. |
-| `When(predicate, label = null)` | Guards the transition before `Target(...)` or `Stay()`. The predicate receives the context and trigger arguments. Repeated calls are combined with logical AND in declaration order. When `label` is non-null, it is stored for DOT graph rendering (multiple labels are joined with ` & `). If every contributing guard omits a label, the graph uses `Unnamed guard 1` (and higher) placeholders in the trigger node. |
+| `When(predicate, label = null)` | Guards the transition before `Target(...)` or `Stay()`. The predicate receives the context and trigger arguments. Repeated calls are combined with logical AND in declaration order. When `label` is non-null, it is stored for diagram rendering (multiple labels are joined with ` & `). If every contributing guard omits a label, exports use `Unnamed guard 1` placeholders. |
 | `Invoke(action)` | Available after `Target(...)` or `Stay()`. Runs side effects before the state commits. Repeated calls run in declaration order. |
 | `ReactAsync(action)` | Available after `Target(...)` or `Stay()`. Schedules fire-and-forget work after the transition commits and after `StateChanged` fires. Repeated calls run sequentially in declaration order. |
 
@@ -196,13 +197,19 @@ Outperform the industry standard ([Stateless](https://github.com/dotnet-state-ma
 
 See the [benchmarks](https://github.com/nalu-development/sharpstate/tree/main/Tests/Nalu.SharpState.Benchmarks) for more details.
 
-### Graphviz export
+### Graphviz and Mermaid export
 
-Every generated machine also exposes `ToDot()`, which returns a **Graphviz** DOT string. Pass it to the `dot` tool (e.g. `dot -Tpng -o door.png`) or any compatible viewer to visualize transitions, guard labels, and hierarchy.
+Every generated machine also exposes `ToDot()` and `ToMermaid()` helpers for visualizing transitions, guard labels, dynamic targets, and hierarchy.
+
+- `ToDot()` returns a **Graphviz** DOT string. Pass it to the `dot` tool (e.g. `dot -Tpng -o door.png`) or any compatible viewer.
+- `ToMermaid()` returns a **Mermaid** `stateDiagram-v2` document with YAML front matter for the diagram title. Paste it into Markdown, documentation sites, or any Mermaid-compatible viewer.
 
 ```csharp
 var dot = DoorMachine.ToDot();
 Console.WriteLine(dot);
+
+var mermaid = DoorMachine.ToMermaid();
+Console.WriteLine(mermaid);
 ```
 
 The first example on this page is the [door sample](https://github.com/nalu-development/sharpstate/tree/main/Tests/Nalu.SharpState.Tests/EndToEnd/DoorMachine.cs) (`DoorMachine` / `DoorContext`). The DOT below is what `DoorMachine.ToDot()` emits; the image is the same file rendered with `dot -Tpng`.
@@ -238,11 +245,67 @@ digraph G {
 </tr>
 </table>
 
-More generally, the export uses rectangles for states, ellipses for triggers, and incorporates guard labels from `When(..., label)` inside the trigger label (for example `Open\n[Not spying]`), as in the [transition table](#describing-transitions) above. Cluster subgraphs represent nested regions; `start` marks the root initial state when applicable; terminal states with no outgoing transitions use `Msquare`.
+More generally, the DOT export uses rectangles for states, ellipses for triggers, and incorporates guard labels from `When(..., label)` inside the trigger label (for example `Open\n[Not spying]`), as in the [transition table](#describing-transitions) above. Cluster subgraphs represent nested regions; `start` marks the root initial state when applicable; terminal states with no outgoing transitions use `Msquare`.
 
-**Dynamic targets.** If you use `Target(selector)` without passing optional state hints, the diagram shows a single **Dynamic target** rectangle because the engine cannot know branches statically. Pass trailing enum values—`Target(selector, State.A, State.B)`—to document possible destinations; `ToDot()` then draws one arrow per distinct resolved leaf from the trigger (hints affect diagrams only, not runtime).
+Mermaid export uses state declarations and arrows directly. Guards and dynamic target hints are rendered with Mermaid `<<choice>>` nodes so branch labels sit on the outgoing paths:
+
+<table>
+<tr valign="middle">
+<td>
+
+<pre>
+---
+title: "DoorMachine"
+---
+stateDiagram-v2
+
+  state "Closed" as state_0
+  state "Opened" as state_1
+  [*] --> state_0
+  state choice_0 &lt;&lt;choice&gt;&gt;
+  state_0 --> choice_0 : Open
+  choice_0 --> state_1 : [Not spying]
+  state_1 --> state_0 : Close
+</pre>
+
+</td>
+<td width="35%">
+
+```mermaid
+---
+title: "DoorMachine"
+---
+stateDiagram-v2
+
+  state "Closed" as state_0
+  state "Opened" as state_1
+  [*] --> state_0
+  state choice_0 <<choice>>
+  state_0 --> choice_0 : Open
+  choice_0 --> state_1 : [Not spying]
+  state_1 --> state_0 : Close
+```
+
+</td>
+</tr>
+</table>
+
+**Dynamic targets.** If you use `Target(selector)` without passing optional target hints, the diagram shows a single **Dynamic target** placeholder because the engine cannot know branches statically. Pass trailing labeled hints to document possible destinations:
+
+```csharp
+.OnRoute(t => t.Target(
+    (ctx, request) => request.IsAdmin ? State.AdminDashboard : State.UserDashboard,
+    (State.AdminDashboard, "Admin request"),
+    (State.UserDashboard, "Standard request")))
+```
+
+`ToDot()` and `ToMermaid()` then draw one branch per distinct hinted destination and include the hint label (for example `[Admin request]`) on that branch. Hints affect diagrams only, not runtime target resolution.
 
 **Stay on a composite.** Graphviz does not support edges that start or end on a subgraph border. For an internal transition configured on a composite state, the exporter adds an invisible point node inside that cluster and renders the trigger plus `trigger → anchor → trigger` **after** the subgraph’s closing brace so the layout stays valid while still showing the self-loop semantics.
+
+Mermaid can name composite states directly, so `Stay()` on a composite is rendered as a self-loop on the composite state after the composite block closes.
+
+When multiple Mermaid transitions share the same source and target (for example several `Stay()` triggers on the same state), the exporter emits one edge and joins distinct labels with ` / ` so Mermaid does not hide earlier labels.
 
 ### Testability
 

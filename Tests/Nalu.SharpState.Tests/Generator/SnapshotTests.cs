@@ -338,7 +338,3 @@ public class SnapshotTests
             .Should().BeTrue();
     }
 }
-
-public sealed class UsesVerifyAttribute : Attribute
-{
-}

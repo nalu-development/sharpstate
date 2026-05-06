@@ -1,0 +1,15 @@
+﻿digraph G {
+  label = "DoorMachine";
+  labelloc = t;
+  compound = true;
+  start [shape=Mdiamond,label="Closed"];
+
+  state_1 [shape=rectangle,label="Opened"];
+  trigger_0 [shape=ellipse,label="Close"];
+  state_1 -> trigger_0;
+  trigger_1 [shape=ellipse,label="Open\n[Not spying]"];
+  start -> trigger_1;
+
+  trigger_0 -> start;
+  trigger_1 -> state_1;
+}

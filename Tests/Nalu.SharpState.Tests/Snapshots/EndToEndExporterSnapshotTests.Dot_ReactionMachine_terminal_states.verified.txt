@@ -1,0 +1,15 @@
+﻿digraph G {
+  label = "ReactionMachine";
+  labelloc = t;
+  compound = true;
+  start [shape=Mdiamond,label="Idle"];
+
+  state_1 [shape=Msquare,label="Done"];
+  trigger_0 [shape=ellipse,label="Inspect"];
+  start -> trigger_0;
+  trigger_1 [shape=ellipse,label="Finish"];
+  start -> trigger_1;
+
+  trigger_0 -> start;
+  trigger_1 -> state_1;
+}

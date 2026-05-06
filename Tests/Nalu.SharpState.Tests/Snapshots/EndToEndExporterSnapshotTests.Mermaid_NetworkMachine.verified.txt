@@ -1,0 +1,24 @@
+---
+title: "NetworkMachine"
+---
+stateDiagram-v2
+
+  state "Idle" as state_0
+  state "Connected" as state_1
+  state state_1 {
+    [*] --> state_2
+    state "Authenticating" as state_2
+    state "Authenticated" as state_3
+    state state_3 {
+      [*] --> state_4
+      state "Browsing" as state_4
+      state "Editing" as state_5
+      state_4 --> state_5 : StartEdit
+      state_5 --> state_4 : Save
+    }
+    state_3 --> state_3 : Message
+    state_2 --> state_3 : AuthOk
+  }
+  [*] --> state_0
+  state_1 --> state_0 : Disconnect
+  state_0 --> state_1 : Connect
