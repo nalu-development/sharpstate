@@ -149,6 +149,7 @@ Mermaid export is often more convenient in Markdown documentation:
 ---
 title: "DoorMachine"
 ---
+%%{init: {"layout": "elk"}}%%
 stateDiagram-v2
 
   state "Closed" as state_0
@@ -167,6 +168,7 @@ stateDiagram-v2
 ---
 title: "DoorMachine"
 ---
+%%{init: {"layout": "elk"}}%%
 stateDiagram-v2
 
   state "Closed" as state_0

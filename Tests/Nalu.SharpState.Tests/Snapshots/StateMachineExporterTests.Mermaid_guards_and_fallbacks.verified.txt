@@ -1,6 +1,7 @@
 ﻿---
 title: "Flat"
 ---
+%%{init: {"layout": "elk"}}%%
 stateDiagram-v2
 
   state "A" as state_0
@@ -12,5 +13,5 @@ stateDiagram-v2
   state choice_1 <<choice>>
   state_0 --> choice_1 : Alt
   choice_0 --> state_1 : [Named guard]
-  choice_0 --> state_2
+  choice_0 --> state_2 : [Else]
   choice_1 --> state_1 : [Unnamed guard 1]

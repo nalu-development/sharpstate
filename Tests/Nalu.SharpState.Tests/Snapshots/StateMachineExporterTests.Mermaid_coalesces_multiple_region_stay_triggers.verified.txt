@@ -1,6 +1,7 @@
 ﻿---
 title: "Hier"
 ---
+%%{init: {"layout": "elk"}}%%
 stateDiagram-v2
 
   state "Idle" as state_0

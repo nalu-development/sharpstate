@@ -257,6 +257,7 @@ Mermaid export uses state declarations and arrows directly. Guards and dynamic t
 ---
 title: "DoorMachine"
 ---
+%%{init: {"layout": "elk"}}%%
 stateDiagram-v2
 
   state "Closed" as state_0
@@ -275,6 +276,7 @@ stateDiagram-v2
 ---
 title: "DoorMachine"
 ---
+%%{init: {"layout": "elk"}}%%
 stateDiagram-v2
 
   state "Closed" as state_0

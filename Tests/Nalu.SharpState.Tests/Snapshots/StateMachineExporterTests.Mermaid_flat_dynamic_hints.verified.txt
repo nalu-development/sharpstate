@@ -1,6 +1,7 @@
 ﻿---
 title: "Flat"
 ---
+%%{init: {"layout": "elk"}}%%
 stateDiagram-v2
 
   state "A" as state_0

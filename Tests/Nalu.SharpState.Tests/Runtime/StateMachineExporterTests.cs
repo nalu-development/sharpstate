@@ -216,4 +216,40 @@ public class StateMachineExporterTests
         var mermaid = StateMachineExporter.ToMermaid(definition, HierState.Idle, "Hier");
         return Verify(mermaid, ExporterSnapshotTestSettings.Create());
     }
+
+    [Fact]
+    public void Mermaid_labels_unguarded_composite_choice_fallback_as_else()
+    {
+        var map = new InternalEnumMap<HierState, TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>>();
+        map[HierState.Idle] = new();
+        map[HierState.Connected] = new();
+        map[HierState.Authenticating] = new();
+        map[HierState.Authenticated] = new();
+        map[HierState.Outside] = new();
+        map[HierState.Connected]
+            .AsStateMachine(HierState.Authenticating)
+            .On(
+                HierTrigger.Message,
+                TestTransition.ToTarget<TestContext, HierState, TestActor>(
+                    HierState.Outside,
+                    (_, _) => true,
+                    ["Can leave"]))
+            .On(
+                HierTrigger.Message,
+                TestTransition.Stay<TestContext, HierState, TestActor>());
+        map[HierState.Authenticating].Parent(HierState.Connected);
+        map[HierState.Authenticated].Parent(HierState.Connected);
+
+        var forDef = new InternalEnumMap<HierState, IStateConfiguration<TestContext, HierState, HierTrigger, TestActor>>();
+        foreach (var kvp in map)
+        {
+            forDef[kvp.Key] = kvp.Value;
+        }
+
+        var definition = new StateMachineDefinition<TestContext, HierState, HierTrigger, TestActor>(forDef);
+        var mermaid = StateMachineExporter.ToMermaid(definition, HierState.Idle, "Hier");
+
+        Assert.Contains("choice_0 --> state_4 : [Can leave]", mermaid);
+        Assert.Contains("choice_0 --> state_1 : [Else]", mermaid);
+    }
 }

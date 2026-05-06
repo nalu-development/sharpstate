@@ -455,6 +455,7 @@ public static class StateMachineExporter
         builder.AppendLine("---");
         builder.AppendLine($"title: \"{EscapeMermaidYamlString(graphName)}\"");
         builder.AppendLine("---");
+        builder.AppendLine("%%{init: {\"layout\": \"elk\"}}%%");
         builder.AppendLine("stateDiagram-v2");
         builder.AppendLine();
 
@@ -567,7 +568,7 @@ public static class StateMachineExporter
                             choiceId,
                             currentContainerPath,
                             indent,
-                            GuardEdgeLabelFor(transition),
+                            ChoiceEdgeLabelFor(transition),
                             compositeStayOutsideBlock,
                             deferChoiceOutsideBlock);
                     }
@@ -860,11 +861,11 @@ public static class StateMachineExporter
                 ({ } left, { } right) => $"{left} {right}"
             };
 
-        string? GuardEdgeLabelFor(Transition<TContext, TState, TActor> transition)
+        string ChoiceEdgeLabelFor(Transition<TContext, TState, TActor> transition)
         {
             if (transition.Guard is null)
             {
-                return null;
+                return "[Else]";
             }
 
             var unnamedGuardCounter = 0;
