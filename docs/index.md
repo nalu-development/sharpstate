@@ -269,7 +269,7 @@ stateDiagram-v2
 </pre>
 
 </td>
-<td width="35%">
+<td>
 
 ```mermaid
 ---
