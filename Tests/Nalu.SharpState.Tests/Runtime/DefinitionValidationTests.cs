@@ -4,26 +4,26 @@ namespace Nalu.SharpState.Tests.Runtime;
 
 public class DefinitionValidationTests
 {
-    private static StateMachineDefinition<TestContext, HierState, HierTrigger, TestActor> Build(
-        Dictionary<HierState, TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>> map)
+    private static StateMachineDefinition<TestContext, IServiceProvider, HierState, HierTrigger, TestActor> Build(
+        Dictionary<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>> map)
     {
-        var forDef = new InternalEnumMap<HierState, IStateConfiguration<TestContext, HierState, HierTrigger, TestActor>>();
+        var forDef = new InternalEnumMap<HierState, IStateConfiguration<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>();
         foreach (var kv in map)
         {
             forDef[kv.Key] = kv.Value;
         }
 
-        return new StateMachineDefinition<TestContext, HierState, HierTrigger, TestActor>(forDef);
+        return new StateMachineDefinition<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>(forDef);
     }
 
     [Fact]
     public void Parent_without_matching_AsStateMachine_throws()
     {
-        var map = new Dictionary<HierState, TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>>
+        var map = new Dictionary<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>
         {
             [HierState.Idle] = new(),
             [HierState.Connected] = new(),
-            [HierState.Authenticating] = new TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>().Parent(HierState.Connected),
+            [HierState.Authenticating] = new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>().Parent(HierState.Connected),
             [HierState.Authenticated] = new(),
             [HierState.Outside] = new()
         };
@@ -37,10 +37,10 @@ public class DefinitionValidationTests
     [Fact]
     public void AsStateMachine_whose_initial_child_does_not_claim_parent_throws()
     {
-        var map = new Dictionary<HierState, TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>>
+        var map = new Dictionary<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>
         {
             [HierState.Idle] = new(),
-            [HierState.Connected] = new TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>().AsStateMachine(HierState.Authenticating),
+            [HierState.Connected] = new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>().AsStateMachine(HierState.Authenticating),
             [HierState.Authenticating] = new(),
             [HierState.Authenticated] = new(),
             [HierState.Outside] = new()
@@ -55,7 +55,7 @@ public class DefinitionValidationTests
     [Fact]
     public void Multi_parent_single_configurator_throws_on_second_Parent_call()
     {
-        var act = () => new TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>()
+        var act = () => new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>()
             .Parent(HierState.Connected)
             .Parent(HierState.Outside);
         act.Should().Throw<InvalidOperationException>();
@@ -64,7 +64,7 @@ public class DefinitionValidationTests
     [Fact]
     public void Double_AsStateMachine_throws()
     {
-        var act = () => new TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>()
+        var act = () => new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>()
             .AsStateMachine(HierState.Authenticating)
             .AsStateMachine(HierState.Authenticated);
         act.Should().Throw<InvalidOperationException>();
@@ -73,9 +73,9 @@ public class DefinitionValidationTests
     [Fact]
     public void Parent_referring_to_unknown_state_throws()
     {
-        var map = new Dictionary<HierState, TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>>
+        var map = new Dictionary<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>
         {
-            [HierState.Idle] = new TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>().Parent(HierState.Outside),
+            [HierState.Idle] = new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>().Parent(HierState.Outside),
             [HierState.Connected] = new()
         };
 
@@ -86,19 +86,19 @@ public class DefinitionValidationTests
     [Fact]
     public void Cycle_in_state_hierarchy_throws()
     {
-        var map = new Dictionary<HierState, TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>>
+        var map = new Dictionary<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>
         {
-            [HierState.Idle] = new TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>()
+            [HierState.Idle] = new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>()
                 .Parent(HierState.Outside)
                 .AsStateMachine(HierState.Connected),
-            [HierState.Connected] = new TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>()
+            [HierState.Connected] = new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>()
                 .Parent(HierState.Idle)
                 .AsStateMachine(HierState.Authenticated),
             [HierState.Authenticating] = new(),
-            [HierState.Authenticated] = new TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>()
+            [HierState.Authenticated] = new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>()
                 .Parent(HierState.Connected)
                 .AsStateMachine(HierState.Outside),
-            [HierState.Outside] = new TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>()
+            [HierState.Outside] = new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>()
                 .Parent(HierState.Authenticated)
                 .AsStateMachine(HierState.Idle)
         };
@@ -142,10 +142,10 @@ public class DefinitionValidationTests
     [Fact]
     public void Initial_child_not_in_definition_throws()
     {
-        var map = new Dictionary<HierState, TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>>
+        var map = new Dictionary<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>
         {
             [HierState.Idle] = new(),
-            [HierState.Connected] = new TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>()
+            [HierState.Connected] = new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>()
                 .AsStateMachine(HierState.Authenticating),
             [HierState.Authenticated] = new(),
             [HierState.Outside] = new()
@@ -160,7 +160,7 @@ public class DefinitionValidationTests
     [Fact]
     public void Second_WhenEntering_throws()
     {
-        var act = () => new TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>()
+        var act = () => new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>()
             .WhenEntering(_ => { })
             .WhenEntering(_ => { });
         act.Should().ThrowExactly<InvalidOperationException>();
@@ -169,7 +169,7 @@ public class DefinitionValidationTests
     [Fact]
     public void Second_WhenExiting_throws()
     {
-        var act = () => new TestStateConfigurator<TestContext, HierState, HierTrigger, TestActor>()
+        var act = () => new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>()
             .WhenExiting(_ => { })
             .WhenExiting(_ => { });
         act.Should().ThrowExactly<InvalidOperationException>();

@@ -1,25 +1,26 @@
 namespace Nalu.SharpState;
 
 /// <summary>
-/// A single resolved transition built by <see cref="ISyncStateTriggerBuilder{TContext, TState, TActor}"/> (or its arity variants).
+/// A single resolved transition built by <see cref="ISyncStateTriggerBuilder{TContext, TServiceProvider, TState, TActor}"/> (or its arity variants).
 /// Carries the optional guard, optional synchronous transition action, optional asynchronous reaction,
 /// and either a target state (external transition) or the <see cref="IsInternal"/> flag
 /// (internal transition that does not leave the current state).
 /// </summary>
 /// <typeparam name="TContext">Type of the user-supplied context carried by the machine.</typeparam>
+/// <typeparam name="TServiceProvider">Type of the service provider passed to guards, actions, and reactions.</typeparam>
 /// <typeparam name="TState">Enum type listing all states of the machine.</typeparam>
 /// <typeparam name="TActor">Type of the actor passed into post-transition reactions.</typeparam>
-public sealed class Transition<TContext, TState, TActor>
+public sealed class Transition<TContext, TServiceProvider, TState, TActor>
     where TState : struct, Enum
 {
     internal Transition(
         TState target,
-        Func<TContext, TriggerArgs, TState>? targetSelector,
+        Func<TContext, TServiceProvider, TriggerArgs, TState>? targetSelector,
         bool isInternal,
-        Func<TContext, TriggerArgs, bool>? guard,
+        Func<TContext, TServiceProvider, TriggerArgs, bool>? guard,
         List<string>? guardLabels,
-        Action<TContext, TriggerArgs>? syncAction,
-        Func<TActor, TContext, TriggerArgs, ValueTask>? reactionAsync,
+        Action<TContext, TServiceProvider, TriggerArgs>? syncAction,
+        Func<TActor, TContext, TServiceProvider, TriggerArgs, ValueTask>? reactionAsync,
         (TState Target, string Label)[]? dynamicTargetHints = null)
     {
         Target = target;
@@ -52,7 +53,7 @@ public sealed class Transition<TContext, TState, TActor>
     /// <summary>
     /// Optional target selector resolved at dispatch time before any state change is committed.
     /// </summary>
-    public Func<TContext, TriggerArgs, TState>? TargetSelector { get; }
+    public Func<TContext, TServiceProvider, TriggerArgs, TState>? TargetSelector { get; }
 
     /// <summary>
     /// When this transition uses <see cref="TargetSelector"/>, optional labeled target hints from the dynamic
@@ -65,7 +66,7 @@ public sealed class Transition<TContext, TState, TActor>
     /// Optional guard predicate. When <c>null</c>, the transition always fires.
     /// When non-null, the transition fires only if the guard returns <c>true</c>.
     /// </summary>
-    public Func<TContext, TriggerArgs, bool>? Guard { get; }
+    public Func<TContext, TServiceProvider, TriggerArgs, bool>? Guard { get; }
 
     /// <summary>
     /// Optional ordered labels from <c>When(..., label)</c> calls only (non-null labels, in declaration order).
@@ -76,10 +77,10 @@ public sealed class Transition<TContext, TState, TActor>
     /// <summary>
     /// Optional synchronous action executed after the guard passes and before the state change is committed.
     /// </summary>
-    public Action<TContext, TriggerArgs>? SyncAction { get; }
+    public Action<TContext, TServiceProvider, TriggerArgs>? SyncAction { get; }
 
     /// <summary>
     /// Optional asynchronous reaction scheduled after the state transition has completed.
     /// </summary>
-    public Func<TActor, TContext, TriggerArgs, ValueTask>? ReactionAsync { get; }
+    public Func<TActor, TContext, TServiceProvider, TriggerArgs, ValueTask>? ReactionAsync { get; }
 }

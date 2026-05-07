@@ -1,4 +1,6 @@
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Nalu.SharpState.Tests.Runtime;
 
 namespace Nalu.SharpState.Tests.EndToEnd;
 
@@ -8,7 +10,7 @@ public class EndToEndTests
     public void Trigger_advances_state_and_runs_action_with_args()
     {
         var ctx = new DoorContext();
-        var door = DoorMachine.CreateActor(ctx);
+        var door = DoorMachine.CreateActor(ctx, TestServiceProviders.EmptyResolver);
 
         door.Open("delivery");
 
@@ -27,7 +29,7 @@ public class EndToEndTests
     [Fact]
     public void CanTrigger_methods_reflect_current_generated_actor_state()
     {
-        var door = DoorMachine.CreateActorWithState(new DoorContext(), DoorMachine.State.Closed);
+        var door = DoorMachine.CreateActorWithState(new DoorContext(), TestServiceProviders.EmptyResolver, DoorMachine.State.Closed);
 
         door.CanOpen("delivery").Should().BeTrue();
         door.CanClose().Should().BeFalse();
@@ -41,7 +43,7 @@ public class EndToEndTests
     [Fact]
     public void Close_transitions_back_and_StateChanged_fires()
     {
-        var door = DoorMachine.CreateActorWithState(new DoorContext(), DoorMachine.State.Opened);
+        var door = DoorMachine.CreateActorWithState(new DoorContext(), TestServiceProviders.EmptyResolver, DoorMachine.State.Opened);
         (DoorMachine.State from, DoorMachine.State to, DoorMachine.Trigger trigger, TriggerArgs args)? captured = null;
         door.StateChanged += (f, t, tr, args) => captured = (f, t, tr, args);
 
@@ -56,10 +58,33 @@ public class EndToEndTests
     }
 
     [Fact]
+    public void CreateActor_with_microsoft_di_scope_disposes_scoped_services_after_ReactAsync()
+    {
+        var serviceCollection = new ServiceCollection();
+        serviceCollection.AddScoped<ScopedResource>();
+        using var provider = serviceCollection.BuildServiceProvider();
+
+        // Singleton AddSingletonStateMachineServiceProviderResolver() uses StateMachineStaticServiceProviderResolver (no child scope).
+        // Per-ReactAsync scoped resolution requires StateMachineServiceProviderResolver over the composition root.
+        var resolver = new StateMachineServiceProviderResolver(provider);
+        var ctx = new ScopedDiProbeContext();
+        var machine = ScopedDiProbeMachine.CreateActorWithState(ctx, resolver, ScopedDiProbeMachine.State.Idle);
+        var syncContext = new MySynchronizationContext();
+
+        RunOn(syncContext, machine.Go);
+
+        machine.CurrentState.Should().Be(ScopedDiProbeMachine.State.Done);
+        ctx.Captured.Should().BeNull();
+        syncContext.Drain();
+        ctx.Captured.Should().NotBeNull();
+        ctx.Captured!.DisposeCallCount.Should().Be(1);
+    }
+
+    [Fact]
     public void ReactAsync_runs_after_trigger_returns()
     {
         var ctx = new InspectContext();
-        var machine = ReactionMachine.CreateActorWithState(ctx, ReactionMachine.State.Idle);
+        var machine = ReactionMachine.CreateActorWithState(ctx, TestServiceProviders.EmptyResolver, ReactionMachine.State.Idle);
         var syncContext = new MySynchronizationContext();
 
         RunOn(syncContext, machine.Inspect);
@@ -75,7 +100,7 @@ public class EndToEndTests
     public void ReactAsync_target_transition_commits_before_reaction()
     {
         var ctx = new InspectContext();
-        var machine = ReactionMachine.CreateActorWithState(ctx, ReactionMachine.State.Idle);
+        var machine = ReactionMachine.CreateActorWithState(ctx, TestServiceProviders.EmptyResolver, ReactionMachine.State.Idle);
         var syncContext = new MySynchronizationContext();
 
         RunOn(syncContext, machine.Finish);
@@ -89,7 +114,7 @@ public class EndToEndTests
     [Fact]
     public void OnUnhandled_override_captures_unhandled_triggers()
     {
-        var door = DoorMachine.CreateActorWithState(new DoorContext(), DoorMachine.State.Opened);
+        var door = DoorMachine.CreateActorWithState(new DoorContext(), TestServiceProviders.EmptyResolver, DoorMachine.State.Opened);
         (DoorMachine.State state, DoorMachine.Trigger trigger, TriggerArgs args)? captured = null;
         door.OnUnhandled = (s, t, a) => captured = (s, t, a);
 
@@ -105,7 +130,7 @@ public class EndToEndTests
     [Fact]
     public void Hierarchical_targeting_composite_resolves_initial_child()
     {
-        var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), NetworkMachine.State.Idle);
+        var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), TestServiceProviders.EmptyResolver, NetworkMachine.State.Idle);
 
         machine.Connect();
 
@@ -116,7 +141,7 @@ public class EndToEndTests
     [Fact]
     public void Hierarchical_child_inherits_parent_transitions()
     {
-        var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), NetworkMachine.State.Authenticated);
+        var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), TestServiceProviders.EmptyResolver, NetworkMachine.State.Authenticated);
 
         machine.Disconnect();
 
@@ -127,7 +152,7 @@ public class EndToEndTests
     [Fact]
     public void IsIn_returns_true_for_ancestor_states()
     {
-        var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), NetworkMachine.State.Authenticated);
+        var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), TestServiceProviders.EmptyResolver, NetworkMachine.State.Authenticated);
 
         machine.IsIn(NetworkMachine.State.Authenticated).Should().BeTrue();
         machine.IsIn(NetworkMachine.State.Connected).Should().BeTrue();
@@ -139,7 +164,7 @@ public class EndToEndTests
     {
         var ctx = new NetworkContext();
         // Entering Authenticated resolves to its initial leaf (Browsing).
-        var machine = NetworkMachine.CreateActorWithState(ctx, NetworkMachine.State.Authenticated);
+        var machine = NetworkMachine.CreateActorWithState(ctx, TestServiceProviders.EmptyResolver, NetworkMachine.State.Authenticated);
 
         machine.Message("hello");
 
@@ -151,7 +176,7 @@ public class EndToEndTests
     [Fact]
     public void Targeting_outer_composite_lands_on_deepest_initial_leaf()
     {
-        var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), NetworkMachine.State.Idle);
+        var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), TestServiceProviders.EmptyResolver, NetworkMachine.State.Idle);
 
         machine.Connect();
 
@@ -163,7 +188,7 @@ public class EndToEndTests
     [Fact]
     public void Targeting_composite_with_nested_initial_resolves_to_deepest_leaf()
     {
-        var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), NetworkMachine.State.Authenticating);
+        var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), TestServiceProviders.EmptyResolver, NetworkMachine.State.Authenticating);
 
         machine.AuthOk();
 
@@ -176,7 +201,7 @@ public class EndToEndTests
     [Fact]
     public void Deep_leaf_inherits_outermost_ancestor_transitions()
     {
-        var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), NetworkMachine.State.Editing);
+        var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), TestServiceProviders.EmptyResolver, NetworkMachine.State.Editing);
 
         machine.Disconnect();
 
@@ -188,7 +213,7 @@ public class EndToEndTests
     public void Entry_and_exit_hooks_run_for_generated_machine()
     {
         var ctx = new HookContext();
-        var machine = HookMachine.CreateActorWithState(ctx, HookMachine.State.Idle);
+        var machine = HookMachine.CreateActorWithState(ctx, TestServiceProviders.EmptyResolver, HookMachine.State.Idle);
 
         machine.Start();
 
@@ -200,7 +225,7 @@ public class EndToEndTests
     public void Ignore_syntax_sugar_keeps_current_state_without_unhandled()
     {
         var ctx = new HookContext();
-        var machine = HookMachine.CreateActorWithState(ctx, HookMachine.State.Running);
+        var machine = HookMachine.CreateActorWithState(ctx, TestServiceProviders.EmptyResolver, HookMachine.State.Running);
 
         var act = () => machine.Ping();
 

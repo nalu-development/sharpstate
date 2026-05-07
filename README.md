@@ -18,7 +18,7 @@ The package includes the analyzer; no extra registration call is required.
 
 ## At a glance
 
-Define a context (with eventual service dependencies), mark a `public static partial` class with `[StateMachineDefinition]`, add `[StateTriggerDefinition]` methods for inputs and `[StateDefinition]` properties for states, then wire transitions with `ConfigureState()` (see the full [door sample](Tests/Nalu.SharpState.Tests/EndToEnd/DoorMachine.cs) in the test suite):
+Define a context (with eventual service dependencies), mark a `public static partial` class with `[StateMachineDefinition]`, add `[StateTriggerDefinition]` methods for inputs and `[StateDefinition]` properties for states, then wire transitions with `ConfigureState()` (see the full [door sample](Tests/Nalu.SharpState.Tests/EndToEnd/DoorMachine.cs) in the test suite). The machine’s **service provider** type defaults to `IServiceProvider`; you pass an **`IStateMachineServiceProviderResolver<IServiceProvider>`** when creating an actor (see [Service provider](https://nalu-development.github.io/sharpstate/index.html#service-provider-and-actor-factories) in the guide).
 
 ```csharp
 public class DoorContext
@@ -49,7 +49,10 @@ public static partial class DoorMachine
 Use the generated API from your app:
 
 ```csharp
-var door = DoorMachine.CreateActor(new DoorContext());
+using System;
+using Nalu.SharpState;
+
+var door = DoorMachine.CreateActor(new DoorContext(), StateMachineEmptyServiceProviderResolver.Instance);
 door.Open("delivery");
 Console.WriteLine(door.CurrentState); // Opened
 ```
@@ -95,7 +98,7 @@ See the [benchmarks](https://github.com/nalu-development/sharpstate/tree/main/Te
 
 ### Dependency Injection and Unit Testing
 
-The generator adds `CreateActorFactory` and `CreateActorWithStateFactory` (aligned with `CreateActor` / `CreateActorWithState`) so you can register the delegate in a container, inject it where you build actors, and stub `IActor` in tests—`CreateActorFactory` is the typical choice when the default initial state is enough. The context you pass into every transition can hold your services, so async reactions such as the `ReactAsync` block above keep dependencies mockable. See [Testability](https://nalu-development.github.io/sharpstate/index.html#testability) in the full guide.
+The generator adds **`CreateActorFactory`** / **`CreateActorWithStateFactory`** delegates aligned with the static `CreateActor` / `CreateActorWithState` overloads that take **`IStateMachineServiceProviderResolver<IServiceProvider>`**, so you can register them in a container, inject them where you build actors, and stub `IActor` in tests. Prefer **`Nalu.SharpState.DependencyInjection`** (**`StateMachineServiceProviderResolver`**, **`AddScopedStateMachineServiceProviderResolver()`**, etc.): **`CreateScopedServiceProvider(out IServiceProvider)`** returns an **`IServiceScope`** for each **`ReactAsync`**, which the engine disposes afterward. The context you pass into every transition can still hold domain state; async reactions stay mockable. See [Service provider](https://nalu-development.github.io/sharpstate/index.html#service-provider-and-actor-factories) and [Testability](https://nalu-development.github.io/sharpstate/index.html#testability) in the full guide.
 
 ### Visualize the configured state machine
 

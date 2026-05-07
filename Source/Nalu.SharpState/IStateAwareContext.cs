@@ -5,15 +5,15 @@ namespace Nalu.SharpState;
 /// (<c>context as <see cref="IStateAwareContext{TState}"/></c>) and forwards each committed leaf-state change to
 /// <see cref="OnStateChanged"/>.
 /// </summary>
-/// <typeparam name="TState">The machine's state enum type (same <c>TState</c> as <see cref="StateMachineEngine{TContext, TState, TTrigger, TActor}"/>).</typeparam>
+/// <typeparam name="TState">The machine's state enum type (same <c>TState</c> as <see cref="StateMachineEngine{TContext, TServiceProvider, TState, TTrigger, TActor}"/>).</typeparam>
 /// <remarks>
 /// <para>
 /// <see cref="OnStateChanged"/> is invoked only after an <strong>external</strong> transition that updates the current leaf state:
 /// exit actions, the transition's synchronous action, assignment of the new leaf, and entry actions have already completed.
-/// It runs immediately before the engine raises <see cref="StateMachineEngine{TContext, TState, TTrigger, TActor}.StateChanged"/>.
+/// It runs immediately before the engine raises <see cref="StateMachineEngine{TContext, TServiceProvider, TState, TTrigger, TActor}.StateChanged"/>.
 /// </para>
 /// <para>
-/// The value is always the <strong>resolved leaf</strong> state (see <see cref="StateMachineDefinition{TContext, TState, TTrigger, TActor}.LeafOf(TState)"/>),
+/// The value is always the <strong>resolved leaf</strong> state (see <see cref="StateMachineDefinition{TContext, TServiceProvider, TState, TTrigger, TActor}.LeafOf(TState)"/>),
 /// including for hierarchical machines.
 /// </para>
 /// <para>

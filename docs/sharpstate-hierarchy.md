@@ -18,7 +18,10 @@ private partial class ConnectedRegion
     private static IStateConfiguration Authenticated { get; } = ConfigureState()
         .OnMessage(t => t
             .Stay()
-            .Invoke((ctx, text) => ctx.Log.Add(text)));
+            .Invoke((ctx, services, text) =>
+                services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>()
+                    .CreateLogger("Network")
+                    .LogInformation("Message: {Text}", text)));
 }
 ```
 
@@ -35,11 +38,14 @@ Every `[StateDefinition]` inside the class is treated as a child of `parent`. Ex
 ## A two-level example
 
 ```csharp
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Nalu.SharpState;
 
-public class NetworkContext
+public sealed class NetworkContext
 {
-    public List<string> Log { get; } = [];
+    /// <summary>Example machine state: last inbound message length.</summary>
+    public int LastMessageLength { get; set; }
 }
 
 [StateMachineDefinition(typeof(NetworkContext))]
@@ -69,7 +75,12 @@ public static partial class NetworkMachine
 
         [StateDefinition]
         private static IStateConfiguration Authenticated { get; } = ConfigureState()
-            .OnMessage(t => t.Stay().Invoke((ctx, msg) => ctx.Log.Add(msg)));
+            .OnMessage(t => t.Stay().Invoke((ctx, services, msg) =>
+            {
+                ctx.LastMessageLength = msg.Length;
+                services.GetRequiredService<ILoggerFactory>().CreateLogger("Network")
+                    .LogInformation("Message length {Length}", msg.Length);
+            }));
 
         [SubStateMachine(parent: State.Authenticated)]
         private partial class AuthenticatedRegion
@@ -85,6 +96,8 @@ public static partial class NetworkMachine
     }
 }
 ```
+
+The snippets above resolve **`ILoggerFactory`** from **`IServiceProvider`** (`GetRequiredService` is from **`Microsoft.Extensions.DependencyInjection`**). Add **`Nalu.SharpState.DependencyInjection`** and use **`StateMachineServiceProviderResolver`** when creating the actor, as in the [Service provider and actor factories](index.md#service-provider-and-actor-factories) section. A typical host registers **`ILoggerFactory`** by default.
 
 The hierarchy this produces:
 
@@ -104,7 +117,13 @@ Three rules govern how the runtime walks this tree.
 ### 1. Targeting a composite resolves to its initial leaf
 
 ```csharp
-var machine = NetworkMachine.CreateActor(new NetworkContext());
+using Microsoft.Extensions.DependencyInjection;
+using Nalu.SharpState;
+
+IServiceProvider services = ...; // composition root
+var resolver = new StateMachineServiceProviderResolver(services);
+
+var machine = NetworkMachine.CreateActor(new NetworkContext(), resolver);
 
 machine.Connect();
 // Target(Connected) -> initial Authenticating -> Authenticating has no deeper initial
@@ -124,8 +143,14 @@ machine.IsIn(NetworkMachine.State.Connected).Should().BeTrue();
 When a trigger fires, the engine walks **up** from the current leaf looking for a matching transition. The first ancestor that declares one (and whose guard, if any, passes) wins.
 
 ```csharp
+using Microsoft.Extensions.DependencyInjection;
+using Nalu.SharpState;
+
+IServiceProvider services = ...;
+var resolver = new StateMachineServiceProviderResolver(services);
+
 // Current state: Editing (deep leaf, 3 levels down)
-var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), NetworkMachine.State.Editing);
+var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), resolver, NetworkMachine.State.Editing);
 
 machine.Disconnect();
 // Editing -> Authenticated -> Connected: Connected handles Disconnect -> target Idle

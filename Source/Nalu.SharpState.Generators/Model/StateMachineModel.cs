@@ -18,6 +18,7 @@ internal sealed record StateMachineModel(
     string ClassAccessibility,
     string TypeParameters,
     string ContextTypeDisplay,
+    string ServiceProviderTypeDisplay,
     EquatableArray<ContainingTypeModel> ContainingTypes,
     string? RootInitialState,
     EquatableArray<StateModel> States,
@@ -78,6 +79,7 @@ internal sealed record StateMachineModel(
             a.AttributeClass is { } ac
             && ac.ToDisplayString() == "Nalu.SharpState.StateMachineDefinitionAttribute");
         var contextType = "global::System.Object";
+        var serviceProviderType = "global::System.IServiceProvider";
         if (attribute is not null)
         {
             if (attribute.ConstructorArguments.Length > 0
@@ -86,6 +88,11 @@ internal sealed record StateMachineModel(
                 contextType = ctxSym.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             }
 
+            if (attribute.ConstructorArguments.Length > 1
+                && attribute.ConstructorArguments[1].Value is INamedTypeSymbol spSym)
+            {
+                serviceProviderType = spSym.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            }
         }
 
         var triggers = ImmutableArray.CreateBuilder<TriggerModel>();
@@ -125,6 +132,7 @@ internal sealed record StateMachineModel(
             AccessibilityString(classSymbol.DeclaredAccessibility),
             TypeParameterList(classSymbol),
             contextType,
+            serviceProviderType,
             new EquatableArray<ContainingTypeModel>(containing.ToImmutableArray()),
             rootInitialState,
             new EquatableArray<StateModel>(states.ToImmutableArray()),
@@ -173,7 +181,7 @@ internal sealed record StateMachineModel(
 
             var isStateConfiguration = property.Type.Name == "IStateConfiguration"
                 || property.Type is INamedTypeSymbol namedType
-                && namedType.TypeArguments.Length == 3
+                && namedType.TypeArguments.Length == 5
                 && namedType.ConstructedFrom.Name == "IStateConfiguration";
             if (!isStateConfiguration)
             {

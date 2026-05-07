@@ -5,10 +5,11 @@ namespace Nalu.SharpState;
 /// optional hierarchy metadata (parent state, initial child state), and optional entry/exit hooks.
 /// </summary>
 /// <typeparam name="TContext">Type of the user-supplied context carried by the machine.</typeparam>
+/// <typeparam name="TServiceProvider">Type of the service provider passed to guards, actions, and reactions.</typeparam>
 /// <typeparam name="TState">Enum type listing all states of the machine.</typeparam>
 /// <typeparam name="TTrigger">Enum type listing all triggers of the machine.</typeparam>
 /// <typeparam name="TActor">Type of the actor passed into post-transition reactions.</typeparam>
-public interface IStateConfiguration<TContext, TState, TTrigger, TActor>
+public interface IStateConfiguration<TContext, TServiceProvider, TState, TTrigger, TActor>
     where TState : struct, Enum
     where TTrigger : struct, Enum
 {
@@ -40,5 +41,5 @@ public interface IStateConfiguration<TContext, TState, TTrigger, TActor>
     /// <param name="trigger">The trigger to look up.</param>
     /// <param name="transitions">When the method returns <c>true</c>, the list of transitions in source order.</param>
     /// <returns><c>true</c> if at least one transition is configured for <paramref name="trigger"/>.</returns>
-    bool TryGetTransitions(TTrigger trigger, out IReadOnlyList<Transition<TContext, TState, TActor>> transitions);
+    bool TryGetTransitions(TTrigger trigger, out IReadOnlyList<Transition<TContext, TServiceProvider, TState, TActor>> transitions);
 }

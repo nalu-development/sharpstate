@@ -25,7 +25,7 @@ namespace Sample.Nested.Deep
                 Go,
             }
             
-            protected interface IStateConfiguration : global::Nalu.SharpState.IStateConfiguration<global::Sample.Nested.Deep.Ctx, State, Trigger, IActor>
+            protected interface IStateConfiguration : global::Nalu.SharpState.IStateConfiguration<global::Sample.Nested.Deep.Ctx, global::System.IServiceProvider, State, Trigger, IActor>
             {
             }
             
@@ -33,7 +33,7 @@ namespace Sample.Nested.Deep
             {
                 /// <summary>
                 /// Declares a synchronous callback to run after the machine enters this state.
-                /// See <see cref="global::Nalu.SharpState.StateConfigurator{global::Sample.Nested.Deep.Ctx, State, Trigger, IActor}.SetEntryAction(Action{global::Sample.Nested.Deep.Ctx})"/>.
+                /// See <see cref="global::Nalu.SharpState.StateConfigurator{global::Sample.Nested.Deep.Ctx, global::System.IServiceProvider, State, Trigger, IActor}.SetEntryAction(Action{global::Sample.Nested.Deep.Ctx})"/>.
                 /// </summary>
                 /// <param name="action">The callback to run after the state is entered.</param>
                 /// <returns>The same configurator for chaining.</returns>
@@ -41,7 +41,7 @@ namespace Sample.Nested.Deep
                 
                 /// <summary>
                 /// Declares a synchronous callback to run before the machine exits this state.
-                /// See <see cref="global::Nalu.SharpState.StateConfigurator{global::Sample.Nested.Deep.Ctx, State, Trigger, IActor}.SetExitAction(Action{global::Sample.Nested.Deep.Ctx})"/>.
+                /// See <see cref="global::Nalu.SharpState.StateConfigurator{global::Sample.Nested.Deep.Ctx, global::System.IServiceProvider, State, Trigger, IActor}.SetExitAction(Action{global::Sample.Nested.Deep.Ctx})"/>.
                 /// </summary>
                 /// <param name="action">The callback to run before the state is exited.</param>
                 /// <returns>The same configurator for chaining.</returns>
@@ -50,16 +50,17 @@ namespace Sample.Nested.Deep
                 /// <summary>
                 /// Configures what happens when <see cref="IActor.Go()"/> is invoked.
                 /// </summary>
-                /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Nested.Deep.Ctx, State, IActor}"/> used by <see cref="IActor.Go()"/>.</param>
+                /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Nested.Deep.Ctx, global::System.IServiceProvider, State, IActor}"/> used by <see cref="IActor.Go()"/>.</param>
                 /// <returns>The same configurator for chaining.</returns>
-                IStateConfigurator OnGo(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Nested.Deep.Ctx, State, IActor>> configure);
+                IStateConfigurator OnGo(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Nested.Deep.Ctx, global::System.IServiceProvider, State, IActor>> configure);
             }
             
             /// <summary>
             /// <see cref="global::Sample.Nested.Deep.Outer.Machine"/> runtime actor.
             /// </summary>
             /// <remarks>
-            /// Use <see cref="CreateActor(global::Sample.Nested.Deep.Ctx)"/> or <see cref="CreateActorWithState(global::Sample.Nested.Deep.Ctx, State)"/> to create an instance.
+            /// The machine's service provider type argument is <c>global::System.IServiceProvider</c>.
+            /// Use the generated <c>CreateActor</c> or <c>CreateActorWithState</c> overloads with an <see cref="global::Nalu.SharpState.IStateMachineServiceProviderResolver{T}"/> implementation (instantiated as <c>IStateMachineServiceProviderResolver&lt;global::System.IServiceProvider&gt;</c>) for synchronous transitions and scoped providers for <c>ReactAsync</c>.
             /// </remarks>
             public interface IActor
             {
@@ -119,25 +120,27 @@ namespace Sample.Nested.Deep
             /// Useful for dependency injection and unit tests.
             /// </summary>
             /// <param name="context">The shared <see cref="global::Sample.Nested.Deep.Ctx"/> passed to guards, actions, and reactions.</param>
+            /// <param name="serviceProviderResolver">Resolver used for <see cref="global::Nalu.SharpState.IStateMachineServiceProviderResolver{T}.GetServiceProvider"/> during transitions and scoped providers for <c>ReactAsync</c>.</param>
             /// <param name="state">The starting state. Composite states resolve to their initial leaf.</param>
             /// <returns>A new <see cref="IActor"/> instance.</returns>
-            public delegate IActor CreateActorWithStateFactory(global::Sample.Nested.Deep.Ctx context, State state);
+            public delegate IActor CreateActorWithStateFactory(global::Sample.Nested.Deep.Ctx context, global::Nalu.SharpState.IStateMachineServiceProviderResolver<global::System.IServiceProvider> serviceProviderResolver, State state);
             
             /// <summary>
             /// Factory delegate that creates a new <see cref="IActor"/> starting at <see cref="GetInitialState()"/>, bound to this generated state machine definition.
             /// Useful for dependency injection and unit tests.
             /// </summary>
             /// <param name="context">The shared <see cref="global::Sample.Nested.Deep.Ctx"/> passed to guards, actions, and reactions.</param>
+            /// <param name="serviceProviderResolver">Resolver used for <see cref="global::Nalu.SharpState.IStateMachineServiceProviderResolver{T}.GetServiceProvider"/> during transitions and scoped providers for <c>ReactAsync</c>.</param>
             /// <returns>A new <see cref="IActor"/> instance.</returns>
-            public delegate IActor CreateActorFactory(global::Sample.Nested.Deep.Ctx context);
+            public delegate IActor CreateActorFactory(global::Sample.Nested.Deep.Ctx context, global::Nalu.SharpState.IStateMachineServiceProviderResolver<global::System.IServiceProvider> serviceProviderResolver);
             
             private static IStateConfigurator ConfigureState() => new GeneratedStateConfigurator();
             
-            private static readonly global::Nalu.SharpState.StateMachineDefinition<global::Sample.Nested.Deep.Ctx, State, Trigger, IActor> _definition = BuildDefinition();
+            private static readonly global::Nalu.SharpState.StateMachineDefinition<global::Sample.Nested.Deep.Ctx, global::System.IServiceProvider, State, Trigger, IActor> _definition = BuildDefinition();
             
-            private static global::Nalu.SharpState.StateMachineDefinition<global::Sample.Nested.Deep.Ctx, State, Trigger, IActor> BuildDefinition()
+            private static global::Nalu.SharpState.StateMachineDefinition<global::Sample.Nested.Deep.Ctx, global::System.IServiceProvider, State, Trigger, IActor> BuildDefinition()
             {
-                var map = new global::Nalu.SharpState.InternalEnumMap<State, global::Nalu.SharpState.IStateConfiguration<global::Sample.Nested.Deep.Ctx, State, Trigger, IActor>>();
+                var map = new global::Nalu.SharpState.InternalEnumMap<State, global::Nalu.SharpState.IStateConfiguration<global::Sample.Nested.Deep.Ctx, global::System.IServiceProvider, State, Trigger, IActor>>();
                 {
                     var c = (GeneratedStateConfigurator)A;
                     map[State.A] = c;
@@ -146,7 +149,7 @@ namespace Sample.Nested.Deep
                     var c = (GeneratedStateConfigurator)B;
                     map[State.B] = c;
                 }
-                return new global::Nalu.SharpState.StateMachineDefinition<global::Sample.Nested.Deep.Ctx, State, Trigger, IActor>(map);
+                return new global::Nalu.SharpState.StateMachineDefinition<global::Sample.Nested.Deep.Ctx, global::System.IServiceProvider, State, Trigger, IActor>(map);
             }
             
             /// <summary>
@@ -171,24 +174,26 @@ namespace Sample.Nested.Deep
             /// Creates a new <see cref="IActor"/> bound to this generated state machine definition.
             /// </summary>
             /// <param name="context">The shared <see cref="global::Sample.Nested.Deep.Ctx"/> passed to guards, actions, and reactions.</param>
+            /// <param name="serviceProviderResolver">Resolver for <see cref="global::Nalu.SharpState.IStateMachineServiceProviderResolver{T}"/> (instantiated as <c>IStateMachineServiceProviderResolver&lt;global::System.IServiceProvider&gt;</c>).</param>
             /// <param name="state">The starting state. Composite states resolve to their initial leaf.</param>
             /// <returns>A new <see cref="IActor"/> instance.</returns>
-            public static IActor CreateActorWithState(global::Sample.Nested.Deep.Ctx context, State state) => new Actor(_definition, state, context);
+            public static IActor CreateActorWithState(global::Sample.Nested.Deep.Ctx context, global::Nalu.SharpState.IStateMachineServiceProviderResolver<global::System.IServiceProvider> serviceProviderResolver, State state) => new Actor(_definition, state, context, serviceProviderResolver);
             
             /// <summary>
             /// Creates a new <see cref="IActor"/> bound to this generated state machine definition.
             /// </summary>
             /// <param name="context">The shared <see cref="global::Sample.Nested.Deep.Ctx"/> used to create an actor starting from <see cref="GetInitialState()"/>.</param>
+            /// <param name="serviceProviderResolver">Resolver for <see cref="global::Nalu.SharpState.IStateMachineServiceProviderResolver{T}"/> (instantiated as <c>IStateMachineServiceProviderResolver&lt;global::System.IServiceProvider&gt;</c>).</param>
             /// <returns>A new <see cref="IActor"/> instance at the machine's initial state.</returns>
-            public static IActor CreateActor(global::Sample.Nested.Deep.Ctx context) => CreateActorWithState(context, GetInitialState());
+            public static IActor CreateActor(global::Sample.Nested.Deep.Ctx context, global::Nalu.SharpState.IStateMachineServiceProviderResolver<global::System.IServiceProvider> serviceProviderResolver) => CreateActorWithState(context, serviceProviderResolver, GetInitialState());
             
             private sealed class Actor : IActor
             {
-                private readonly global::Nalu.SharpState.StateMachineEngine<global::Sample.Nested.Deep.Ctx, State, Trigger, IActor> _engine;
+                private readonly global::Nalu.SharpState.StateMachineEngine<global::Sample.Nested.Deep.Ctx, global::System.IServiceProvider, State, Trigger, IActor> _engine;
                 
-                internal Actor(global::Nalu.SharpState.StateMachineDefinition<global::Sample.Nested.Deep.Ctx, State, Trigger, IActor> definition, State currentState, global::Sample.Nested.Deep.Ctx context)
+                internal Actor(global::Nalu.SharpState.StateMachineDefinition<global::Sample.Nested.Deep.Ctx, global::System.IServiceProvider, State, Trigger, IActor> definition, State currentState, global::Sample.Nested.Deep.Ctx context, global::Nalu.SharpState.IStateMachineServiceProviderResolver<global::System.IServiceProvider> serviceProviderResolver)
                 {
-                    _engine = new global::Nalu.SharpState.StateMachineEngine<global::Sample.Nested.Deep.Ctx, State, Trigger, IActor>(definition, currentState, context, this);
+                    _engine = new global::Nalu.SharpState.StateMachineEngine<global::Sample.Nested.Deep.Ctx, global::System.IServiceProvider, State, Trigger, IActor>(definition, currentState, context, this, serviceProviderResolver);
                 }
                 
                 public State CurrentState => _engine.CurrentState;
@@ -220,7 +225,7 @@ namespace Sample.Nested.Deep
                 public void Go() => _engine.Fire(Trigger.Go, global::Nalu.SharpState.TriggerArgs.Empty);
             }
             
-            private sealed class GeneratedStateConfigurator : global::Nalu.SharpState.StateConfigurator<global::Sample.Nested.Deep.Ctx, State, Trigger, IActor>, IStateConfigurator
+            private sealed class GeneratedStateConfigurator : global::Nalu.SharpState.StateConfigurator<global::Sample.Nested.Deep.Ctx, global::System.IServiceProvider, State, Trigger, IActor>, IStateConfigurator
             {
                 internal void ApplyParent(State parent) => SetParent(parent);
                 
@@ -238,9 +243,9 @@ namespace Sample.Nested.Deep
                     return this;
                 }
                 
-                public IStateConfigurator OnGo(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Nested.Deep.Ctx, State, IActor>> configure)
+                public IStateConfigurator OnGo(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Nested.Deep.Ctx, global::System.IServiceProvider, State, IActor>> configure)
                 {
-                    var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Nested.Deep.Ctx, State, IActor>();
+                    var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Nested.Deep.Ctx, global::System.IServiceProvider, State, IActor>();
                     configure(builder);
                     builder.Validate();
                     AddTransitions(Trigger.Go, builder.BuildTransitions());

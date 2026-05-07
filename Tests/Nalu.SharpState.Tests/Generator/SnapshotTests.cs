@@ -316,7 +316,7 @@ public class SnapshotTests
             refs,
             new Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        var generator = new Nalu.SharpState.Generators.StateMachineGenerator();
+        var generator = new Generators.StateMachineGenerator();
         GeneratorDriver driver = Microsoft.CodeAnalysis.CSharp.CSharpGeneratorDriver.Create(
             generators: [generator.AsSourceGenerator()],
             parseOptions: (Microsoft.CodeAnalysis.CSharp.CSharpParseOptions) syntaxTree.Options,

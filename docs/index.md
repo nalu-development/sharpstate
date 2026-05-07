@@ -26,13 +26,20 @@ dotnet add package Nalu.SharpState
 
 The package bundles the source generator, so no additional setup or `UseXxx(...)` call is required.
 
+When you use **`Microsoft.Extensions.DependencyInjection`** with **`IServiceProvider`** as the machine’s service-provider type, add the companion package for a ready-made resolver and registration helpers:
+
+```bash
+dotnet add package Nalu.SharpState.DependencyInjection
+```
+
 ## Anatomy of a machine
 
-A machine lives in a single `static partial class` (for example `public static partial class MyMachine`) marked with `[StateMachineDefinition]`. It is made of three building blocks:
+A machine lives in a single `static partial class` (for example `public static partial class MyMachine`) marked with `[StateMachineDefinition]`. It is made of four building blocks:
 
 | Building block | Declared as | Role |
 |----------------|-------------|------|
-| **Context** | Any class you own | Carries data into every guard and action. Passed as a type argument to `[StateMachineDefinition]`. |
+| **Context** | Any class you own | Holds **machine-facing state** (counters, domain fields, flags the guards and actions update). Passed as the first argument to `[StateMachineDefinition]`. Prefer resolving **services** (`ILogger`, repositories, `HttpClient`, …) from **`TServiceProvider`** in `When` / `Invoke` / `ReactAsync` overloads rather than storing them on the context. |
+| **Service provider** | Type from `ServiceProviderType` (defaults to `IServiceProvider`) | Passed to guard/action overloads and, optionally scoped, to `ReactAsync`. See [Service provider and actor factories](#service-provider-and-actor-factories). |
 | **Triggers** | `[StateTriggerDefinition] static partial void` methods | Inputs to the machine. Their parameter list becomes the dispatch signature. At most **three** parameters; group additional values in a `record struct`, a named tuple, or similar and pass that as one parameter (see `NSS011`). |
 | **States** | `[StateDefinition] static IStateConfiguration` properties | Nodes of the machine. The property body configures outgoing transitions. |
 
@@ -74,23 +81,134 @@ The generator produces:
 - A `State` enum with the values `Closed, Opened`.
 - A `Trigger` enum with the values `Open, Close`.
 - A nested `public interface IActor` exposing `CanOpen(string)`, `Open(string)`, `CanClose()`, `Close()`, `CurrentState`, `Context`, `IsIn(...)`, `StateChanged`, `ReactionFailed`, and `OnUnhandled`.
-- Nested `public delegate IActor CreateActorFactory(DoorContext context)` and `public delegate IActor CreateActorWithStateFactory(DoorContext context, State state)` for dependency injection and tests.
+- Nested factory delegates for dependency injection:
+  - `CreateActorFactory` / `CreateActorWithStateFactory` — match `CreateActor(context, IStateMachineServiceProviderResolver<IServiceProvider> serviceProviderResolver)` and `CreateActorWithState(..., resolver, state)`.
 - A `public static State GetInitialState()` helper for the root machine.
 - A `public static string ToDot()` helper that renders the machine as a Graphviz DOT graph.
 - A `public static string ToMermaid()` helper that renders the machine as a Mermaid `stateDiagram-v2`.
-- A `public static IActor CreateActor(DoorContext context)` helper that starts from the root initial state.
-- A `public static IActor CreateActorWithState(DoorContext context, State state)` helper for a non-default starting state.
+- `public static IActor CreateActor(DoorContext context, IStateMachineServiceProviderResolver<IServiceProvider> serviceProviderResolver)` and `CreateActorWithState(..., resolver, state)`.
 
 Usage:
 
 ```csharp
-var door = DoorMachine.CreateActor(new DoorContext());
+using System;
+using Microsoft.Extensions.DependencyInjection;
+using Nalu.SharpState;
+
+IServiceProvider root = ...; // e.g. Host.Services or another composition root
+
+var resolver = new StateMachineServiceProviderResolver(root);
+var door = DoorMachine.CreateActor(new DoorContext(), resolver);
 
 door.Open("delivery");
 
 Console.WriteLine(door.CurrentState);     // Opened
 Console.WriteLine(door.Context.OpenCount); // 1
 ```
+
+`StateMachineServiceProviderResolver` comes from **`Nalu.SharpState.DependencyInjection`** (same `Nalu.SharpState` namespace as the core APIs). The actor captures `GetServiceProvider()` for synchronous guards, target selectors, and actions. Each `ReactAsync` asks the resolver for a reaction-scoped provider and disposes the returned token when the reaction finishes. See [Service provider and actor factories](#service-provider-and-actor-factories).
+
+## Service provider and actor factories
+
+`[StateMachineDefinition(typeof(DoorContext))]` is shorthand for **`[StateMachineDefinition(typeof(DoorContext), typeof(IServiceProvider))]`**: the machine’s second type argument is **`TServiceProvider`**, used for dependency resolution in fluent guards, `Invoke`, and `ReactAsync`.
+
+- **`IStateMachineServiceProviderResolver<TServiceProvider>`** has two jobs:
+  - `GetServiceProvider()` supplies the provider captured by the actor for synchronous `When`, `Target`, and `Invoke` clauses.
+  - `CreateScopedServiceProvider(out TServiceProvider)` supplies the provider passed to each `ReactAsync` and returns the token the engine disposes afterward.
+
+For machines that do not resolve services, keep the default `IServiceProvider` service-provider type and pass **`StateMachineEmptyServiceProviderResolver.Instance`**:
+
+```csharp
+var actor = MyMachine.CreateActor(context, StateMachineEmptyServiceProviderResolver.Instance);
+```
+
+For simple, non-DI use cases, pass your own service facade as `TServiceProvider` and wrap the instance with **`StateMachineStaticServiceProviderResolver<TServiceProvider>`**. It reuses the same instance for synchronous clauses and `ReactAsync`.
+
+```csharp
+public interface IMyServices
+{
+    IFoo Foo { get; }
+    IBar Bar { get; }
+}
+
+[StateMachineDefinition(typeof(MyContext), typeof(IMyServices))]
+public static partial class MyMachine;
+
+var resolver = new StateMachineStaticServiceProviderResolver<IMyServices>(services);
+var actor = MyMachine.CreateActor(context, resolver);
+```
+
+For **`IServiceProvider`**, reference **`Nalu.SharpState.DependencyInjection`**. Use **`StateMachineServiceProviderResolver`** when `ReactAsync` should run in its own Microsoft DI scope, **`StateMachineStaticServiceProviderResolver`** when it should reuse the root provider, or your own resolver for other lifetime rules. A separate reaction scope prevents background work from holding onto services from the caller's scope; once opened, the reaction scope can continue after the caller scope is disposed.
+
+### Microsoft.Extensions.DependencyInjection
+
+Add **`Nalu.SharpState.DependencyInjection`** for **`StateMachineServiceProviderResolver`**, **`StateMachineStaticServiceProviderResolver`**, and the **`IServiceCollection`** extensions **`AddScopedStateMachineServiceProviderResolver()`** and **`AddSingletonStateMachineServiceProviderResolver()`**.
+
+| Registration | Implementation type | Behavior |
+|--------------|---------------------|----------|
+| **`AddScopedStateMachineServiceProviderResolver()`** | **`StateMachineServiceProviderResolver`** | The actor captures the current scope’s provider. Each `ReactAsync` opens and later disposes a child scope. |
+| **`AddSingletonStateMachineServiceProviderResolver()`** | **`StateMachineStaticServiceProviderResolver`** | The actor and `ReactAsync` reuse the same root provider. No child scope is created. |
+
+For ASP.NET Core request data, snapshot values before firing the trigger. `IHttpContextAccessor.HttpContext` and other `AsyncLocal` values may flow to scheduled reactions, but the request can complete before `ReactAsync` runs. Copy values such as correlation IDs or `HttpContext.Items` into the machine context, trigger arguments, or an immutable snapshot service instead of reading the live `HttpContext` from the reaction.
+
+**Registration** (typical for **`CreateActorFactory`** consumers or hosts):
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using Nalu.SharpState;
+
+// Same IServiceProvider for synchronous clauses and ReactAsync.
+services.AddSingletonStateMachineServiceProviderResolver();
+
+// Actor captures the current scope; ReactAsync gets a child scope per reaction.
+services.AddScopedStateMachineServiceProviderResolver();
+```
+
+**Manual construction** when you are not using **`IServiceCollection`** extensions, or when you need **`StateMachineServiceProviderResolver`** at the composition root while other services use singleton registration for the interface:
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using Nalu.SharpState;
+
+IServiceProvider root = ...; // e.g. Host.Services
+
+var resolver = new StateMachineServiceProviderResolver(root);
+var actor = MyMachine.CreateActor(context, resolver);
+```
+
+**Root-only resolver** (same **`IServiceProvider`** for synchronous work and each `ReactAsync`) is also what **`AddSingletonStateMachineServiceProviderResolver()`** registers. A custom version is small:
+
+```csharp
+sealed class SameInstanceResolver : IStateMachineServiceProviderResolver<IServiceProvider>
+{
+    private readonly IServiceProvider _instance;
+    public SameInstanceResolver(IServiceProvider instance) => _instance = instance;
+    public IServiceProvider GetServiceProvider() => _instance;
+
+    public IDisposable CreateScopedServiceProvider(out IServiceProvider serviceProvider)
+    {
+        serviceProvider = _instance;
+        return NoopDisposable.Instance;
+    }
+
+    private sealed class NoopDisposable : IDisposable
+    {
+        public static readonly NoopDisposable Instance = new();
+        public void Dispose() { }
+    }
+}
+```
+
+```csharp
+using Microsoft.Extensions.DependencyInjection;
+using Nalu.SharpState;
+
+services.AddScoped<IStateMachineServiceProviderResolver<IServiceProvider>, SameInstanceResolver>();
+```
+
+Microsoft DI chooses the constructor on **`SameInstanceResolver`** and injects the **`IServiceProvider`** for the current resolution when applicable.
+
+Use **`[StateMachineDefinition(typeof(MyContext), typeof(MyServiceRoot))]`** when your composition root is not `IServiceProvider`. Fluent overloads then include `MyServiceRoot` alongside the context and trigger arguments where applicable.
 
 ## Describing transitions
 
@@ -99,12 +217,14 @@ Inside each `[StateDefinition]` property body you call `ConfigureState()` and ch
 | Method | Purpose |
 |--------|---------|
 | `Target(State s)` | Move to `s` when the trigger fires. If `s` is composite, its initial-child chain is resolved to a leaf. |
-| `Target((ctx, args...) => State.X, params (State Target, string Label)[] targetHints)` | Compute the target at fire time from the context and trigger arguments. Optional trailing target hints are **not** used at runtime; they document possible destinations and branch labels for `ToDot()` and `ToMermaid()` instead of a single **Dynamic target** placeholder. Omit the hints when you do not need that. |
+| `Target((ctx, args...) => State.X, ...)` | Compute the target at fire time from the context, optional **`TServiceProvider`**, and trigger arguments. Optional trailing target hints are **not** used at runtime; they document possible destinations and branch labels for `ToDot()` and `ToMermaid()` instead of a single **Dynamic target** placeholder. Omit the hints when you do not need that. |
 | `Stay()` | Run the action but keep the current state (internal transition). `StateChanged` is **not** raised. |
 | `Ignore()` | Syntax sugar for `Stay()` with no action, useful when a trigger should be accepted but do nothing. This ends the fluent chain. |
-| `When(predicate, label = null)` | Guards the transition before `Target(...)` or `Stay()`. The predicate receives the context and trigger arguments. Repeated calls are combined with logical AND in declaration order. When `label` is non-null, it is stored for diagram rendering (multiple labels are joined with ` & `). If every contributing guard omits a label, exports use `Unnamed guard 1` placeholders. |
-| `Invoke(action)` | Available after `Target(...)` or `Stay()`. Runs side effects before the state commits. Repeated calls run in declaration order. |
-| `ReactAsync(action)` | Available after `Target(...)` or `Stay()`. Schedules fire-and-forget work after the transition commits and after `StateChanged` fires. Repeated calls run sequentially in declaration order. |
+| `When(predicate, label = null)` | Guards the transition before `Target(...)` or `Stay()`. Overloads receive `(context, trigger args…)` and optionally **`(context, TServiceProvider, trigger args…)`** so you can consult DI. Repeated calls are combined with logical AND in declaration order. When `label` is non-null, it is stored for diagram rendering (multiple labels are joined with ` & `). If every contributing guard omits a label, exports use `Unnamed guard 1` placeholders. |
+| `Invoke(action)` | Available after `Target(...)` or `Stay()`. Runs side effects before the state commits. Overloads mirror `When` (with or without `TServiceProvider`). Repeated calls run in declaration order. |
+| `ReactAsync(action)` | Available after `Target(...)` or `Stay()`. Schedules fire-and-forget work after the transition commits and after `StateChanged` fires. Overloads may include **`TServiceProvider`** (the scoped instance from the resolver during the reaction). Repeated calls run sequentially in declaration order. |
+| `WhenEntering(action)` | Runs **after** the state commits on an external transition into this state. **`action` receives only `TContext`** — keep **state** here (timestamps, mirrored flags). For **DI services**, use `Invoke` / `ReactAsync` overloads that take **`TServiceProvider`**, or resolve services where you subscribe to events outside the machine. |
+| `WhenExiting(action)` | Runs **before** the state is left on an external transition. Same **`TContext`‑only** signature as `WhenEntering`. |
 
 If a dynamic `Target(...)` resolves to the current leaf state for a specific fire, SharpState treats that fire like an internal transition: no exit hooks, no state commit, no entry hooks, and no `StateChanged`.
 
@@ -124,14 +244,29 @@ If no transition matches, the `OnUnhandled` callback fires (see below).
 
 ### Entry and exit hooks
 
-States can also react to external transitions with `WhenEntering(...)` and `WhenExiting(...)`:
+States can react to external transitions with **`WhenEntering(...)`** and **`WhenExiting(...)`**. Those callbacks take **only** your **`TContext`**, so they are the right place to update **state you model on the context** (when a state was entered, simple counters, flags). **`ILogger`**, databases, and other **application services** should be resolved from **`TServiceProvider`** using the **`When`**, **`Invoke`**, or **`ReactAsync`** overloads that include **`(context, TServiceProvider, …)`** (see the table above).
 
 ```csharp
+public sealed class WorkContext
+{
+    public bool IsRunning { get; set; }
+    public DateTime RunningStartedUtc { get; set; }
+}
+
 [StateDefinition]
 private static IStateConfiguration Running { get; } = ConfigureState()
-    .WhenEntering(ctx => ctx.Log.Add("entered running"))
-    .WhenExiting(ctx => ctx.Log.Add("leaving running"))
-    .OnStop(t => t.Target(State.Stopped));
+    .WhenEntering(ctx =>
+    {
+        ctx.IsRunning = true;
+        ctx.RunningStartedUtc = DateTime.UtcNow;
+    })
+    .WhenExiting(ctx => ctx.IsRunning = false)
+    .OnStop(t => t
+        .Target(State.Stopped)
+        .Invoke((ctx, services) =>
+            services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>()
+                .CreateLogger(nameof(MyMachine))
+                .LogInformation("Stopped; run began at {Started:o}", ctx.RunningStartedUtc)));
 ```
 
 Hooks run only for external transitions:
@@ -140,18 +275,29 @@ Hooks run only for external transitions:
 - Entry hooks run from that ancestor's child down to the new leaf.
 - Internal transitions (`Stay()` / `Ignore()`) do not fire entry or exit hooks.
 
+When you need **`TServiceProvider`** **after** `StateChanged` (for example logging that aligns with `ReactAsync` timing), add a **`ReactAsync((actor, ctx, services) => …)`** (or `async` equivalent) on the same transition chain.
+
 ## Interacting with the actor
 
 The generated `IActor` exposes everything you need at runtime:
 
 ```csharp
-var door = DoorMachine.CreateActor(new DoorContext());
+using System;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Nalu.SharpState;
+
+IServiceProvider services = ...;
+
+var door = DoorMachine.CreateActor(new DoorContext(), new StateMachineServiceProviderResolver(services));
 
 door.StateChanged += (from, to, trigger, args) =>
-    Console.WriteLine($"{from} -> {to} via {trigger}");
+    services.GetRequiredService<ILoggerFactory>().CreateLogger("Door")
+        .LogInformation("{From} -> {To} via {Trigger}", from, to, trigger);
 
 door.OnUnhandled = (current, trigger, args) =>
-    logger.LogWarning("{Trigger} ignored while in {State}", trigger, current);
+    services.GetRequiredService<ILoggerFactory>().CreateLogger("Door")
+        .LogWarning("{Trigger} ignored while in {State}", trigger, current);
 
 door.Open("delivery");
 Console.WriteLine(door.CurrentState);         // Opened
@@ -161,7 +307,7 @@ Console.WriteLine(door.IsIn(DoorMachine.State.Opened)); // true
 | Member | Description |
 |--------|-------------|
 | `CurrentState` | Current **leaf** state. When the machine is in a nested composite it always reports the leaf. |
-| `Context` | The context instance supplied to `CreateActor` / `CreateActorWithState`. |
+| `Context` | The context instance supplied to `CreateActor` / `CreateActorWithState` — use it for **state** the machine owns (balances, open counts, UI flags). **`IStateMachineServiceProviderResolver<…>`** is separate; resolve **services** from `TServiceProvider` in fluent overloads or from your host when handling events. |
 | `IsIn(State s)` | `true` if `CurrentState` equals `s` **or** is a descendant of `s`. Use this to query composites. |
 | `StateChanged` | `StateChangedHandler<State, Trigger>` raised **after** a non-internal transition commits. |
 | `ReactionFailed` | Raised when a background `ReactAsync(...)` callback throws after the transition already completed. |
@@ -311,7 +457,9 @@ When multiple Mermaid transitions share the same source and target (for example 
 
 ### Testability
 
-For application code, prefer injecting the generated **factory delegates** instead of calling the static `CreateActor` / `CreateActorWithState` methods from many places. Most apps register **`CreateActorFactory`**, which matches `CreateActor(DoorContext)` and starts the actor at the machine’s initial state. Use **`CreateActorWithStateFactory`** when callers must pass an explicit `State` (rehydration, tests, or non-default start):
+For application code, prefer injecting the generated **factory delegates** instead of calling the static `CreateActor` / `CreateActorWithState` methods from many places.
+
+Register **`CreateActorFactory`** / **`CreateActorWithStateFactory`** and inject **`IStateMachineServiceProviderResolver<IServiceProvider>`** (for example **`AddSingletonStateMachineServiceProviderResolver()`** or **`AddScopedStateMachineServiceProviderResolver()`** from **`Nalu.SharpState.DependencyInjection`**, or register your own resolver implementation in the container and let **`CreateActorFactory`** consumers receive it indirectly).
 
 ```csharp
 services.AddSingleton<DoorMachine.CreateActorFactory>(DoorMachine.CreateActor);
@@ -322,23 +470,18 @@ public sealed class DoorWorkflow
 
     public DoorWorkflow(DoorMachine.CreateActorFactory createDoor) => _createDoor = createDoor;
 
-    public DoorMachine.IActor Start(DoorContext context) => _createDoor(context);
+    public DoorMachine.IActor Start(DoorContext context, IStateMachineServiceProviderResolver<IServiceProvider> resolver) =>
+        _createDoor(context, resolver);
 }
 ```
 
-If you need a specific starting `State` instead of the root initial state:
-
-```csharp
-services.AddSingleton<DoorMachine.CreateActorWithStateFactory>(DoorMachine.CreateActorWithState);
-
-// ... inject CreateActorWithStateFactory and call: _createDoor(context, DoorMachine.State.Closed);
-```
+If you need a specific starting `State` instead of the root initial state, use the matching **`…WithStateFactory`** delegate and pass `State` as the last argument.
 
 This keeps actor creation DI-friendly and unit-testable:
 
-- tests can replace `CreateActorFactory` (or `CreateActorWithStateFactory`) with a lambda
+- tests can replace a factory delegate with a lambda
 - the lambda can return a mocked or fake `DoorMachine.IActor`
-- production code can still use `DoorMachine.CreateActor` or `DoorMachine.CreateActorWithState` as the implementation behind the delegate
+- production code can still use the static `DoorMachine.CreateActor` / `CreateActorWithState` overloads as the implementation behind the delegate
 
 ### Unit testing
 
@@ -347,10 +490,11 @@ With `NSubstitute`, a unit test can stub both the factory and the generated acto
 ```csharp
 var actor = Substitute.For<DoorMachine.IActor>();
 var factory = Substitute.For<DoorMachine.CreateActorFactory>();
-factory(Arg.Any<DoorContext>()).Returns(actor);
+factory(Arg.Any<DoorContext>(), Arg.Any<IStateMachineServiceProviderResolver<IServiceProvider>>()).Returns(actor);
 
 var workflow = new DoorWorkflow(factory);
-var result = workflow.Start(new DoorContext());
+var resolver = Substitute.For<IStateMachineServiceProviderResolver<IServiceProvider>>();
+var result = workflow.Start(new DoorContext(), resolver);
 
 result.Should().BeSameAs(actor);
 ```
@@ -410,9 +554,19 @@ It is **not** raised when:
 
 ## Guards and actions
 
-Guards and actions both receive the context followed by the trigger's parameters — exactly the parameters you declared on the `partial void` method:
+Guards and actions receive the context, optional **`TServiceProvider`**, and the trigger's parameters — matching the overloads on `ISyncStateTriggerBuilder<…>`. The zero–trigger-parameter form is `(context)` / `(context, TServiceProvider)`; with trigger parameters you can use `(context, arg0, …)` or `(context, TServiceProvider, arg0, …)` as needed.
 
 ```csharp
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Nalu.SharpState;
+
+public sealed class AccountContext
+{
+    public decimal Balance { get; set; }
+    public List<(string Line, string Note)> Ledger { get; } = [];
+}
+
 [StateTriggerDefinition] static partial void Withdraw(decimal amount, string note);
 
 [StateDefinition]
@@ -420,38 +574,58 @@ private static IStateConfiguration Open { get; } = ConfigureState()
     .OnWithdraw(t => t
         .When((ctx, amount, _) => amount <= ctx.Balance)
         .Target(State.Open)
-        .Invoke((ctx, amount, note) =>
+        .Invoke((ctx, services, amount, note) =>
         {
+            services.GetRequiredService<ILogger<AccountContext>>()
+                .LogInformation("Withdrawing {Amount} ({Note})", amount, note);
             ctx.Balance -= amount;
             ctx.Ledger.Add(($"-{amount}", note));
         }))
     .OnWithdraw(t => t
         .Stay()
-        .Invoke((ctx, amount, note) =>
-            ctx.Ledger.Add((note, $"insufficient for {amount}"))));
+        .Invoke((ctx, services, amount, note) =>
+        {
+            services.GetRequiredService<ILogger<AccountContext>>()
+                .LogWarning("Insufficient funds for {Amount}", amount);
+            ctx.Ledger.Add((note, $"insufficient for {amount}"));
+        }));
 ```
+
+Here **`AccountContext`** holds **account state** (`Balance`, `Ledger`); **`ILogger<AccountContext>`** comes from **`TServiceProvider`** instead of living on the context.
 
 Guards are pure predicates — keep them free of side effects. `Invoke(...)` runs inline during dispatch and any exception it throws propagates out of `Fire(...)` before the new state is committed.
 
 ### ReactAsync
 
-Use `ReactAsync(...)` when the transition should commit immediately but you still want to kick off asynchronous follow-up work:
+Use `ReactAsync(...)` when the transition should commit immediately but you still want to kick off asynchronous follow-up work. Resolve collaborators from **`TServiceProvider`** rather than keeping service instances on the context:
 
 ```csharp
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+
+// Registered in DI, e.g. services.AddSingleton<IApprovalService, ApprovalService>();
+public interface IApprovalService
+{
+    Task ApproveAsync(string id);
+}
+
 [StateDefinition]
 private static IStateConfiguration Pending { get; } = ConfigureState()
     .OnRequestApproval(t => t
         .Target(State.Approving)
-        .ReactAsync(async (actor, ctx, id) =>
+        .ReactAsync(async (actor, ctx, services, id) =>
         {
+            var approvals = services.GetRequiredService<IApprovalService>();
             try {
-                await ctx.ApproveService.ApproveAsync(id);
+                await approvals.ApproveAsync(id);
                 actor.Approve();
             } catch {
                 actor.Reject();
             }
         }));
 ```
+
+Use overloads that pass **`TServiceProvider`** after the context (for example `async (actor, ctx, services, id) => …`) when reactions should resolve services from the **scoped** provider supplied for `ReactAsync`. Register types such as **`IApprovalService`** and **`ILogger<T>`** in your DI container; **`GetRequiredService`** is an extension from **`Microsoft.Extensions.DependencyInjection`**.
 
 For external transitions, the order is:
 

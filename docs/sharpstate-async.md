@@ -7,6 +7,16 @@
 `ReactAsync(...)` schedules fire-and-forget work **after** the transition is already finished:
 
 ```csharp
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using Nalu.SharpState;
+
+// Register in DI, e.g. services.AddSingleton<IApprovalService, ApprovalService>();
+public interface IApprovalService
+{
+    Task ApproveAsync(string id);
+}
+
 [StateMachineDefinition(typeof(InspectContext))]
 public static partial class ReviewMachine
 {
@@ -18,10 +28,12 @@ public static partial class ReviewMachine
     private static IStateConfiguration Pending { get; } = ConfigureState()
         .OnRequestApproval(t => t
             .Target(State.Approving)
-            .ReactAsync(async (actor, ctx, id) =>
+            // TServiceProvider overload: resolve collaborators from DI, not from the context.
+            .ReactAsync(async (actor, ctx, services, id) =>
             {
+                var approvals = services.GetRequiredService<IApprovalService>();
                 try {
-                    await ctx.ApproveService.ApproveAsync(id);
+                    await approvals.ApproveAsync(id);
                     actor.Approve();
                 } catch {
                     actor.Reject();
@@ -40,6 +52,8 @@ public static partial class ReviewMachine
     private static IStateConfiguration Rejected { get; } = ConfigureState();
 }
 ```
+
+`GetRequiredService` is an extension from **`Microsoft.Extensions.DependencyInjection`**. Register **`IApprovalService`** (and logging types such as **`ILogger<T>`** where you use them) in your DI container.
 
 For external transitions, the execution order is:
 
@@ -61,9 +75,15 @@ If you use a dynamic `Target((ctx, args...) => ...)` and it resolves to the curr
 - If a context exists (for example a UI thread), the reaction starts there.
 - If no context exists, the reaction is queued on the thread pool.
 
-This keeps the main trigger path synchronous while still giving UI applications predictable follow-up scheduling. The callback also receives the generated `IActor` instance, so you can trigger additional state changes after the awaited work completes.
+This keeps the main trigger path synchronous while still giving UI applications predictable follow-up scheduling. The callback receives the generated `IActor` first, so it can fire more triggers after awaited work completes. Overloads may include **`TServiceProvider`** after the context; that value comes from **`CreateScopedServiceProvider(out TServiceProvider)`**, and the engine disposes the returned token after the reaction.
+
+With **`Microsoft.Extensions.DependencyInjection`**, use **`StateMachineServiceProviderResolver`** (or **`AddScopedStateMachineServiceProviderResolver()`**) when each `ReactAsync` should receive its own DI scope. That separate reaction scope is intentional: the reaction must not keep using services from the caller's scope, and once the reaction scope is opened it can continue even if the caller scope is disposed. Use **`AddSingletonStateMachineServiceProviderResolver()`** when synchronous clauses and reactions should share the root provider. For custom rules, implement **`IStateMachineServiceProviderResolver<IServiceProvider>`** yourself. See [Service provider and actor factories](index.html#service-provider-and-actor-factories).
+
+In ASP.NET Core, do not rely on live `HttpContext` or request-scoped services inside `ReactAsync`. `AsyncLocal` values such as `IHttpContextAccessor.HttpContext` may flow to the scheduled reaction, but the request can finish before the reaction runs. Copy request data you need, such as correlation IDs or `HttpContext.Items`, into the machine context, trigger arguments, or an immutable snapshot service before firing the trigger.
 
 If `ReactAsync(...)` is registered multiple times on the same transition, the callbacks are awaited sequentially in declaration order.
+
+If a caller or test needs to await a specific reaction, keep that coordination explicit. For example, store a `TaskCompletionSource` on the machine context, complete it from the relevant `ReactAsync` callback, and await it from the caller. This waits for the reaction you care about without making every actor expose reaction-draining APIs.
 
 ## Failure reporting
 
@@ -73,6 +93,8 @@ Because the reaction is fire-and-forget, exceptions do **not** flow back out of 
 actor.ReactionFailed += (from, to, trigger, args, exception) =>
     logger.LogError(exception, "Reaction failed for {Trigger}", trigger);
 ```
+
+Use an **`ILogger`** (or **`ILoggerFactory`**) you resolve from your host or **`IServiceProvider`**, not the state machine **`Context`**, unless you intentionally cache a logger reference there when constructing the context.
 
 The event is raised with:
 

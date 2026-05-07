@@ -53,7 +53,7 @@ public class StateMachineBenchmark
     private static (DoorContext doorActorContext, DoorMachine.IActor doorActor) CreateDoorActor()
     {
         var doorActorContext = new DoorContext();
-        var doorActor = DoorMachine.CreateActor(doorActorContext);
+        var doorActor = DoorMachine.CreateActor(doorActorContext, BenchmarkServiceProviders.EmptyResolver);
         return (doorActorContext, doorActor);
     }
 

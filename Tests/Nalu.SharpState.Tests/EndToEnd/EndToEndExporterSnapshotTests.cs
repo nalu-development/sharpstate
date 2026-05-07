@@ -1,5 +1,3 @@
-using Nalu.SharpState.Tests;
-
 namespace Nalu.SharpState.Tests.EndToEnd;
 
 [UsesVerify]

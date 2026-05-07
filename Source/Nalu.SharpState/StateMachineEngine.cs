@@ -5,39 +5,46 @@ namespace Nalu.SharpState;
 /// walks the hierarchy to resolve transitions, commits state changes, and schedules any post-transition reactions.
 /// </summary>
 /// <typeparam name="TContext">Type of the user-supplied context carried by the machine.</typeparam>
+/// <typeparam name="TServiceProvider">Type of the service provider passed to guards, actions, and reactions.</typeparam>
 /// <typeparam name="TState">Enum type listing all states of the machine.</typeparam>
 /// <typeparam name="TTrigger">Enum type listing all triggers of the machine.</typeparam>
 /// <typeparam name="TActor">Type of the actor passed into post-transition reactions.</typeparam>
-public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
+public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrigger, TActor>
     where TContext : class
     where TState : struct, Enum
     where TTrigger : struct, Enum
 {
-    private readonly StateMachineDefinition<TContext, TState, TTrigger, TActor> _definition;
+    private readonly StateMachineDefinition<TContext, TServiceProvider, TState, TTrigger, TActor> _definition;
     private readonly TActor _actor;
     private readonly TContext _context;
+    private readonly IStateMachineServiceProviderResolver<TServiceProvider> _serviceProviderResolver;
+    private readonly TServiceProvider _serviceProvider;
     private TState _currentState;
     private bool _isDispatching;
 
     /// <summary>
-    /// Initializes a new <see cref="StateMachineEngine{TContext, TState, TTrigger, TActor}"/>.
+    /// Initializes a new <see cref="StateMachineEngine{TContext, TServiceProvider, TState, TTrigger, TActor}"/>.
     /// If <paramref name="currentState"/> is a composite, its initial child chain is resolved to a leaf before the engine settles.
     /// </summary>
     /// <param name="definition">The immutable definition to dispatch against.</param>
     /// <param name="currentState">The initial state. Composites are resolved to their initial leaf.</param>
     /// <param name="context">The context carried through every transition.</param>
     /// <param name="actor">The actor instance to pass to post-transition reactions.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="definition"/> or <paramref name="context"/> is <c>null</c>.</exception>
+    /// <param name="serviceProviderResolver">Resolver whose provider is captured for synchronous dispatch; <c>ReactAsync</c> asks it for a reaction-scoped provider.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="definition"/>, <paramref name="context"/>, or <paramref name="serviceProviderResolver"/> is <c>null</c>.</exception>
     /// <exception cref="KeyNotFoundException"><paramref name="currentState"/> is not registered in the definition.</exception>
     public StateMachineEngine(
-        StateMachineDefinition<TContext, TState, TTrigger, TActor> definition,
+        StateMachineDefinition<TContext, TServiceProvider, TState, TTrigger, TActor> definition,
         TState currentState,
         TContext context,
-        TActor actor)
+        TActor actor,
+        IStateMachineServiceProviderResolver<TServiceProvider> serviceProviderResolver)
     {
         _definition = definition ?? throw new ArgumentNullException(nameof(definition));
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _actor = actor;
+        _serviceProviderResolver = serviceProviderResolver ?? throw new ArgumentNullException(nameof(serviceProviderResolver));
+        _serviceProvider = _serviceProviderResolver.GetServiceProvider();
 
         if (!_definition.TryGetConfiguration(currentState, out _))
         {
@@ -59,7 +66,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
 
     /// <summary>
     /// Raised after a transition has committed. Parameters are the source leaf, the new leaf, and the trigger that caused the change.
-    /// Not risen for internal transitions (<see cref="Transition{TContext, TState, TActor}.IsInternal"/>) or unhandled triggers.
+    /// Not risen for internal transitions (<see cref="Transition{TContext, TServiceProvider, TState, TActor}.IsInternal"/>) or unhandled triggers.
     /// </summary>
     public event StateChangedHandler<TState, TTrigger>? StateChanged;
 
@@ -112,7 +119,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
             }
 
             var transition = match.Value.Transition;
-            CommitTransition(trigger, match.Value.Source, transition, args);
+            CommitTransition(trigger, match.Value.Source, transition, args, _serviceProvider);
         }
         finally
         {
@@ -124,9 +131,12 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
     /// Determines whether the specified trigger currently has a matching transition.
     /// Guards are evaluated against the current state and supplied arguments, but no actions run and no state changes are committed.
     /// </summary>
-    public bool CanFire(TTrigger trigger, TriggerArgs args) => FindMatchingTransition(trigger, args).HasValue;
+    public bool CanFire(TTrigger trigger, TriggerArgs args)
+        => FindMatchingTransition(trigger, args).HasValue;
 
-    private (Transition<TContext, TState, TActor> Transition, TState Source)? FindMatchingTransition(TTrigger trigger, TriggerArgs args)
+    private (Transition<TContext, TServiceProvider, TState, TActor> Transition, TState Source)? FindMatchingTransition(
+        TTrigger trigger,
+        TriggerArgs args)
     {
         var source = _currentState;
         var state = source;
@@ -137,7 +147,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
             {
                 foreach (var transition in transitions)
                 {
-                    if (transition.Guard is null || transition.Guard(_context, args))
+                    if (transition.Guard is null || transition.Guard(_context, _serviceProvider, args))
                     {
                         return (transition, source);
                     }
@@ -156,22 +166,23 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
     private void CommitTransition(
         TTrigger trigger,
         TState source,
-        Transition<TContext, TState, TActor> transition,
-        TriggerArgs args)
+        Transition<TContext, TServiceProvider, TState, TActor> transition,
+        TriggerArgs args,
+        TServiceProvider serviceProvider)
     {
         if (transition.TargetSelector is not null)
         {
-            var resolvedTarget = transition.TargetSelector(_context, args);
+            var resolvedTarget = transition.TargetSelector(_context, serviceProvider, args);
             var resolvedLeaf = _definition.LeafOf(resolvedTarget);
             if (EqualityComparer<TState>.Default.Equals(resolvedLeaf, source))
             {
-                transition.SyncAction?.Invoke(_context, args);
+                transition.SyncAction?.Invoke(_context, serviceProvider, args);
                 ScheduleReaction(source, source, trigger, transition, args);
                 return;
             }
 
             InvokeExitActions(source, resolvedLeaf);
-            transition.SyncAction?.Invoke(_context, args);
+            transition.SyncAction?.Invoke(_context, serviceProvider, args);
             _currentState = resolvedLeaf;
             InvokeEntryActions(source, resolvedLeaf);
             NotifyContextAboutStateChange(resolvedLeaf);
@@ -182,14 +193,14 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
 
         if (transition.IsInternal)
         {
-            transition.SyncAction?.Invoke(_context, args);
+            transition.SyncAction?.Invoke(_context, serviceProvider, args);
             ScheduleReaction(source, source, trigger, transition, args);
             return;
         }
 
         var newLeaf = _definition.LeafOf(transition.Target);
         InvokeExitActions(source, newLeaf);
-        transition.SyncAction?.Invoke(_context, args);
+        transition.SyncAction?.Invoke(_context, serviceProvider, args);
         _currentState = newLeaf;
         InvokeEntryActions(source, newLeaf);
         NotifyContextAboutStateChange(newLeaf);
@@ -221,7 +232,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
         TState source,
         TState destination,
         TTrigger trigger,
-        Transition<TContext, TState, TActor> transition,
+        Transition<TContext, TServiceProvider, TState, TActor> transition,
         TriggerArgs args)
     {
         if (transition.ReactionAsync is null)
@@ -245,7 +256,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
 #pragma warning disable VSTHRD100
     private async void ExecuteReaction(
 #pragma warning restore VSTHRD100
-        Func<TActor, TContext, TriggerArgs, ValueTask> reactionAsync,
+        Func<TActor, TContext, TServiceProvider, TriggerArgs, ValueTask> reactionAsync,
         TState source,
         TState destination,
         TTrigger trigger,
@@ -253,7 +264,8 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
     {
         try
         {
-            await reactionAsync(_actor, _context, args);
+            using var scopeOwnership = _serviceProviderResolver.CreateScopedServiceProvider(out var scoped);
+            await reactionAsync(_actor, _context, scoped, args);
         }
         catch (Exception exception)
         {
@@ -274,7 +286,7 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
 
         var ancestors = (TState[])_definition.AncestorsOf(source);
         var lcaIndex = lca.HasValue ? Array.IndexOf(ancestors, lca.Value) : ancestors.Length;
-        
+
         yield return source;
 
         for (var i = 0; i < lcaIndex; i++)
@@ -295,22 +307,22 @@ public sealed class StateMachineEngine<TContext, TState, TTrigger, TActor>
         {
             yield return ancestors[i];
         }
-        
+
         yield return destination;
     }
 
     private sealed class ReactionWorkItem
     {
-        private readonly StateMachineEngine<TContext, TState, TTrigger, TActor> _engine;
-        private readonly Func<TActor, TContext, TriggerArgs, ValueTask> _reactionAsync;
+        private readonly StateMachineEngine<TContext, TServiceProvider, TState, TTrigger, TActor> _engine;
+        private readonly Func<TActor, TContext, TServiceProvider, TriggerArgs, ValueTask> _reactionAsync;
         private readonly TState _source;
         private readonly TState _destination;
         private readonly TTrigger _trigger;
         private readonly TriggerArgs _args;
 
         public ReactionWorkItem(
-            StateMachineEngine<TContext, TState, TTrigger, TActor> engine,
-            Func<TActor, TContext, TriggerArgs, ValueTask> reactionAsync,
+            StateMachineEngine<TContext, TServiceProvider, TState, TTrigger, TActor> engine,
+            Func<TActor, TContext, TServiceProvider, TriggerArgs, ValueTask> reactionAsync,
             TState source,
             TState destination,
             TTrigger trigger,

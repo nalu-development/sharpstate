@@ -4,10 +4,10 @@ namespace Nalu.SharpState.Tests.Runtime;
 
 public class StateAwareContextTests
 {
-    private static StateMachineDefinition<StateAwareTestContext<FlatState>, FlatState, FlatTrigger, TestActor> BuildFlat(
-        Action<InternalEnumMap<FlatState, TestStateConfigurator<StateAwareTestContext<FlatState>, FlatState, FlatTrigger, TestActor>>>? setup = null)
+    private static StateMachineDefinition<StateAwareTestContext<FlatState>, IServiceProvider, FlatState, FlatTrigger, TestActor> BuildFlat(
+        Action<InternalEnumMap<FlatState, TestStateConfigurator<StateAwareTestContext<FlatState>, IServiceProvider, FlatState, FlatTrigger, TestActor>>>? setup = null)
     {
-        var map = new InternalEnumMap<FlatState, TestStateConfigurator<StateAwareTestContext<FlatState>, FlatState, FlatTrigger, TestActor>>
+        var map = new InternalEnumMap<FlatState, TestStateConfigurator<StateAwareTestContext<FlatState>, IServiceProvider, FlatState, FlatTrigger, TestActor>>
                   {
                       [FlatState.A] = new(),
                       [FlatState.B] = new(),
@@ -16,18 +16,18 @@ public class StateAwareContextTests
 
         setup?.Invoke(map);
 
-        var forDef = new InternalEnumMap<FlatState, IStateConfiguration<StateAwareTestContext<FlatState>, FlatState, FlatTrigger, TestActor>>();
+        var forDef = new InternalEnumMap<FlatState, IStateConfiguration<StateAwareTestContext<FlatState>, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         foreach (var kvp in map)
         {
             forDef[kvp.Key] = kvp.Value;
         }
 
-        return new StateMachineDefinition<StateAwareTestContext<FlatState>, FlatState, FlatTrigger, TestActor>(forDef);
+        return new StateMachineDefinition<StateAwareTestContext<FlatState>, IServiceProvider, FlatState, FlatTrigger, TestActor>(forDef);
     }
 
-    private static StateMachineDefinition<StateAwareTestContext<HierState>, HierState, HierTrigger, TestActor> BuildStandardHierarchyStateAware()
+    private static StateMachineDefinition<StateAwareTestContext<HierState>, IServiceProvider, HierState, HierTrigger, TestActor> BuildStandardHierarchyStateAware()
     {
-        var map = new InternalEnumMap<HierState, TestStateConfigurator<StateAwareTestContext<HierState>, HierState, HierTrigger, TestActor>>
+        var map = new InternalEnumMap<HierState, TestStateConfigurator<StateAwareTestContext<HierState>, IServiceProvider, HierState, HierTrigger, TestActor>>
                   {
                       [HierState.Idle] = new(),
                       [HierState.Connected] = new(),
@@ -38,30 +38,30 @@ public class StateAwareContextTests
 
         map[HierState.Idle].On(
             HierTrigger.Connect,
-            TestTransition.ToTarget<StateAwareTestContext<HierState>, HierState, TestActor>(HierState.Connected));
+            TestTransition.ToTarget<StateAwareTestContext<HierState>, IServiceProvider, HierState, TestActor>(HierState.Connected));
         map[HierState.Connected]
             .AsStateMachine(HierState.Authenticating)
-            .On(HierTrigger.Disconnect, TestTransition.ToTarget<StateAwareTestContext<HierState>, HierState, TestActor>(HierState.Idle));
+            .On(HierTrigger.Disconnect, TestTransition.ToTarget<StateAwareTestContext<HierState>, IServiceProvider, HierState, TestActor>(HierState.Idle));
         map[HierState.Authenticating]
             .Parent(HierState.Connected)
-            .On(HierTrigger.AuthOk, TestTransition.ToTarget<StateAwareTestContext<HierState>, HierState, TestActor>(HierState.Authenticated));
+            .On(HierTrigger.AuthOk, TestTransition.ToTarget<StateAwareTestContext<HierState>, IServiceProvider, HierState, TestActor>(HierState.Authenticated));
         map[HierState.Authenticated]
             .Parent(HierState.Connected)
             .On(
                 HierTrigger.Message,
-                TestTransition.Stay<StateAwareTestContext<HierState>, HierState, TestActor>(
-                    syncAction: (ctx, args) => ctx.Log.Add(args.Get<string>(0))));
+                TestTransition.Stay<StateAwareTestContext<HierState>, IServiceProvider, HierState, TestActor>(
+                    syncAction: (ctx, _, args) => ctx.Log.Add(args.Get<string>(0))));
         map[HierState.Outside].On(
             HierTrigger.GoOutside,
-            TestTransition.ToTarget<StateAwareTestContext<HierState>, HierState, TestActor>(HierState.Outside));
+            TestTransition.ToTarget<StateAwareTestContext<HierState>, IServiceProvider, HierState, TestActor>(HierState.Outside));
 
-        var forDef = new InternalEnumMap<HierState, IStateConfiguration<StateAwareTestContext<HierState>, HierState, HierTrigger, TestActor>>();
+        var forDef = new InternalEnumMap<HierState, IStateConfiguration<StateAwareTestContext<HierState>, IServiceProvider, HierState, HierTrigger, TestActor>>();
         foreach (var kvp in map)
         {
             forDef[kvp.Key] = kvp.Value;
         }
 
-        return new StateMachineDefinition<StateAwareTestContext<HierState>, HierState, HierTrigger, TestActor>(forDef);
+        return new StateMachineDefinition<StateAwareTestContext<HierState>, IServiceProvider, HierState, HierTrigger, TestActor>(forDef);
     }
 
     [Fact]
@@ -71,15 +71,16 @@ public class StateAwareContextTests
         {
             map[FlatState.A].On(
                 FlatTrigger.Go,
-                TestTransition.ToTarget<StateAwareTestContext<FlatState>, FlatState, TestActor>(FlatState.B));
+                TestTransition.ToTarget<StateAwareTestContext<FlatState>, IServiceProvider, FlatState, TestActor>(FlatState.B));
         });
 
         var ctx = new StateAwareTestContext<FlatState>();
-        var engine = new StateMachineEngine<StateAwareTestContext<FlatState>, FlatState, FlatTrigger, TestActor>(
+        var engine = new StateMachineEngine<StateAwareTestContext<FlatState>, IServiceProvider, FlatState, FlatTrigger, TestActor>(
             definition,
             FlatState.A,
             ctx,
-            new TestActor());
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
 
         engine.Fire(FlatTrigger.Go, TriggerArgs.Empty);
 
@@ -94,16 +95,17 @@ public class StateAwareContextTests
         {
             map[FlatState.A].On(
                 FlatTrigger.Go,
-                TestTransition.ToTarget<StateAwareTestContext<FlatState>, FlatState, TestActor>(FlatState.B));
+                TestTransition.ToTarget<StateAwareTestContext<FlatState>, IServiceProvider, FlatState, TestActor>(FlatState.B));
             map[FlatState.B].WhenEntering(c => c.Log.Add("enter:B"));
         });
 
         var ctx = new StateAwareTestContext<FlatState>();
-        var engine = new StateMachineEngine<StateAwareTestContext<FlatState>, FlatState, FlatTrigger, TestActor>(
+        var engine = new StateMachineEngine<StateAwareTestContext<FlatState>, IServiceProvider, FlatState, FlatTrigger, TestActor>(
             definition,
             FlatState.A,
             ctx,
-            new TestActor());
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
 
         engine.StateChanged += (_, _, _, _) => ctx.Log.Add("changed");
 
@@ -118,15 +120,16 @@ public class StateAwareContextTests
         var definition = BuildFlat(map =>
         {
             map[FlatState.A]
-                .On(FlatTrigger.Go, TestTransition.Stay<StateAwareTestContext<FlatState>, FlatState, TestActor>());
+                .On(FlatTrigger.Go, TestTransition.Stay<StateAwareTestContext<FlatState>, IServiceProvider, FlatState, TestActor>());
         });
 
         var ctx = new StateAwareTestContext<FlatState>();
-        var engine = new StateMachineEngine<StateAwareTestContext<FlatState>, FlatState, FlatTrigger, TestActor>(
+        var engine = new StateMachineEngine<StateAwareTestContext<FlatState>, IServiceProvider, FlatState, FlatTrigger, TestActor>(
             definition,
             FlatState.A,
             ctx,
-            new TestActor());
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
 
         engine.Fire(FlatTrigger.Go, TriggerArgs.Empty);
 
@@ -142,16 +145,17 @@ public class StateAwareContextTests
             map[FlatState.A]
                 .On(
                     FlatTrigger.Go,
-                    TestTransition.ToDynamicTarget<StateAwareTestContext<FlatState>, FlatState, TestActor>(
-                        (_, args) => args.Get<bool>(0) ? FlatState.A : FlatState.B));
+                    TestTransition.ToDynamicTarget<StateAwareTestContext<FlatState>, IServiceProvider, FlatState, TestActor>(
+                        (_, _, args) => args.Get<bool>(0) ? FlatState.A : FlatState.B));
         });
 
         var ctx = new StateAwareTestContext<FlatState>();
-        var engine = new StateMachineEngine<StateAwareTestContext<FlatState>, FlatState, FlatTrigger, TestActor>(
+        var engine = new StateMachineEngine<StateAwareTestContext<FlatState>, IServiceProvider, FlatState, FlatTrigger, TestActor>(
             definition,
             FlatState.A,
             ctx,
-            new TestActor());
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
 
         engine.Fire(FlatTrigger.Go, TriggerArgs.From(true));
 
@@ -164,11 +168,12 @@ public class StateAwareContextTests
     {
         var definition = BuildFlat();
         var ctx = new StateAwareTestContext<FlatState>();
-        _ = new StateMachineEngine<StateAwareTestContext<FlatState>, FlatState, FlatTrigger, TestActor>(
+        _ = new StateMachineEngine<StateAwareTestContext<FlatState>, IServiceProvider, FlatState, FlatTrigger, TestActor>(
             definition,
             FlatState.A,
             ctx,
-            new TestActor());
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
 
         ctx.NotifiedStates.Should().BeEmpty();
     }
@@ -178,11 +183,12 @@ public class StateAwareContextTests
     {
         var definition = BuildStandardHierarchyStateAware();
         var ctx = new StateAwareTestContext<HierState>();
-        var engine = new StateMachineEngine<StateAwareTestContext<HierState>, HierState, HierTrigger, TestActor>(
+        var engine = new StateMachineEngine<StateAwareTestContext<HierState>, IServiceProvider, HierState, HierTrigger, TestActor>(
             definition,
             HierState.Authenticated,
             ctx,
-            new TestActor());
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
 
         engine.Fire(HierTrigger.Disconnect, TriggerArgs.Empty);
 

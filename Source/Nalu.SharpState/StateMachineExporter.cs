@@ -16,12 +16,13 @@ public static class StateMachineExporter
     /// <param name="rootInitialState">The initial state of the root region.</param>
     /// <param name="graphName">The label shown on the graph.</param>
     /// <typeparam name="TContext">Type of the machine context.</typeparam>
+    /// <typeparam name="TServiceProvider">Type of the service provider carried by the definition.</typeparam>
     /// <typeparam name="TState">Type of the state enum.</typeparam>
     /// <typeparam name="TTrigger">Type of the trigger enum.</typeparam>
     /// <typeparam name="TActor">Type of the actor passed to reactions.</typeparam>
     /// <returns>The DOT source for the graph.</returns>
-    public static string ToDot<TContext, TState, TTrigger, TActor>(
-        StateMachineDefinition<TContext, TState, TTrigger, TActor> definition,
+    public static string ToDot<TContext, TServiceProvider, TState, TTrigger, TActor>(
+        StateMachineDefinition<TContext, TServiceProvider, TState, TTrigger, TActor> definition,
         TState rootInitialState,
         string graphName)
         where TState : struct, Enum
@@ -253,7 +254,7 @@ public static class StateMachineExporter
 
         string? ResolveTargetNodeId(
             TState sourceState,
-            Transition<TContext, TState, TActor> transition,
+            Transition<TContext, TServiceProvider, TState, TActor> transition,
             int indent,
             string? compositeClusterAnchorId)
         {
@@ -298,7 +299,7 @@ public static class StateMachineExporter
 
         void DeferTargetEdge(
             IReadOnlyList<TState> currentContainerPath,
-            Transition<TContext, TState, TActor> transition,
+            Transition<TContext, TServiceProvider, TState, TActor> transition,
             string edge)
         {
             IReadOnlyList<TState> scopePath;
@@ -382,7 +383,7 @@ public static class StateMachineExporter
                 ? string.Empty
                 : string.Join("|", scopePath.Select(state => stateOrder[state]));
 
-        string BuildTriggerLabel(TTrigger trigger, Transition<TContext, TState, TActor> transition)
+        string BuildTriggerLabel(TTrigger trigger, Transition<TContext, TServiceProvider, TState, TActor> transition)
         {
             var triggerName = trigger.ToString();
             if (transition.Guard is null)
@@ -413,12 +414,13 @@ public static class StateMachineExporter
     /// <param name="rootInitialState">The initial state of the root region.</param>
     /// <param name="graphName">The title shown on the diagram.</param>
     /// <typeparam name="TContext">Type of the machine context.</typeparam>
+    /// <typeparam name="TServiceProvider">Type of the service provider carried by the definition.</typeparam>
     /// <typeparam name="TState">Type of the state enum.</typeparam>
     /// <typeparam name="TTrigger">Type of the trigger enum.</typeparam>
     /// <typeparam name="TActor">Type of the actor passed to reactions.</typeparam>
     /// <returns>The Mermaid state diagram source for the graph.</returns>
-    public static string ToMermaid<TContext, TState, TTrigger, TActor>(
-        StateMachineDefinition<TContext, TState, TTrigger, TActor> definition,
+    public static string ToMermaid<TContext, TServiceProvider, TState, TTrigger, TActor>(
+        StateMachineDefinition<TContext, TServiceProvider, TState, TTrigger, TActor> definition,
         TState rootInitialState,
         string graphName)
         where TState : struct, Enum
@@ -544,7 +546,7 @@ public static class StateMachineExporter
                     continue;
                 }
 
-                var triggerLabel = EscapeMermaidText(trigger.ToString());
+                EscapeMermaidText(trigger.ToString());
                 if (transitions.Any(transition => transition.Guard is not null))
                 {
                     var choiceId = NextAuxiliaryId("choice");
@@ -607,7 +609,6 @@ public static class StateMachineExporter
                     var mermaidTransition = new MermaidTransition(sourceNodeId, targetNodeId, trigger.ToString());
                     if (TryDeferCompositeRegionStayOutsideBlock(
                             sourceState,
-                            currentContainerPath,
                             transition,
                             sourceNodeId,
                             targetNodeId,
@@ -624,8 +625,7 @@ public static class StateMachineExporter
 
         bool TryDeferCompositeRegionStayOutsideBlock(
             TState sourceState,
-            IReadOnlyList<TState> currentContainerPath,
-            Transition<TContext, TState, TActor> transition,
+            Transition<TContext, TServiceProvider, TState, TActor> transition,
             string sourceNodeId,
             string targetNodeId,
             MermaidTransition mermaidTransition,
@@ -650,7 +650,7 @@ public static class StateMachineExporter
 
         void EmitTransitionTargets(
             TState sourceState,
-            Transition<TContext, TState, TActor> transition,
+            Transition<TContext, TServiceProvider, TState, TActor> transition,
             string sourceNodeId,
             IReadOnlyList<TState> currentContainerPath,
             int indent,
@@ -699,7 +699,6 @@ public static class StateMachineExporter
 
             if (TryDeferCompositeRegionStayOutsideBlock(
                     sourceState,
-                    currentContainerPath,
                     transition,
                     sourceNodeId,
                     targetNodeId,
@@ -721,7 +720,7 @@ public static class StateMachineExporter
 
         string ResolveTargetNodeId(
             TState sourceState,
-            Transition<TContext, TState, TActor> transition,
+            Transition<TContext, TServiceProvider, TState, TActor> transition,
             int indent)
         {
             if (transition.IsInternal)
@@ -755,7 +754,7 @@ public static class StateMachineExporter
 
         void DeferTargetTransition(
             IReadOnlyList<TState> currentContainerPath,
-            Transition<TContext, TState, TActor> transition,
+            Transition<TContext, TServiceProvider, TState, TActor> transition,
             MermaidTransition mermaidTransition)
         {
             IReadOnlyList<TState> scopePath;
@@ -861,7 +860,7 @@ public static class StateMachineExporter
                 ({ } left, { } right) => $"{left} {right}"
             };
 
-        string ChoiceEdgeLabelFor(Transition<TContext, TState, TActor> transition)
+        string ChoiceEdgeLabelFor(Transition<TContext, TServiceProvider, TState, TActor> transition)
         {
             if (transition.Guard is null)
             {

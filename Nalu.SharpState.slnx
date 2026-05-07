@@ -6,6 +6,7 @@
   </Configurations>
   <Folder Name="/Source/">
     <Project Path="Source/Nalu.SharpState/Nalu.SharpState.csproj" />
+    <Project Path="Source/Nalu.SharpState.DependencyInjection/Nalu.SharpState.DependencyInjection.csproj" />
     <Project Path="Source/Nalu.SharpState.Generators/Nalu.SharpState.Generators.csproj" />
   </Folder>
   <Folder Name="/Tests/">

@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Nalu.SharpState.Tests.EndToEnd;
 
 public class DoorContext
@@ -8,6 +10,7 @@ public class DoorContext
 }
 
 [StateMachineDefinition(typeof(DoorContext))]
+[SuppressMessage("ReSharper", "PartialMethodWithSinglePart")]
 public static partial class DoorMachine
 {
     /// <summary>

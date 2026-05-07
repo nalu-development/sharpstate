@@ -4,22 +4,22 @@ namespace Nalu.SharpState.Tests.Runtime;
 
 public class StateMachineEngineTests
 {
-    private static StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor> BuildFlat(
-        Action<InternalEnumMap<FlatState, TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>>>? setup = null)
+    private static StateMachineDefinition<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor> BuildFlat(
+        Action<InternalEnumMap<FlatState, TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>>? setup = null)
     {
-        var map = new InternalEnumMap<FlatState, TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>>();
+        var map = new InternalEnumMap<FlatState, TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new();
         map[FlatState.B] = new();
         map[FlatState.C] = new();
         setup?.Invoke(map);
 
-        var forDef = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>();
+        var forDef = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         foreach (var kvp in map)
         {
             forDef[kvp.Key] = kvp.Value;
         }
 
-        return new StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor>(forDef);
+        return new StateMachineDefinition<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(forDef);
     }
 
     [Fact]
@@ -29,10 +29,10 @@ public class StateMachineEngineTests
         {
             map[FlatState.A].On(
                 FlatTrigger.Go,
-                TestTransition.ToTarget<TestContext, FlatState, TestActor>(FlatState.B));
+                TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.B));
         });
 
-        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor());
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver);
         (FlatState from, FlatState to, FlatTrigger trigger, TriggerArgs args)? captured = null;
         engine.StateChanged += (from, to, trig, args) => captured = (from, to, trig, args);
 
@@ -51,7 +51,7 @@ public class StateMachineEngineTests
     public void Fire_unhandled_trigger_invokes_OnUnhandled()
     {
         var definition = BuildFlat();
-        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor());
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver);
         (FlatState state, FlatTrigger trigger, TriggerArgs args)? captured = null;
         engine.OnUnhandled = (s, t, a) => captured = (s, t, a);
 
@@ -71,10 +71,10 @@ public class StateMachineEngineTests
         {
             map[FlatState.A].On(
                 FlatTrigger.Go,
-                TestTransition.ToTarget<TestContext, FlatState, TestActor>(FlatState.B));
+                TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.B));
         });
 
-        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor());
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver);
 
         engine.CanFire(FlatTrigger.Go, TriggerArgs.Empty).Should().BeTrue();
         engine.CanFire(FlatTrigger.NoMatch, TriggerArgs.Empty).Should().BeFalse();
@@ -87,16 +87,17 @@ public class StateMachineEngineTests
         {
             map[FlatState.A].On(
                 FlatTrigger.Go,
-                TestTransition.ToTarget<TestContext, FlatState, TestActor>(
+                TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(
                     FlatState.B,
-                    guard: (ctx, args) => ctx.Counter == args.Get<int>(0)));
+                    guard: (ctx, _, args) => ctx.Counter == args.Get<int>(0)));
         });
 
-        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(
             definition,
             FlatState.A,
             new TestContext { Counter = 4 },
-            new TestActor());
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
 
         engine.CanFire(FlatTrigger.Go, TriggerArgs.From(3)).Should().BeFalse();
         engine.CanFire(FlatTrigger.Go, TriggerArgs.From(4)).Should().BeTrue();
@@ -107,7 +108,7 @@ public class StateMachineEngineTests
     public void Fire_unhandled_with_default_callback_throws()
     {
         var definition = BuildFlat();
-        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor());
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver);
 
         var act = () => engine.Fire(FlatTrigger.NoMatch, TriggerArgs.Empty);
 
@@ -119,7 +120,7 @@ public class StateMachineEngineTests
     public void Fire_unhandled_with_null_callback_is_silent_noop()
     {
         var definition = BuildFlat();
-        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor())
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver)
         {
             OnUnhandled = null,
         };
@@ -136,12 +137,12 @@ public class StateMachineEngineTests
         var definition = BuildFlat(map =>
         {
             map[FlatState.A].AddAllFor(FlatTrigger.Go, [
-                new Transition<TestContext, FlatState, TestActor>(FlatState.B, null, false, (ctx, _) => ctx.Counter > 10, null, null, null),
-                new Transition<TestContext, FlatState, TestActor>(FlatState.C, null, false, null, null, null, null)
+                new Transition<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.B, null, false, (ctx, _, _) => ctx.Counter > 10, null, null, null),
+                new Transition<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.C, null, false, null, null, null, null)
             ]);
         });
 
-        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext { Counter = 5 }, new TestActor());
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext { Counter = 5 }, new TestActor(), TestServiceProviders.EmptyResolver);
         engine.Fire(FlatTrigger.Go, TriggerArgs.Empty);
         engine.CurrentState.Should().Be(FlatState.C);
     }
@@ -153,12 +154,12 @@ public class StateMachineEngineTests
         {
             map[FlatState.A].On(
                 FlatTrigger.Go,
-                TestTransition.ToTarget<TestContext, FlatState, TestActor>(
+                TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(
                     FlatState.B,
-                    guard: (ctx, args) => args.Get<int>(0) == ctx.Counter));
+                    guard: (ctx, _, args) => args.Get<int>(0) == ctx.Counter));
         });
 
-        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext { Counter = 42 }, new TestActor())
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext { Counter = 42 }, new TestActor(), TestServiceProviders.EmptyResolver)
         {
             OnUnhandled = null,
         };
@@ -176,13 +177,13 @@ public class StateMachineEngineTests
         {
             map[FlatState.A].On(
                 FlatTrigger.Go,
-                TestTransition.ToTarget<TestContext, FlatState, TestActor>(
+                TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(
                     FlatState.B,
-                    syncAction: (ctx, _) => ctx.Log.Add("action:" + ctx.Counter)));
+                    syncAction: (ctx, _, _) => ctx.Log.Add("action:" + ctx.Counter)));
         });
 
         var ctx = new TestContext { Counter = 1 };
-        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, ctx, new TestActor());
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, ctx, new TestActor(), TestServiceProviders.EmptyResolver);
         engine.StateChanged += (_, _, _, _) => ctx.Log.Add("changed:" + ctx.Counter);
 
         engine.Fire(FlatTrigger.Go, TriggerArgs.Empty);
@@ -197,15 +198,16 @@ public class StateMachineEngineTests
         {
             map[FlatState.A].On(
                 FlatTrigger.Go,
-                TestTransition.ToDynamicTarget<TestContext, FlatState, TestActor>(
-                    (ctx, args) => args.Get<int>(0) == ctx.Counter ? FlatState.B : FlatState.C));
+                TestTransition.ToDynamicTarget<TestContext, IServiceProvider, FlatState, TestActor>(
+                    (ctx, _, args) => args.Get<int>(0) == ctx.Counter ? FlatState.B : FlatState.C));
         });
 
-        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(
             definition,
             FlatState.A,
             new TestContext { Counter = 7 },
-            new TestActor());
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
 
         engine.Fire(FlatTrigger.Go, TriggerArgs.From(7));
         engine.CurrentState.Should().Be(FlatState.B);
@@ -221,15 +223,15 @@ public class StateMachineEngineTests
                 .WhenExiting(ctx => ctx.Log.Add("exit:A"))
                 .On(
                     FlatTrigger.Go,
-                    TestTransition.ToDynamicTarget<TestContext, FlatState, TestActor>(
-                        (_, args) => args.Get<bool>(0) ? FlatState.A : FlatState.B,
-                        syncAction: (ctx, _) => ctx.Log.Add("invoke")));
+                    TestTransition.ToDynamicTarget<TestContext, IServiceProvider, FlatState, TestActor>(
+                        (_, _, args) => args.Get<bool>(0) ? FlatState.A : FlatState.B,
+                        syncAction: (ctx, _, _) => ctx.Log.Add("invoke")));
             map[FlatState.B]
                 .WhenEntering(ctx => ctx.Log.Add("enter:B"));
         });
 
         var ctx = new TestContext();
-        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, ctx, new TestActor());
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, ctx, new TestActor(), TestServiceProviders.EmptyResolver);
         var changed = false;
         engine.StateChanged += (_, _, _, _) => changed = true;
 
@@ -246,12 +248,12 @@ public class StateMachineEngineTests
         var definition = BuildFlat(map =>
         {
             map[FlatState.A].AddAllFor(FlatTrigger.Go, [
-                new Transition<TestContext, FlatState, TestActor>(FlatState.B, null, false, (_, _) => false, null, null, null),
-                new Transition<TestContext, FlatState, TestActor>(FlatState.C, null, false, (_, _) => false, null, null, null)
+                new Transition<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.B, null, false, (_, _, _) => false, null, null, null),
+                new Transition<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.C, null, false, (_, _, _) => false, null, null, null)
             ]);
         });
 
-        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor());
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver);
         FlatState? capturedState = null;
         engine.OnUnhandled = (state, _, _) => capturedState = state;
 
@@ -265,7 +267,7 @@ public class StateMachineEngineTests
     public void Fire_walks_to_parent_when_leaf_has_no_matching_transition()
     {
         var definition = HierarchyTests.CreateStandardHierarchy();
-        var engine = new StateMachineEngine<TestContext, HierState, HierTrigger, TestActor>(definition, HierState.Authenticated, new TestContext(), new TestActor());
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>(definition, HierState.Authenticated, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver);
 
         engine.Fire(HierTrigger.Disconnect, TriggerArgs.Empty);
 
@@ -279,13 +281,13 @@ public class StateMachineEngineTests
         {
             map[FlatState.A]
                 .WhenExiting(ctx => ctx.Log.Add("exit:A"))
-                .On(FlatTrigger.Go, TestTransition.ToTarget<TestContext, FlatState, TestActor>(FlatState.B));
+                .On(FlatTrigger.Go, TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.B));
             map[FlatState.B]
                 .WhenEntering(ctx => ctx.Log.Add("enter:B"));
         });
 
         var ctx = new TestContext();
-        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, ctx, new TestActor());
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, ctx, new TestActor(), TestServiceProviders.EmptyResolver);
 
         engine.Fire(FlatTrigger.Go, TriggerArgs.Empty);
 
@@ -295,34 +297,35 @@ public class StateMachineEngineTests
     [Fact]
     public void Constructor_throws_when_definition_is_null()
     {
-        var act = () => new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(
+        var act = () => new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(
             null!,
             FlatState.A,
             new TestContext(),
-            new TestActor());
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
         act.Should().ThrowExactly<ArgumentNullException>().WithParameterName("definition");
     }
 
     [Fact]
     public void Constructor_throws_when_context_is_null()
     {
-        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>();
-        map[FlatState.A] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
-        map[FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
-        map[FlatState.C] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
-        var def = new StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor>(map);
-        var act = () => new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(def, FlatState.A, null!, new TestActor());
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.B] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.C] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+        var def = new StateMachineDefinition<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(map);
+        var act = () => new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(def, FlatState.A, null!, new TestActor(), TestServiceProviders.EmptyResolver);
         act.Should().ThrowExactly<ArgumentNullException>().WithParameterName("context");
     }
 
     [Fact]
     public void Constructor_throws_when_initial_state_is_not_registered()
     {
-        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, FlatState, FlatTrigger, TestActor>>();
-        map[FlatState.A] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
-        map[FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
-        var def = new StateMachineDefinition<TestContext, FlatState, FlatTrigger, TestActor>(map);
-        var act = () => new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(def, FlatState.C, new TestContext(), new TestActor());
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.B] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+        var def = new StateMachineDefinition<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(map);
+        var act = () => new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(def, FlatState.C, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver);
         act.Should().ThrowExactly<KeyNotFoundException>().WithMessage("*not registered*");
     }
 
@@ -334,14 +337,14 @@ public class StateMachineEngineTests
             map[FlatState.A]
                 .On(
                     FlatTrigger.Go,
-                    TestTransition.ToDynamicTarget<TestContext, FlatState, TestActor>(
-                        (_, args) => args.Get<bool>(0) ? FlatState.A : FlatState.B,
-                        syncAction: (ctx, _) => ctx.Log.Add("inner")));
-            map[FlatState.B] = new TestStateConfigurator<TestContext, FlatState, FlatTrigger, TestActor>();
+                    TestTransition.ToDynamicTarget<TestContext, IServiceProvider, FlatState, TestActor>(
+                        (_, _, args) => args.Get<bool>(0) ? FlatState.A : FlatState.B,
+                        syncAction: (ctx, _, _) => ctx.Log.Add("inner")));
+            map[FlatState.B] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
         });
 
         var ctx = new TestContext();
-        var engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, ctx, new TestActor());
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, ctx, new TestActor(), TestServiceProviders.EmptyResolver);
 
         engine.Fire(FlatTrigger.Go, TriggerArgs.From(true));
 
@@ -352,16 +355,16 @@ public class StateMachineEngineTests
     [Fact]
     public void Fire_throws_when_reentered_from_callback()
     {
-        StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>? engine = null;
+        StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>? engine = null;
         var definition = BuildFlat(map =>
         {
             map[FlatState.A]
-                .On(FlatTrigger.Go, TestTransition.ToTarget<TestContext, FlatState, TestActor>(FlatState.B));
+                .On(FlatTrigger.Go, TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.B));
             map[FlatState.B]
                 .WhenEntering(_ => engine!.Fire(FlatTrigger.NoMatch, TriggerArgs.Empty));
         });
 
-        engine = new StateMachineEngine<TestContext, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor())
+        engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver)
         {
             OnUnhandled = null,
         };
@@ -376,10 +379,10 @@ public class StateMachineEngineTests
 
 internal static class TestConfiguratorExtensions
 {
-    public static TestStateConfigurator<TContext, TState, TTrigger, TActor> AddAllFor<TContext, TState, TTrigger, TActor>(
-        this TestStateConfigurator<TContext, TState, TTrigger, TActor> self,
+    public static TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor> AddAllFor<TContext, TServiceProvider, TState, TTrigger, TActor>(
+        this TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor> self,
         TTrigger trigger,
-        IReadOnlyList<Transition<TContext, TState, TActor>> transitions)
+        IReadOnlyList<Transition<TContext, TServiceProvider, TState, TActor>> transitions)
         where TContext : class
         where TState : struct, Enum
         where TTrigger : struct, Enum
