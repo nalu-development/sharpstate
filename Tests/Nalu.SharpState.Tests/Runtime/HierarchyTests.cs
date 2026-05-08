@@ -136,15 +136,15 @@ public class HierarchyTests
         var definition = BuildHier(map =>
         {
             map[HierState.Idle]
-                .WhenExiting(ctx => ctx.Log.Add("exit:Idle"))
+                .WhenExiting((ctx, _) => ctx.Log.Add("exit:Idle"))
                 .On(HierTrigger.Connect, TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Connected));
             map[HierState.Connected]
                 .AsStateMachine(HierState.Authenticating)
-                .WhenEntering(ctx => ctx.Log.Add("enter:Connected"))
+                .WhenEntering((ctx, _) => ctx.Log.Add("enter:Connected"))
                 .On(HierTrigger.Disconnect, TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Idle));
             map[HierState.Authenticating]
                 .Parent(HierState.Connected)
-                .WhenEntering(ctx => ctx.Log.Add("enter:Authenticating"))
+                .WhenEntering((ctx, _) => ctx.Log.Add("enter:Authenticating"))
                 .On(HierTrigger.AuthOk, TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Authenticated));
             map[HierState.Authenticated]
                 .Parent(HierState.Connected)
@@ -168,18 +168,18 @@ public class HierarchyTests
         var definition = BuildHier(map =>
         {
             map[HierState.Idle]
-                .WhenEntering(ctx => ctx.Log.Add("enter:Idle"))
+                .WhenEntering((ctx, _) => ctx.Log.Add("enter:Idle"))
                 .On(HierTrigger.Connect, TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Connected));
             map[HierState.Connected]
                 .AsStateMachine(HierState.Authenticating)
-                .WhenExiting(ctx => ctx.Log.Add("exit:Connected"))
+                .WhenExiting((ctx, _) => ctx.Log.Add("exit:Connected"))
                 .On(HierTrigger.Disconnect, TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Idle));
             map[HierState.Authenticating]
                 .Parent(HierState.Connected)
                 .On(HierTrigger.AuthOk, TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Authenticated));
             map[HierState.Authenticated]
                 .Parent(HierState.Connected)
-                .WhenExiting(ctx => ctx.Log.Add("exit:Authenticated"))
+                .WhenExiting((ctx, _) => ctx.Log.Add("exit:Authenticated"))
                 .On(HierTrigger.Message, TestTransition.Stay<TestContext, IServiceProvider, HierState, TestActor>(syncAction: (ctx, _, args) => ctx.Log.Add(args.Get<string>(0))));
             map[HierState.Outside].On(
                 HierTrigger.GoOutside,
@@ -202,15 +202,15 @@ public class HierarchyTests
             map[HierState.Idle].On(HierTrigger.Connect, TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Connected));
             map[HierState.Connected]
                 .AsStateMachine(HierState.Authenticating)
-                .WhenExiting(ctx => ctx.Log.Add("exit:Connected"))
+                .WhenExiting((ctx, _) => ctx.Log.Add("exit:Connected"))
                 .On(HierTrigger.Disconnect, TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Idle));
             map[HierState.Authenticating]
                 .Parent(HierState.Connected)
-                .WhenExiting(ctx => ctx.Log.Add("exit:Authenticating"))
+                .WhenExiting((ctx, _) => ctx.Log.Add("exit:Authenticating"))
                 .On(HierTrigger.AuthOk, TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Authenticated));
             map[HierState.Authenticated]
                 .Parent(HierState.Connected)
-                .WhenEntering(ctx => ctx.Log.Add("enter:Authenticated"));
+                .WhenEntering((ctx, _) => ctx.Log.Add("enter:Authenticated"));
             map[HierState.Outside].On(
                 HierTrigger.GoOutside,
                 TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Outside));

@@ -18,6 +18,21 @@ public static class ServiceCollectionStateMachineExtensions
         services.AddScoped<IStateMachineServiceProviderResolver<IServiceProvider>, StateMachineServiceProviderResolver>();
         return services;
     }
+
+    /// <summary>
+    /// Registers <see cref="StateMachineServiceProviderResolver"/> as scoped. Each <c>ReactAsync</c> reaction opens a child DI scope
+    /// so background work does not keep using services from the caller's scope.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <typeparam name="TResolver">Concrete implementation of <see cref="IStateMachineServiceProviderResolver{IServiceProvider}"/> to register as scoped.</typeparam>
+    /// <remarks>Use when you need more than the default child scope—for example, subclass <see cref="StateMachineServiceProviderResolver"/>, override <see cref="StateMachineServiceProviderResolver.CreateScopedServiceProvider"/>, call the base implementation, then wrap or configure the scoped <see cref="IServiceProvider"/>.</remarks>
+    public static IServiceCollection AddScopedStateMachineServiceProviderResolver<TResolver>(this IServiceCollection services)
+        where TResolver : class, IStateMachineServiceProviderResolver<IServiceProvider>
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddScoped<IStateMachineServiceProviderResolver<IServiceProvider>, TResolver>();
+        return services;
+    }
     
     /// <summary>
     /// Registers <see cref="StateMachineStaticServiceProviderResolver"/> as singleton. Synchronous transitions and

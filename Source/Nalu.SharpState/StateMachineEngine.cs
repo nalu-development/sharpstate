@@ -181,10 +181,10 @@ public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrig
                 return;
             }
 
-            InvokeExitActions(source, resolvedLeaf);
+            InvokeExitActions(source, resolvedLeaf, serviceProvider);
             transition.SyncAction?.Invoke(_context, serviceProvider, args);
             _currentState = resolvedLeaf;
-            InvokeEntryActions(source, resolvedLeaf);
+            InvokeEntryActions(source, resolvedLeaf, serviceProvider);
             NotifyContextAboutStateChange(resolvedLeaf);
             StateChanged?.Invoke(source, resolvedLeaf, trigger, args);
             ScheduleReaction(source, resolvedLeaf, trigger, transition, args);
@@ -199,10 +199,10 @@ public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrig
         }
 
         var newLeaf = _definition.LeafOf(transition.Target);
-        InvokeExitActions(source, newLeaf);
+        InvokeExitActions(source, newLeaf, serviceProvider);
         transition.SyncAction?.Invoke(_context, serviceProvider, args);
         _currentState = newLeaf;
-        InvokeEntryActions(source, newLeaf);
+        InvokeEntryActions(source, newLeaf, serviceProvider);
         NotifyContextAboutStateChange(newLeaf);
         StateChanged?.Invoke(source, newLeaf, trigger, args);
         ScheduleReaction(source, newLeaf, trigger, transition, args);
@@ -210,21 +210,21 @@ public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrig
 
     private void NotifyContextAboutStateChange(TState resolvedLeaf) => (_context as IStateAwareContext<TState>)?.OnStateChanged(resolvedLeaf);
 
-    private void InvokeExitActions(TState source, TState destination)
+    private void InvokeExitActions(TState source, TState destination, TServiceProvider serviceProvider)
     {
         foreach (var state in EnumerateExitPath(source, destination))
         {
             var config = _definition.GetConfiguration(state);
-            config.ExitAction?.Invoke(_context);
+            config.ExitAction?.Invoke(_context, serviceProvider);
         }
     }
 
-    private void InvokeEntryActions(TState source, TState destination)
+    private void InvokeEntryActions(TState source, TState destination, TServiceProvider serviceProvider)
     {
         foreach (var state in EnumerateEntryPath(source, destination))
         {
             var config = _definition.GetConfiguration(state);
-            config.EntryAction?.Invoke(_context);
+            config.EntryAction?.Invoke(_context, serviceProvider);
         }
     }
 

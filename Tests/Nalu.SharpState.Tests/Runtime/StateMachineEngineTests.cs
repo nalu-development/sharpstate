@@ -219,15 +219,15 @@ public class StateMachineEngineTests
         var definition = BuildFlat(map =>
         {
             map[FlatState.A]
-                .WhenEntering(ctx => ctx.Log.Add("enter:A"))
-                .WhenExiting(ctx => ctx.Log.Add("exit:A"))
+                .WhenEntering((ctx, _) => ctx.Log.Add("enter:A"))
+                .WhenExiting((ctx, _) => ctx.Log.Add("exit:A"))
                 .On(
                     FlatTrigger.Go,
                     TestTransition.ToDynamicTarget<TestContext, IServiceProvider, FlatState, TestActor>(
                         (_, _, args) => args.Get<bool>(0) ? FlatState.A : FlatState.B,
                         syncAction: (ctx, _, _) => ctx.Log.Add("invoke")));
             map[FlatState.B]
-                .WhenEntering(ctx => ctx.Log.Add("enter:B"));
+                .WhenEntering((ctx, _) => ctx.Log.Add("enter:B"));
         });
 
         var ctx = new TestContext();
@@ -280,10 +280,10 @@ public class StateMachineEngineTests
         var definition = BuildFlat(map =>
         {
             map[FlatState.A]
-                .WhenExiting(ctx => ctx.Log.Add("exit:A"))
+                .WhenExiting((ctx, _) => ctx.Log.Add("exit:A"))
                 .On(FlatTrigger.Go, TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.B));
             map[FlatState.B]
-                .WhenEntering(ctx => ctx.Log.Add("enter:B"));
+                .WhenEntering((ctx, _) => ctx.Log.Add("enter:B"));
         });
 
         var ctx = new TestContext();
@@ -361,7 +361,7 @@ public class StateMachineEngineTests
             map[FlatState.A]
                 .On(FlatTrigger.Go, TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.B));
             map[FlatState.B]
-                .WhenEntering(_ => engine!.Fire(FlatTrigger.NoMatch, TriggerArgs.Empty));
+                .WhenEntering((_, _) => engine!.Fire(FlatTrigger.NoMatch, TriggerArgs.Empty));
         });
 
         engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver)

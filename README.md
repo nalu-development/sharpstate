@@ -57,6 +57,10 @@ door.Open("delivery");
 Console.WriteLine(door.CurrentState); // Opened
 ```
 
+### Entry and exit hooks
+
+Per-state **`WhenEntering`** and **`WhenExiting`** run around **external** transitions (not **`Stay()`** / **`Ignore()`**). See [Entry and exit hooks](https://nalu-development.github.io/sharpstate/index.html#entry-and-exit-hooks) in the guide.
+
 ### Asynchronous reactions
 
 The synchronous trigger API can still schedule async follow-up work after a transition commits; the callback gets the `IActor` and can fire more triggers (for example after `await`ing a service on the context):
@@ -200,7 +204,7 @@ The hint labels are documentation only: they do not affect runtime target resolu
 
 ## Documentation
 
-Full guides (transitions, hierarchy, `ReactAsync`, diagnostics, API reference) live here:
+Full guides (transitions, entry and exit hooks, hierarchy, `ReactAsync`, diagnostics, API reference) live here:
 
 **[https://nalu-development.github.io/sharpstate/](https://nalu-development.github.io/sharpstate/)**
 

@@ -96,7 +96,7 @@ public class StateAwareContextTests
             map[FlatState.A].On(
                 FlatTrigger.Go,
                 TestTransition.ToTarget<StateAwareTestContext<FlatState>, IServiceProvider, FlatState, TestActor>(FlatState.B));
-            map[FlatState.B].WhenEntering(c => c.Log.Add("enter:B"));
+            map[FlatState.B].WhenEntering((c, _) => c.Log.Add("enter:B"));
         });
 
         var ctx = new StateAwareTestContext<FlatState>();

@@ -19,8 +19,8 @@ public abstract class StateConfigurator<TContext, TServiceProvider, TState, TTri
     private readonly InternalEnumMap<TTrigger, List<Transition<TContext, TServiceProvider, TState, TActor>>> _transitions = new();
     private TState? _parent;
     private TState? _initialChild;
-    private Action<TContext>? _entryAction;
-    private Action<TContext>? _exitAction;
+    private Action<TContext, TServiceProvider>? _entryAction;
+    private Action<TContext, TServiceProvider>? _exitAction;
 
     /// <inheritdoc />
     public TState? ParentState => _parent;
@@ -29,10 +29,10 @@ public abstract class StateConfigurator<TContext, TServiceProvider, TState, TTri
     public TState? InitialChildState => _initialChild;
 
     /// <inheritdoc />
-    public Action<TContext>? EntryAction => _entryAction;
+    public Action<TContext, TServiceProvider>? EntryAction => _entryAction;
 
     /// <inheritdoc />
-    public Action<TContext>? ExitAction => _exitAction;
+    public Action<TContext, TServiceProvider>? ExitAction => _exitAction;
 
     /// <inheritdoc />
     public bool TryGetTransitions(TTrigger trigger, out IReadOnlyList<Transition<TContext, TServiceProvider, TState, TActor>> transitions)
@@ -103,9 +103,11 @@ public abstract class StateConfigurator<TContext, TServiceProvider, TState, TTri
 
     /// <summary>
     /// Declares a synchronous callback to run after the machine enters this state.
+    /// The callback receives the context and the same <typeparamref name="TServiceProvider"/> used for synchronous
+    /// guards and transition actions on that transition (not the scoped provider used only for <c>ReactAsync</c>).
     /// May be called at most once per configurator.
     /// </summary>
-    protected void SetEntryAction(Action<TContext> action)
+    protected void SetEntryAction(Action<TContext, TServiceProvider> action)
     {
         ArgumentNullException.ThrowIfNull(action);
 
@@ -119,9 +121,11 @@ public abstract class StateConfigurator<TContext, TServiceProvider, TState, TTri
 
     /// <summary>
     /// Declares a synchronous callback to run before the machine exits this state.
+    /// The callback receives the context and the same <typeparamref name="TServiceProvider"/> used for synchronous
+    /// guards and transition actions on that transition (not the scoped provider used only for <c>ReactAsync</c>).
     /// May be called at most once per configurator.
     /// </summary>
-    protected void SetExitAction(Action<TContext> action)
+    protected void SetExitAction(Action<TContext, TServiceProvider> action)
     {
         ArgumentNullException.ThrowIfNull(action);
 

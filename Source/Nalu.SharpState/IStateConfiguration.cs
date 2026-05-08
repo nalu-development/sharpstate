@@ -26,13 +26,17 @@ public interface IStateConfiguration<TContext, TServiceProvider, TState, TTrigge
 
     /// <summary>
     /// Optional synchronous callback invoked when the machine enters this state during an external transition.
+    /// When non-<c>null</c>, receives the context and the same <typeparamref name="TServiceProvider"/> instance
+    /// used for synchronous guards and transition actions on that transition (not the scoped provider used only for <c>ReactAsync</c>).
     /// </summary>
-    Action<TContext>? EntryAction { get; }
+    Action<TContext, TServiceProvider>? EntryAction { get; }
 
     /// <summary>
     /// Optional synchronous callback invoked when the machine exits this state during an external transition.
+    /// When non-<c>null</c>, receives the context and the same <typeparamref name="TServiceProvider"/> instance
+    /// used for synchronous guards and transition actions on that transition (not the scoped provider used only for <c>ReactAsync</c>).
     /// </summary>
-    Action<TContext>? ExitAction { get; }
+    Action<TContext, TServiceProvider>? ExitAction { get; }
 
     /// <summary>
     /// Attempts to look up all transitions declared on this state for the given trigger.

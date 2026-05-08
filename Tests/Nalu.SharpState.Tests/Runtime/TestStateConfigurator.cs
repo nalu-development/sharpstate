@@ -28,11 +28,25 @@ internal sealed class TestStateConfigurator<TContext, TServiceProvider, TState, 
 
     public TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor> WhenEntering(Action<TContext> action)
     {
+        ArgumentNullException.ThrowIfNull(action);
+        SetEntryAction((ctx, _) => action(ctx));
+        return this;
+    }
+
+    public TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor> WhenEntering(Action<TContext, TServiceProvider> action)
+    {
         SetEntryAction(action);
         return this;
     }
 
     public TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor> WhenExiting(Action<TContext> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetExitAction((ctx, _) => action(ctx));
+        return this;
+    }
+
+    public TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor> WhenExiting(Action<TContext, TServiceProvider> action)
     {
         SetExitAction(action);
         return this;

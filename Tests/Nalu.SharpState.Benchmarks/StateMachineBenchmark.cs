@@ -44,7 +44,7 @@ public static partial class DoorMachine
     [StateDefinition]
     private static IStateConfiguration Opened { get; } = ConfigureState()
                                                          .OnClose(t => t.Target(State.Closed))
-                                                         .WhenEntering(ctx => ctx.OpenCount++);
+                                                         .WhenEntering((ctx, _) => ctx.OpenCount++);
 }
 
 [MemoryDiagnoser]

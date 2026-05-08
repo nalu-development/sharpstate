@@ -14,7 +14,7 @@ public class AsyncTests
         TestActor? observedActor = null;
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
-            .WhenExiting(ctx => ctx.Log.Add("exit:A"))
+            .WhenExiting((ctx, _) => ctx.Log.Add("exit:A"))
             .On(FlatTrigger.Go, TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(
                 FlatState.B,
                 syncAction: (ctx, _, _) => ctx.Log.Add("invoke"),
@@ -25,7 +25,7 @@ public class AsyncTests
                     ctx.Log.Add("react");
                 }));
         map[FlatState.B] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
-            .WhenEntering(ctx => ctx.Log.Add("enter:B"));
+            .WhenEntering((ctx, _) => ctx.Log.Add("enter:B"));
         map[FlatState.C] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
 
         var ctx = new TestContext();

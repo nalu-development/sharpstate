@@ -208,6 +208,29 @@ services.AddScoped<IStateMachineServiceProviderResolver<IServiceProvider>, SameI
 
 Microsoft DI chooses the constructor on **`SameInstanceResolver`** and injects the **`IServiceProvider`** for the current resolution when applicable.
 
+<a id="scoped-services-in-reactasync"></a>
+
+#### Scoped services in `ReactAsync`
+
+With **`AddScopedStateMachineServiceProviderResolver()`** or a manually constructed **`StateMachineServiceProviderResolver`**, **`CreateScopedServiceProvider`** creates a **child** **`IServiceScope`**. The **`IServiceProvider`** passed into **`ReactAsync(...)`** overloads is that scope’s **`ServiceProvider`**—not the root provider and not the scope that was active when the trigger fired.
+
+Register per-reaction collaborators with the usual **`services.AddScoped<T>()`**. Resolve them inside **`ReactAsync`** from the **`services`** callback argument: each reaction runs in its **own** scope, so scoped registrations get **one instance per reaction**, independent of a caller scope (such as an ASP.NET Core request) that may already be disposed.
+
+```csharp
+// Startup
+services.AddScoped<IEmailDispatcher, EmailDispatcher>();
+services.AddScopedStateMachineServiceProviderResolver();
+
+// Machine definition (excerpt)
+.ReactAsync(async (actor, ctx, services, orderId) =>
+{
+    var mail = services.GetRequiredService<IEmailDispatcher>();
+    await mail.SendConfirmationAsync(orderId);
+})
+```
+
+To **change how** the reaction scope is produced—for example call **`base.CreateScopedServiceProvider`**, then wrap or adapt the scoped **`IServiceProvider`** before returning your **`IDisposable`**—register **`AddScopedStateMachineServiceProviderResolver<MyResolver>()`** with a type that subclasses **`StateMachineServiceProviderResolver`** and overrides **`CreateScopedServiceProvider`**.
+
 Use **`[StateMachineDefinition(typeof(MyContext), typeof(MyServiceRoot))]`** when your composition root is not `IServiceProvider`. Fluent overloads then include `MyServiceRoot` alongside the context and trigger arguments where applicable.
 
 ## Describing transitions
@@ -223,8 +246,8 @@ Inside each `[StateDefinition]` property body you call `ConfigureState()` and ch
 | `When(predicate, label = null)` | Guards the transition before `Target(...)` or `Stay()`. Overloads receive `(context, trigger args…)` and optionally **`(context, TServiceProvider, trigger args…)`** so you can consult DI. Repeated calls are combined with logical AND in declaration order. When `label` is non-null, it is stored for diagram rendering (multiple labels are joined with ` & `). If every contributing guard omits a label, exports use `Unnamed guard 1` placeholders. |
 | `Invoke(action)` | Available after `Target(...)` or `Stay()`. Runs side effects before the state commits. Overloads mirror `When` (with or without `TServiceProvider`). Repeated calls run in declaration order. |
 | `ReactAsync(action)` | Available after `Target(...)` or `Stay()`. Schedules fire-and-forget work after the transition commits and after `StateChanged` fires. Overloads may include **`TServiceProvider`** (the scoped instance from the resolver during the reaction). Repeated calls run sequentially in declaration order. |
-| `WhenEntering(action)` | Runs **after** the state commits on an external transition into this state. **`action` receives only `TContext`** — keep **state** here (timestamps, mirrored flags). For **DI services**, use `Invoke` / `ReactAsync` overloads that take **`TServiceProvider`**, or resolve services where you subscribe to events outside the machine. |
-| `WhenExiting(action)` | Runs **before** the state is left on an external transition. Same **`TContext`‑only** signature as `WhenEntering`. |
+| `WhenEntering(action)` | Runs **after** the state commits on an external transition into this state. Overloads: **`Action<TContext>`** (convenience—the generator wraps it as `Action<TContext, TServiceProvider>` and ignores the provider) or **`Action<TContext, TServiceProvider>`**, which receives the **same** `TServiceProvider` instance used for synchronous `When` / `Invoke` on that transition. |
+| `WhenExiting(action)` | Runs **before** the state is left on an external transition. Same **`Action<TContext>`** / **`Action<TContext, TServiceProvider>`** overload pair as `WhenEntering`. |
 
 If a dynamic `Target(...)` resolves to the current leaf state for a specific fire, SharpState treats that fire like an internal transition: no exit hooks, no state commit, no entry hooks, and no `StateChanged`.
 
@@ -244,7 +267,7 @@ If no transition matches, the `OnUnhandled` callback fires (see below).
 
 ### Entry and exit hooks
 
-States can react to external transitions with **`WhenEntering(...)`** and **`WhenExiting(...)`**. Those callbacks take **only** your **`TContext`**, so they are the right place to update **state you model on the context** (when a state was entered, simple counters, flags). **`ILogger`**, databases, and other **application services** should be resolved from **`TServiceProvider`** using the **`When`**, **`Invoke`**, or **`ReactAsync`** overloads that include **`(context, TServiceProvider, …)`** (see the table above).
+States can react to external transitions with **`WhenEntering(...)`** and **`WhenExiting(...)`**. Each has overloads for **`Action<TContext>`** (wrapped internally so the stored hook still receives a provider; the wrapper ignores it) and **`Action<TContext, TServiceProvider>`**. Use the **context** for state the machine owns (timestamps, counters, flags). Use the **`TServiceProvider`** argument when you need to resolve **application services** during the synchronous transition, with the same lifetime rules as **`When`** / **`Invoke`** on that fire (not the separate scoped instance supplied only to **`ReactAsync`**).
 
 ```csharp
 public sealed class WorkContext
@@ -255,12 +278,12 @@ public sealed class WorkContext
 
 [StateDefinition]
 private static IStateConfiguration Running { get; } = ConfigureState()
-    .WhenEntering(ctx =>
+    .WhenEntering((ctx, services) =>
     {
         ctx.IsRunning = true;
-        ctx.RunningStartedUtc = DateTime.UtcNow;
+        ctx.RunningStartedUtc = services.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
     })
-    .WhenExiting(ctx => ctx.IsRunning = false)
+    .WhenExiting((ctx, _) => ctx.IsRunning = false)
     .OnStop(t => t
         .Target(State.Stopped)
         .Invoke((ctx, services) =>
@@ -275,7 +298,7 @@ Hooks run only for external transitions:
 - Entry hooks run from that ancestor's child down to the new leaf.
 - Internal transitions (`Stay()` / `Ignore()`) do not fire entry or exit hooks.
 
-When you need **`TServiceProvider`** **after** `StateChanged` (for example logging that aligns with `ReactAsync` timing), add a **`ReactAsync((actor, ctx, services) => …)`** (or `async` equivalent) on the same transition chain.
+When you need **`TServiceProvider`** **after** `StateChanged` (for example logging that aligns with `ReactAsync` timing), add a **`ReactAsync((actor, ctx, services) => …)`** (or `async` equivalent) on the same transition chain. That **`services`** value comes from **`CreateScopedServiceProvider`** on your resolver and is disposed when the reaction completes.
 
 ## Interacting with the actor
 

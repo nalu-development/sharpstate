@@ -6,7 +6,7 @@ namespace Nalu.SharpState;
 /// Resolver that uses the injected <see cref="IServiceProvider"/> for synchronous dispatch and opens a child DI scope for
 /// each <c>ReactAsync</c> reaction.
 /// </summary>
-public sealed class StateMachineServiceProviderResolver : IStateMachineServiceProviderResolver<IServiceProvider>
+public class StateMachineServiceProviderResolver : IStateMachineServiceProviderResolver<IServiceProvider>
 {
     private readonly IServiceProvider _serviceProvider;
 
@@ -23,7 +23,7 @@ public sealed class StateMachineServiceProviderResolver : IStateMachineServicePr
     public IServiceProvider GetServiceProvider() => _serviceProvider;
 
     /// <inheritdoc />
-    public IDisposable CreateScopedServiceProvider(out IServiceProvider serviceProvider)
+    public virtual IDisposable CreateScopedServiceProvider(out IServiceProvider serviceProvider)
     {
         var scope = _serviceProvider.CreateScope();
         serviceProvider = scope.ServiceProvider;

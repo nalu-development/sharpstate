@@ -292,11 +292,17 @@ internal static class StateMachineEmitter
         w.WriteLine("protected interface IStateConfigurator : IStateConfiguration");
         using (w.Block())
         {
-            EmitWhenEnteringDocs(w, context, serviceProvider);
+            EmitWhenEnteringContextOnlyDocs(w, context, serviceProvider);
             w.WriteLine($"IStateConfigurator WhenEntering(Action<{context}> action);");
             w.WriteBlankLine();
-            EmitWhenExitingDocs(w, context, serviceProvider);
+            EmitWhenEnteringDocs(w, context, serviceProvider);
+            w.WriteLine($"IStateConfigurator WhenEntering(Action<{context}, {serviceProvider}> action);");
+            w.WriteBlankLine();
+            EmitWhenExitingContextOnlyDocs(w, context, serviceProvider);
             w.WriteLine($"IStateConfigurator WhenExiting(Action<{context}> action);");
+            w.WriteBlankLine();
+            EmitWhenExitingDocs(w, context, serviceProvider);
+            w.WriteLine($"IStateConfigurator WhenExiting(Action<{context}, {serviceProvider}> action);");
 
             foreach (var t in m.Triggers)
             {
@@ -500,12 +506,30 @@ internal static class StateMachineEmitter
             w.WriteLine($"public IStateConfigurator WhenEntering(Action<{context}> action)");
             using (w.Block())
             {
+                w.WriteLine("global::System.ArgumentNullException.ThrowIfNull(action);");
+                w.WriteLine($"SetEntryAction((ctx, _) => action(ctx));");
+                w.WriteLine("return this;");
+            }
+
+            w.WriteBlankLine();
+            w.WriteLine($"public IStateConfigurator WhenEntering(Action<{context}, {serviceProvider}> action)");
+            using (w.Block())
+            {
                 w.WriteLine("SetEntryAction(action);");
                 w.WriteLine("return this;");
             }
 
             w.WriteBlankLine();
             w.WriteLine($"public IStateConfigurator WhenExiting(Action<{context}> action)");
+            using (w.Block())
+            {
+                w.WriteLine("global::System.ArgumentNullException.ThrowIfNull(action);");
+                w.WriteLine($"SetExitAction((ctx, _) => action(ctx));");
+                w.WriteLine("return this;");
+            }
+
+            w.WriteBlankLine();
+            w.WriteLine($"public IStateConfigurator WhenExiting(Action<{context}, {serviceProvider}> action)");
             using (w.Block())
             {
                 w.WriteLine("SetExitAction(action);");
@@ -616,14 +640,36 @@ internal static class StateMachineEmitter
         w.WriteLine("/// <returns>The Mermaid state diagram source representing the machine graph.</returns>");
     }
 
+    private static void EmitWhenEnteringContextOnlyDocs(SourceWriter w, string context, string serviceProvider)
+    {
+        w.WriteLine("/// <summary>");
+        w.WriteLine("/// Declares a synchronous callback to run after the machine enters this state.");
+        w.WriteLine(
+            $"/// Convenience overload: the callback receives only <see cref=\"{ToDocCref(context)}\"/>; it is wrapped as <see cref=\"{ToDocCref($"global::Nalu.SharpState.StateConfigurator<{context}, {serviceProvider}, State, Trigger, IActor>.SetEntryAction(Action<{context}, {serviceProvider}>)")}\"/> with the service provider ignored.");
+        w.WriteLine("/// </summary>");
+        w.WriteLine($"/// <param name=\"action\">The callback to run after the state is entered; receives only <see cref=\"{ToDocCref(context)}\"/>.</param>");
+        w.WriteLine("/// <returns>The same configurator for chaining.</returns>");
+    }
+
     private static void EmitWhenEnteringDocs(SourceWriter w, string context, string serviceProvider)
     {
         w.WriteLine("/// <summary>");
         w.WriteLine("/// Declares a synchronous callback to run after the machine enters this state.");
         w.WriteLine(
-            $"/// See <see cref=\"{ToDocCref($"global::Nalu.SharpState.StateConfigurator<{context}, {serviceProvider}, State, Trigger, IActor>.SetEntryAction(Action<{context}>)")}\"/>.");
+            $"/// See <see cref=\"{ToDocCref($"global::Nalu.SharpState.StateConfigurator<{context}, {serviceProvider}, State, Trigger, IActor>.SetEntryAction(Action<{context}, {serviceProvider}>)")}\"/>.");
         w.WriteLine("/// </summary>");
-        w.WriteLine("/// <param name=\"action\">The callback to run after the state is entered.</param>");
+        w.WriteLine("/// <param name=\"action\">The callback to run after the state is entered; receives the context and the synchronous transition service provider.</param>");
+        w.WriteLine("/// <returns>The same configurator for chaining.</returns>");
+    }
+
+    private static void EmitWhenExitingContextOnlyDocs(SourceWriter w, string context, string serviceProvider)
+    {
+        w.WriteLine("/// <summary>");
+        w.WriteLine("/// Declares a synchronous callback to run before the machine exits this state.");
+        w.WriteLine(
+            $"/// Convenience overload: the callback receives only <see cref=\"{ToDocCref(context)}\"/>; it is wrapped as <see cref=\"{ToDocCref($"global::Nalu.SharpState.StateConfigurator<{context}, {serviceProvider}, State, Trigger, IActor>.SetExitAction(Action<{context}, {serviceProvider}>)")}\"/> with the service provider ignored.");
+        w.WriteLine("/// </summary>");
+        w.WriteLine($"/// <param name=\"action\">The callback to run before the state is exited; receives only <see cref=\"{ToDocCref(context)}\"/>.</param>");
         w.WriteLine("/// <returns>The same configurator for chaining.</returns>");
     }
 
@@ -632,9 +678,9 @@ internal static class StateMachineEmitter
         w.WriteLine("/// <summary>");
         w.WriteLine("/// Declares a synchronous callback to run before the machine exits this state.");
         w.WriteLine(
-            $"/// See <see cref=\"{ToDocCref($"global::Nalu.SharpState.StateConfigurator<{context}, {serviceProvider}, State, Trigger, IActor>.SetExitAction(Action<{context}>)")}\"/>.");
+            $"/// See <see cref=\"{ToDocCref($"global::Nalu.SharpState.StateConfigurator<{context}, {serviceProvider}, State, Trigger, IActor>.SetExitAction(Action<{context}, {serviceProvider}>)")}\"/>.");
         w.WriteLine("/// </summary>");
-        w.WriteLine("/// <param name=\"action\">The callback to run before the state is exited.</param>");
+        w.WriteLine("/// <param name=\"action\">The callback to run before the state is exited; receives the context and the synchronous transition service provider.</param>");
         w.WriteLine("/// <returns>The same configurator for chaining.</returns>");
     }
 

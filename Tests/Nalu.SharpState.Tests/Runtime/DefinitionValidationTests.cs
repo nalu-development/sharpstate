@@ -161,8 +161,8 @@ public class DefinitionValidationTests
     public void Second_WhenEntering_throws()
     {
         var act = () => new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>()
-            .WhenEntering(_ => { })
-            .WhenEntering(_ => { });
+            .WhenEntering((_, _) => { })
+            .WhenEntering((_, _) => { });
         act.Should().ThrowExactly<InvalidOperationException>();
     }
 
@@ -170,8 +170,8 @@ public class DefinitionValidationTests
     public void Second_WhenExiting_throws()
     {
         var act = () => new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>()
-            .WhenExiting(_ => { })
-            .WhenExiting(_ => { });
+            .WhenExiting((_, _) => { })
+            .WhenExiting((_, _) => { });
         act.Should().ThrowExactly<InvalidOperationException>();
     }
 }
