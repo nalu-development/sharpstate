@@ -5,19 +5,19 @@ namespace Nalu.SharpState;
 /// <summary>
 /// Shared state for the concrete <c>StateTriggerBuilder{...}</c> variants.
 /// </summary>
-public abstract class StateTriggerBuilderBase<TContext, TServiceProvider, TState, TActor>
+public abstract class StateTriggerBuilderBase<TContext, TMachineArgs, TState, TActor>
     where TContext : class
     where TState : struct, Enum
 {
     private TState _target;
-    private Func<TContext, TServiceProvider, TriggerArgs, TState>? _targetSelector;
+    private Func<TContext, IServiceProvider, TMachineArgs, TState>? _targetSelector;
     private (TState Target, string Label)[]? _dynamicTargetHints;
     private bool _hasTarget;
     private bool _stay;
-    private Func<TContext, TServiceProvider, TriggerArgs, bool>? _guard;
+    private Func<TContext, IServiceProvider, TMachineArgs, bool>? _guard;
     private List<string>? _guardLabels;
-    private Action<TContext, TServiceProvider, TriggerArgs>? _syncAction;
-    private Func<TActor, TContext, TServiceProvider, TriggerArgs, ValueTask>? _reactionAsync;
+    private Action<TContext, IServiceProvider, TMachineArgs>? _syncAction;
+    private Func<TActor, TContext, IServiceProvider, TMachineArgs, ValueTask>? _reactionAsync;
 
     protected void SetTarget(TState target)
     {
@@ -27,7 +27,7 @@ public abstract class StateTriggerBuilderBase<TContext, TServiceProvider, TState
         _hasTarget = true;
     }
 
-    protected void SetTarget(Func<TContext, TServiceProvider, TriggerArgs, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    protected void SetTarget(Func<TContext, IServiceProvider, TMachineArgs, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         _target = default;
@@ -38,7 +38,7 @@ public abstract class StateTriggerBuilderBase<TContext, TServiceProvider, TState
 
     protected void SetStay() => _stay = true;
 
-    protected void SetGuard(Func<TContext, TServiceProvider, TriggerArgs, bool> guard, string? label = null)
+    protected void SetGuard(Func<TContext, IServiceProvider, TMachineArgs, bool> guard, string? label = null)
     {
         var previous = _guard;
         _guard = previous is null
@@ -51,7 +51,7 @@ public abstract class StateTriggerBuilderBase<TContext, TServiceProvider, TState
         }
     }
 
-    protected void SetSyncAction(Action<TContext, TServiceProvider, TriggerArgs> action)
+    protected void SetSyncAction(Action<TContext, IServiceProvider, TMachineArgs> action)
     {
         var previous = _syncAction;
         _syncAction = previous is null
@@ -63,7 +63,7 @@ public abstract class StateTriggerBuilderBase<TContext, TServiceProvider, TState
             };
     }
 
-    protected void SetReactionAsync(Func<TActor, TContext, TServiceProvider, TriggerArgs, ValueTask> action)
+    protected void SetReactionAsync(Func<TActor, TContext, IServiceProvider, TMachineArgs, ValueTask> action)
     {
         var previous = _reactionAsync;
         _reactionAsync = previous is null
@@ -79,18 +79,16 @@ public abstract class StateTriggerBuilderBase<TContext, TServiceProvider, TState
     {
         if (_hasTarget && _stay)
         {
-            throw new InvalidOperationException(
-                "A transition cannot declare both a Target and Stay(). Choose one.");
+            throw new InvalidOperationException("A transition cannot declare both a Target and Stay(). Choose one.");
         }
 
         if (!_hasTarget && !_stay)
         {
-            throw new InvalidOperationException(
-                "A transition must declare either a Target state or Stay() for an internal transition.");
+            throw new InvalidOperationException("A transition must declare either a Target state or Stay() for an internal transition.");
         }
     }
 
-    public IReadOnlyList<Transition<TContext, TServiceProvider, TState, TActor>> BuildTransitions()
+    public IReadOnlyList<Transition<TContext, TMachineArgs, TState, TActor>> BuildTransitions()
         =>
         [
             new(
@@ -105,326 +103,512 @@ public abstract class StateTriggerBuilderBase<TContext, TServiceProvider, TState
         ];
 }
 
-/// <summary>
-/// Concrete builder for parameterless triggers.
-/// </summary>
-public sealed class StateTriggerBuilder<TContext, TServiceProvider, TState, TActor> :
-    StateTriggerBuilderBase<TContext, TServiceProvider, TState, TActor>,
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor>,
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor>
+public sealed class StateTriggerBuilder<TContext, TMachineArgs, TState, TActor, TArgs> :
+    StateTriggerBuilderBase<TContext, TMachineArgs, TState, TActor>,
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs>,
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs>
     where TContext : class
     where TState : struct, Enum
 {
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor>.Target(TState target)
+    private readonly Func<TMachineArgs, TArgs> _getArgs;
+
+    public StateTriggerBuilder()
+        : this(static args => (TArgs)(object)args!)
+    {
+    }
+
+    public StateTriggerBuilder(Func<TMachineArgs, TArgs> getArgs)
+    {
+        _getArgs = getArgs ?? throw new ArgumentNullException(nameof(getArgs));
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target(TState target)
     {
         SetTarget(target);
         return this;
     }
 
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor>.Target(Func<TContext, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target(StateTargetSelector<TContext, TArgs, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
-        SetTarget((context, _, _) => targetSelector(context), targetHints);
+        SetTarget((context, _, args) => targetSelector(context, _getArgs(args)), targetHints);
         return this;
     }
 
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor>.Target(Func<TContext, TServiceProvider, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1>(StateTargetSelector<TContext, TArgs, T1, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
-        SetTarget((context, sp, _) => targetSelector(context, sp), targetHints);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp)), targetHints);
         return this;
     }
 
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor>.Stay()
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2>(StateTargetSelector<TContext, TArgs, T1, T2, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    {
+        ArgumentNullException.ThrowIfNull(targetSelector);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp)), targetHints);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3>(StateTargetSelector<TContext, TArgs, T1, T2, T3, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    {
+        ArgumentNullException.ThrowIfNull(targetSelector);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp)), targetHints);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    {
+        ArgumentNullException.ThrowIfNull(targetSelector);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp)), targetHints);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    {
+        ArgumentNullException.ThrowIfNull(targetSelector);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp)), targetHints);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    {
+        ArgumentNullException.ThrowIfNull(targetSelector);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp)), targetHints);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    {
+        ArgumentNullException.ThrowIfNull(targetSelector);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp)), targetHints);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    {
+        ArgumentNullException.ThrowIfNull(targetSelector);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp)), targetHints);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    {
+        ArgumentNullException.ThrowIfNull(targetSelector);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp)), targetHints);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    {
+        ArgumentNullException.ThrowIfNull(targetSelector);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp)), targetHints);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    {
+        ArgumentNullException.ThrowIfNull(targetSelector);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp)), targetHints);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    {
+        ArgumentNullException.ThrowIfNull(targetSelector);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp)), targetHints);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    {
+        ArgumentNullException.ThrowIfNull(targetSelector);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp)), targetHints);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    {
+        ArgumentNullException.ThrowIfNull(targetSelector);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp)), targetHints);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    {
+        ArgumentNullException.ThrowIfNull(targetSelector);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp), StateMachineServiceResolver.Resolve<T15>(sp)), targetHints);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    {
+        ArgumentNullException.ThrowIfNull(targetSelector);
+        SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp), StateMachineServiceResolver.Resolve<T15>(sp), StateMachineServiceResolver.Resolve<T16>(sp)), targetHints);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Stay()
     {
         SetStay();
         return this;
     }
 
-    void ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor>.Ignore() => SetStay();
+    public void Ignore() => SetStay();
 
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor>.When(Func<TContext, bool> guard, string? label)
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When(StateGuard<TContext, TArgs> guard, string? label = null)
     {
         ArgumentNullException.ThrowIfNull(guard);
-        SetGuard((context, _, _) => guard(context), label);
+        SetGuard((context, _, args) => guard(context, _getArgs(args)), label);
         return this;
     }
 
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor>.When(Func<TContext, TServiceProvider, bool> guard, string? label)
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1>(StateGuard<TContext, TArgs, T1> guard, string? label = null)
     {
         ArgumentNullException.ThrowIfNull(guard);
-        SetGuard((context, sp, _) => guard(context, sp), label);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp)), label);
         return this;
     }
 
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor>.Invoke(Action<TContext> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        SetSyncAction((context, _, _) => action(context));
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor>.Invoke(Action<TContext, TServiceProvider> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        SetSyncAction((context, sp, _) => action(context, sp));
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor>.ReactAsync(Func<TActor, TContext, ValueTask> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        SetReactionAsync((actor, context, _, _) => action(actor, context));
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor>.ReactAsync(Func<TActor, TContext, TServiceProvider, ValueTask> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        SetReactionAsync((actor, context, sp, _) => action(actor, context, sp));
-        return this;
-    }
-}
-
-/// <summary>
-/// Concrete builder for single-argument triggers.
-/// </summary>
-public sealed class StateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0> :
-    StateTriggerBuilderBase<TContext, TServiceProvider, TState, TActor>,
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0>,
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0>
-    where TContext : class
-    where TState : struct, Enum
-{
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0>.Target(TState target)
-    {
-        SetTarget(target);
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0>.Target(Func<TContext, TArg0, TState> targetSelector, params (TState Target, string Label)[] targetHints)
-    {
-        ArgumentNullException.ThrowIfNull(targetSelector);
-        SetTarget((context, _, args) => targetSelector(context, args.Get<TArg0>(0)), targetHints);
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0>.Target(Func<TContext, TServiceProvider, TArg0, TState> targetSelector, params (TState Target, string Label)[] targetHints)
-    {
-        ArgumentNullException.ThrowIfNull(targetSelector);
-        SetTarget((context, sp, args) => targetSelector(context, sp, args.Get<TArg0>(0)), targetHints);
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0>.Stay()
-    {
-        SetStay();
-        return this;
-    }
-
-    void ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0>.Ignore() => SetStay();
-
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0>.When(Func<TContext, TArg0, bool> guard, string? label)
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2>(StateGuard<TContext, TArgs, T1, T2> guard, string? label = null)
     {
         ArgumentNullException.ThrowIfNull(guard);
-        SetGuard((context, _, args) => guard(context, args.Get<TArg0>(0)), label);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp)), label);
         return this;
     }
 
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0>.When(Func<TContext, TServiceProvider, TArg0, bool> guard, string? label)
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3>(StateGuard<TContext, TArgs, T1, T2, T3> guard, string? label = null)
     {
         ArgumentNullException.ThrowIfNull(guard);
-        SetGuard((context, sp, args) => guard(context, sp, args.Get<TArg0>(0)), label);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp)), label);
         return this;
     }
 
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0>.Invoke(Action<TContext, TArg0> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        SetSyncAction((context, _, args) => action(context, args.Get<TArg0>(0)));
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0>.Invoke(Action<TContext, TServiceProvider, TArg0> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        SetSyncAction((context, sp, args) => action(context, sp, args.Get<TArg0>(0)));
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0>.ReactAsync(Func<TActor, TContext, TArg0, ValueTask> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        SetReactionAsync((actor, context, _, args) => action(actor, context, args.Get<TArg0>(0)));
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0>.ReactAsync(Func<TActor, TContext, TServiceProvider, TArg0, ValueTask> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        SetReactionAsync((actor, context, sp, args) => action(actor, context, sp, args.Get<TArg0>(0)));
-        return this;
-    }
-}
-
-/// <summary>
-/// Concrete builder for two-argument triggers.
-/// </summary>
-public sealed class StateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> :
-    StateTriggerBuilderBase<TContext, TServiceProvider, TState, TActor>,
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1>,
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1>
-    where TContext : class
-    where TState : struct, Enum
-{
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1>.Target(TState target)
-    {
-        SetTarget(target);
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1>.Target(Func<TContext, TArg0, TArg1, TState> targetSelector, params (TState Target, string Label)[] targetHints)
-    {
-        ArgumentNullException.ThrowIfNull(targetSelector);
-        SetTarget((context, _, args) => targetSelector(context, args.Get<TArg0>(0), args.Get<TArg1>(1)), targetHints);
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1>.Target(Func<TContext, TServiceProvider, TArg0, TArg1, TState> targetSelector, params (TState Target, string Label)[] targetHints)
-    {
-        ArgumentNullException.ThrowIfNull(targetSelector);
-        SetTarget((context, sp, args) => targetSelector(context, sp, args.Get<TArg0>(0), args.Get<TArg1>(1)), targetHints);
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1>.Stay()
-    {
-        SetStay();
-        return this;
-    }
-
-    void ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1>.Ignore() => SetStay();
-
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1>.When(Func<TContext, TArg0, TArg1, bool> guard, string? label)
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4>(StateGuard<TContext, TArgs, T1, T2, T3, T4> guard, string? label = null)
     {
         ArgumentNullException.ThrowIfNull(guard);
-        SetGuard((context, _, args) => guard(context, args.Get<TArg0>(0), args.Get<TArg1>(1)), label);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp)), label);
         return this;
     }
 
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1>.When(Func<TContext, TServiceProvider, TArg0, TArg1, bool> guard, string? label)
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5> guard, string? label = null)
     {
         ArgumentNullException.ThrowIfNull(guard);
-        SetGuard((context, sp, args) => guard(context, sp, args.Get<TArg0>(0), args.Get<TArg1>(1)), label);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp)), label);
         return this;
     }
 
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1>.Invoke(Action<TContext, TArg0, TArg1> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        SetSyncAction((context, _, args) => action(context, args.Get<TArg0>(0), args.Get<TArg1>(1)));
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1>.Invoke(Action<TContext, TServiceProvider, TArg0, TArg1> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        SetSyncAction((context, sp, args) => action(context, sp, args.Get<TArg0>(0), args.Get<TArg1>(1)));
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1>.ReactAsync(Func<TActor, TContext, TArg0, TArg1, ValueTask> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        SetReactionAsync((actor, context, _, args) => action(actor, context, args.Get<TArg0>(0), args.Get<TArg1>(1)));
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1>.ReactAsync(Func<TActor, TContext, TServiceProvider, TArg0, TArg1, ValueTask> action)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        SetReactionAsync((actor, context, sp, args) => action(actor, context, sp, args.Get<TArg0>(0), args.Get<TArg1>(1)));
-        return this;
-    }
-}
-
-/// <summary>
-/// Concrete builder for three-argument triggers.
-/// </summary>
-public sealed class StateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> :
-    StateTriggerBuilderBase<TContext, TServiceProvider, TState, TActor>,
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2>,
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2>
-    where TContext : class
-    where TState : struct, Enum
-{
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2>.Target(TState target)
-    {
-        SetTarget(target);
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2>.Target(Func<TContext, TArg0, TArg1, TArg2, TState> targetSelector, params (TState Target, string Label)[] targetHints)
-    {
-        ArgumentNullException.ThrowIfNull(targetSelector);
-        SetTarget((context, _, args) => targetSelector(context, args.Get<TArg0>(0), args.Get<TArg1>(1), args.Get<TArg2>(2)), targetHints);
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2>.Target(Func<TContext, TServiceProvider, TArg0, TArg1, TArg2, TState> targetSelector, params (TState Target, string Label)[] targetHints)
-    {
-        ArgumentNullException.ThrowIfNull(targetSelector);
-        SetTarget((context, sp, args) => targetSelector(context, sp, args.Get<TArg0>(0), args.Get<TArg1>(1), args.Get<TArg2>(2)), targetHints);
-        return this;
-    }
-
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2>.Stay()
-    {
-        SetStay();
-        return this;
-    }
-
-    void ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2>.Ignore() => SetStay();
-
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2>.When(Func<TContext, TArg0, TArg1, TArg2, bool> guard, string? label)
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6> guard, string? label = null)
     {
         ArgumentNullException.ThrowIfNull(guard);
-        SetGuard((context, _, args) => guard(context, args.Get<TArg0>(0), args.Get<TArg1>(1), args.Get<TArg2>(2)), label);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp)), label);
         return this;
     }
 
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2>.When(Func<TContext, TServiceProvider, TArg0, TArg1, TArg2, bool> guard, string? label)
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7> guard, string? label = null)
     {
         ArgumentNullException.ThrowIfNull(guard);
-        SetGuard((context, sp, args) => guard(context, sp, args.Get<TArg0>(0), args.Get<TArg1>(1), args.Get<TArg2>(2)), label);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp)), label);
         return this;
     }
 
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2>.Invoke(Action<TContext, TArg0, TArg1, TArg2> action)
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8> guard, string? label = null)
     {
-        ArgumentNullException.ThrowIfNull(action);
-        SetSyncAction((context, _, args) => action(context, args.Get<TArg0>(0), args.Get<TArg1>(1), args.Get<TArg2>(2)));
+        ArgumentNullException.ThrowIfNull(guard);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp)), label);
         return this;
     }
 
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2>.Invoke(Action<TContext, TServiceProvider, TArg0, TArg1, TArg2> action)
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9> guard, string? label = null)
     {
-        ArgumentNullException.ThrowIfNull(action);
-        SetSyncAction((context, sp, args) => action(context, sp, args.Get<TArg0>(0), args.Get<TArg1>(1), args.Get<TArg2>(2)));
+        ArgumentNullException.ThrowIfNull(guard);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp)), label);
         return this;
     }
 
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2>.ReactAsync(Func<TActor, TContext, TArg0, TArg1, TArg2, ValueTask> action)
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> guard, string? label = null)
     {
-        ArgumentNullException.ThrowIfNull(action);
-        SetReactionAsync((actor, context, _, args) => action(actor, context, args.Get<TArg0>(0), args.Get<TArg1>(1), args.Get<TArg2>(2)));
+        ArgumentNullException.ThrowIfNull(guard);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp)), label);
         return this;
     }
 
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2>.ReactAsync(Func<TActor, TContext, TServiceProvider, TArg0, TArg1, TArg2, ValueTask> action)
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> guard, string? label = null)
+    {
+        ArgumentNullException.ThrowIfNull(guard);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp)), label);
+        return this;
+    }
+
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> guard, string? label = null)
+    {
+        ArgumentNullException.ThrowIfNull(guard);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp)), label);
+        return this;
+    }
+
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> guard, string? label = null)
+    {
+        ArgumentNullException.ThrowIfNull(guard);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp)), label);
+        return this;
+    }
+
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> guard, string? label = null)
+    {
+        ArgumentNullException.ThrowIfNull(guard);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp)), label);
+        return this;
+    }
+
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> guard, string? label = null)
+    {
+        ArgumentNullException.ThrowIfNull(guard);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp), StateMachineServiceResolver.Resolve<T15>(sp)), label);
+        return this;
+    }
+
+    public ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16> guard, string? label = null)
+    {
+        ArgumentNullException.ThrowIfNull(guard);
+        SetGuard((context, sp, args) => guard(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp), StateMachineServiceResolver.Resolve<T15>(sp), StateMachineServiceResolver.Resolve<T16>(sp)), label);
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke(StateAction<TContext, TArgs> action)
     {
         ArgumentNullException.ThrowIfNull(action);
-        SetReactionAsync((actor, context, sp, args) => action(actor, context, sp, args.Get<TArg0>(0), args.Get<TArg1>(1), args.Get<TArg2>(2)));
+        SetSyncAction((context, _, args) => action(context, _getArgs(args)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1>(StateAction<TContext, TArgs, T1> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2>(StateAction<TContext, TArgs, T1, T2> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3>(StateAction<TContext, TArgs, T1, T2, T3> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4>(StateAction<TContext, TArgs, T1, T2, T3, T4> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp), StateMachineServiceResolver.Resolve<T15>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetSyncAction((context, sp, args) => action(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp), StateMachineServiceResolver.Resolve<T15>(sp), StateMachineServiceResolver.Resolve<T16>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync(StateReaction<TActor, TContext, TArgs> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, _, args) => action(actor, context, _getArgs(args)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1>(StateReaction<TActor, TContext, TArgs, T1> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2>(StateReaction<TActor, TContext, TArgs, T1, T2> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3>(StateReaction<TActor, TContext, TArgs, T1, T2, T3> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp), StateMachineServiceResolver.Resolve<T15>(sp)));
+        return this;
+    }
+
+    public ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        SetReactionAsync((actor, context, sp, args) => action(actor, context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp), StateMachineServiceResolver.Resolve<T15>(sp), StateMachineServiceResolver.Resolve<T16>(sp)));
         return this;
     }
 }

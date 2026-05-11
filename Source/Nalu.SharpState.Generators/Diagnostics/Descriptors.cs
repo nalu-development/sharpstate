@@ -86,12 +86,4 @@ internal static class Descriptors
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    public static readonly DiagnosticDescriptor TriggerTooManyParameters = new(
-        id: "NSS011",
-        title: "[StateTriggerDefinition] has too many parameters",
-        messageFormat: "[StateTriggerDefinition] method '{0}' has {1} parameters; at most 3 are supported. Define a record struct or a named tuple to group the values and pass a single parameter.",
-        category: _category,
-        defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
-
 }

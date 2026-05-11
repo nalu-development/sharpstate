@@ -24,66 +24,98 @@ namespace Sample
             Disconnect,
         }
         
-        protected interface IStateConfiguration : global::Nalu.SharpState.IStateConfiguration<global::Sample.Ctx, global::System.IServiceProvider, State, Trigger, IActor>
+        public readonly struct ConnectArgs
+        {
+            public readonly string DeviceId;
+            
+            public ConnectArgs(string deviceId)
+            {
+                DeviceId = deviceId;
+            }
+            
+            public void Deconstruct(out string deviceId)
+            {
+                deviceId = DeviceId;
+            }
+        }
+        
+        public readonly struct DisconnectArgs
         {
         }
         
-        protected interface IStateConfigurator : IStateConfiguration
+        public readonly struct TriggerArgs
         {
-            /// <summary>
-            /// Declares a synchronous callback to run after the machine enters this state.
-            /// Convenience overload: the callback receives only <see cref="global::Sample.Ctx"/>; it is wrapped as <see cref="global::Nalu.SharpState.StateConfigurator{global::Sample.Ctx, global::System.IServiceProvider, State, Trigger, IActor}.SetEntryAction(Action{global::Sample.Ctx, global::System.IServiceProvider})"/> with the service provider ignored.
-            /// </summary>
-            /// <param name="action">The callback to run after the state is entered; receives only <see cref="global::Sample.Ctx"/>.</param>
-            /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator WhenEntering(Action<global::Sample.Ctx> action);
+            private readonly int _kind;
+            private readonly ConnectArgs _value1;
+            private readonly DisconnectArgs _value2;
             
-            /// <summary>
-            /// Declares a synchronous callback to run after the machine enters this state.
-            /// See <see cref="global::Nalu.SharpState.StateConfigurator{global::Sample.Ctx, global::System.IServiceProvider, State, Trigger, IActor}.SetEntryAction(Action{global::Sample.Ctx, global::System.IServiceProvider})"/>.
-            /// </summary>
-            /// <param name="action">The callback to run after the state is entered; receives the context and the synchronous transition service provider.</param>
-            /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator WhenEntering(Action<global::Sample.Ctx, global::System.IServiceProvider> action);
+            public TriggerArgs(ConnectArgs value)
+            {
+                _kind = 1;
+                _value1 = value;
+                _value2 = default;
+            }
             
-            /// <summary>
-            /// Declares a synchronous callback to run before the machine exits this state.
-            /// Convenience overload: the callback receives only <see cref="global::Sample.Ctx"/>; it is wrapped as <see cref="global::Nalu.SharpState.StateConfigurator{global::Sample.Ctx, global::System.IServiceProvider, State, Trigger, IActor}.SetExitAction(Action{global::Sample.Ctx, global::System.IServiceProvider})"/> with the service provider ignored.
-            /// </summary>
-            /// <param name="action">The callback to run before the state is exited; receives only <see cref="global::Sample.Ctx"/>.</param>
-            /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator WhenExiting(Action<global::Sample.Ctx> action);
+            public TriggerArgs(DisconnectArgs value)
+            {
+                _kind = 2;
+                _value1 = default;
+                _value2 = value;
+            }
             
-            /// <summary>
-            /// Declares a synchronous callback to run before the machine exits this state.
-            /// See <see cref="global::Nalu.SharpState.StateConfigurator{global::Sample.Ctx, global::System.IServiceProvider, State, Trigger, IActor}.SetExitAction(Action{global::Sample.Ctx, global::System.IServiceProvider})"/>.
-            /// </summary>
-            /// <param name="action">The callback to run before the state is exited; receives the context and the synchronous transition service provider.</param>
-            /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator WhenExiting(Action<global::Sample.Ctx, global::System.IServiceProvider> action);
+            public object? Value => _kind switch
+            {
+                1 => _value1,
+                2 => _value2,
+                _ => null,
+            };
             
+            public bool HasValue => _kind != 0;
+            
+            public bool TryGetValue(out ConnectArgs value)
+            {
+                value = _kind == 1 ? _value1 : default;
+                return _kind == 1;
+            }
+            
+            public bool TryGetValue(out DisconnectArgs value)
+            {
+                value = _kind == 2 ? _value2 : default;
+                return _kind == 2;
+            }
+            
+            public override string ToString() => _kind switch
+            {
+                1 => _value1.ToString()!,
+                2 => _value2.ToString()!,
+                _ => "null",
+            };
+        }
+        
+        protected interface IStateConfiguration : global::Nalu.SharpState.IStateConfiguration<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor>
+        {
+        }
+        
+        protected interface IStateConfigurator : global::Nalu.SharpState.IStateLifecycleFluent<IStateConfigurator, global::Sample.Ctx>, IStateConfiguration
+        {
             /// <summary>
             /// Configures what happens when <see cref="IActor.Connect(string)"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, global::System.IServiceProvider, State, IActor, string}"/> used by <see cref="IActor.Connect(string)"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor, ConnectArgs}"/> used by <see cref="IActor.Connect(string)"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator OnConnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, global::System.IServiceProvider, State, IActor, string>> configure);
+            IStateConfigurator OnConnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, ConnectArgs>> configure);
             
             /// <summary>
             /// Configures what happens when <see cref="IActor.Disconnect()"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, global::System.IServiceProvider, State, IActor}"/> used by <see cref="IActor.Disconnect()"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor, DisconnectArgs}"/> used by <see cref="IActor.Disconnect()"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator OnDisconnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, global::System.IServiceProvider, State, IActor>> configure);
+            IStateConfigurator OnDisconnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, DisconnectArgs>> configure);
         }
         
         /// <summary>
         /// <see cref="global::Sample.Flat"/> runtime actor.
         /// </summary>
-        /// <remarks>
-        /// The machine's service provider type argument is <c>global::System.IServiceProvider</c>.
-        /// Use the generated <c>CreateActor</c> or <c>CreateActorWithState</c> overloads with an <see cref="global::Nalu.SharpState.IStateMachineServiceProviderResolver{T}"/> implementation (instantiated as <c>IStateMachineServiceProviderResolver&lt;global::System.IServiceProvider&gt;</c>) for synchronous transitions and scoped providers for <c>ReactAsync</c>.
-        /// </remarks>
         public interface IActor
         {
             /// <summary>
@@ -99,17 +131,17 @@ namespace Sample
             /// <summary>
             /// Gets or sets the callback invoked when a trigger has no matching transition.
             /// </summary>
-            global::Nalu.SharpState.UnhandledTriggerHandler<State, Trigger>? OnUnhandled { get; set; }
+            global::Nalu.SharpState.UnhandledTriggerHandler<State, Trigger, TriggerArgs>? OnUnhandled { get; set; }
             
             /// <summary>
             /// Raised after a transition commits and changes the current state.
             /// </summary>
-            event global::Nalu.SharpState.StateChangedHandler<State, Trigger>? StateChanged;
+            event global::Nalu.SharpState.StateChangedHandler<State, Trigger, TriggerArgs>? StateChanged;
             
             /// <summary>
             /// Raised when a background reaction scheduled by <c>ReactAsync(...)</c> fails.
             /// </summary>
-            event global::Nalu.SharpState.ReactionFailedHandler<State, Trigger>? ReactionFailed;
+            event global::Nalu.SharpState.ReactionFailedHandler<State, Trigger, TriggerArgs>? ReactionFailed;
             
             /// <summary>
             /// Determines whether the current leaf equals <paramref name="state"/> or is contained by it.
@@ -143,6 +175,15 @@ namespace Sample
             void Disconnect();
         }
         
+        static partial void Connect(string deviceId)
+        {
+            _ = deviceId;
+        }
+        
+        static partial void Disconnect()
+        {
+        }
+        
         static Flat()
         {
             #nullable disable
@@ -156,27 +197,27 @@ namespace Sample
         /// Useful for dependency injection and unit tests.
         /// </summary>
         /// <param name="context">The shared <see cref="global::Sample.Ctx"/> passed to guards, actions, and reactions.</param>
-        /// <param name="serviceProviderResolver">Resolver used for <see cref="global::Nalu.SharpState.IStateMachineServiceProviderResolver{T}.GetServiceProvider"/> during transitions and scoped providers for <c>ReactAsync</c>.</param>
+        /// <param name="serviceProviderResolver">Resolver used during transitions and scoped providers for <c>ReactAsync</c>.</param>
         /// <param name="state">The starting state. Composite states resolve to their initial leaf.</param>
         /// <returns>A new <see cref="IActor"/> instance.</returns>
-        public delegate IActor CreateActorWithStateFactory(global::Sample.Ctx context, global::Nalu.SharpState.IStateMachineServiceProviderResolver<global::System.IServiceProvider> serviceProviderResolver, State state);
+        public delegate IActor CreateActorWithStateFactory(global::Sample.Ctx context, global::Nalu.SharpState.IStateMachineServiceProviderResolver serviceProviderResolver, State state);
         
         /// <summary>
         /// Factory delegate that creates a new <see cref="IActor"/> starting at <see cref="GetInitialState()"/>, bound to this generated state machine definition.
         /// Useful for dependency injection and unit tests.
         /// </summary>
         /// <param name="context">The shared <see cref="global::Sample.Ctx"/> passed to guards, actions, and reactions.</param>
-        /// <param name="serviceProviderResolver">Resolver used for <see cref="global::Nalu.SharpState.IStateMachineServiceProviderResolver{T}.GetServiceProvider"/> during transitions and scoped providers for <c>ReactAsync</c>.</param>
+        /// <param name="serviceProviderResolver">Resolver used during transitions and scoped providers for <c>ReactAsync</c>.</param>
         /// <returns>A new <see cref="IActor"/> instance.</returns>
-        public delegate IActor CreateActorFactory(global::Sample.Ctx context, global::Nalu.SharpState.IStateMachineServiceProviderResolver<global::System.IServiceProvider> serviceProviderResolver);
+        public delegate IActor CreateActorFactory(global::Sample.Ctx context, global::Nalu.SharpState.IStateMachineServiceProviderResolver serviceProviderResolver);
         
         private static IStateConfigurator ConfigureState() => new GeneratedStateConfigurator();
         
-        private static readonly global::Nalu.SharpState.StateMachineDefinition<global::Sample.Ctx, global::System.IServiceProvider, State, Trigger, IActor> _definition = BuildDefinition();
+        private static readonly global::Nalu.SharpState.StateMachineDefinition<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor> _definition = BuildDefinition();
         
-        private static global::Nalu.SharpState.StateMachineDefinition<global::Sample.Ctx, global::System.IServiceProvider, State, Trigger, IActor> BuildDefinition()
+        private static global::Nalu.SharpState.StateMachineDefinition<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor> BuildDefinition()
         {
-            var map = new global::Nalu.SharpState.InternalEnumMap<State, global::Nalu.SharpState.IStateConfiguration<global::Sample.Ctx, global::System.IServiceProvider, State, Trigger, IActor>>();
+            var map = new global::Nalu.SharpState.InternalEnumMap<State, global::Nalu.SharpState.IStateConfiguration<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor>>();
             {
                 var c = (GeneratedStateConfigurator)Idle;
                 map[State.Idle] = c;
@@ -185,7 +226,7 @@ namespace Sample
                 var c = (GeneratedStateConfigurator)Connected;
                 map[State.Connected] = c;
             }
-            return new global::Nalu.SharpState.StateMachineDefinition<global::Sample.Ctx, global::System.IServiceProvider, State, Trigger, IActor>(map);
+            return new global::Nalu.SharpState.StateMachineDefinition<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor>(map);
         }
         
         /// <summary>
@@ -210,45 +251,45 @@ namespace Sample
         /// Creates a new <see cref="IActor"/> bound to this generated state machine definition.
         /// </summary>
         /// <param name="context">The shared <see cref="global::Sample.Ctx"/> passed to guards, actions, and reactions.</param>
-        /// <param name="serviceProviderResolver">Resolver for <see cref="global::Nalu.SharpState.IStateMachineServiceProviderResolver{T}"/> (instantiated as <c>IStateMachineServiceProviderResolver&lt;global::System.IServiceProvider&gt;</c>).</param>
+        /// <param name="serviceProviderResolver">Resolver for transition services and scoped <c>ReactAsync</c> providers.</param>
         /// <param name="state">The starting state. Composite states resolve to their initial leaf.</param>
         /// <returns>A new <see cref="IActor"/> instance.</returns>
-        public static IActor CreateActorWithState(global::Sample.Ctx context, global::Nalu.SharpState.IStateMachineServiceProviderResolver<global::System.IServiceProvider> serviceProviderResolver, State state) => new Actor(_definition, state, context, serviceProviderResolver);
+        public static IActor CreateActorWithState(global::Sample.Ctx context, global::Nalu.SharpState.IStateMachineServiceProviderResolver serviceProviderResolver, State state) => new Actor(_definition, state, context, serviceProviderResolver);
         
         /// <summary>
         /// Creates a new <see cref="IActor"/> bound to this generated state machine definition.
         /// </summary>
         /// <param name="context">The shared <see cref="global::Sample.Ctx"/> used to create an actor starting from <see cref="GetInitialState()"/>.</param>
-        /// <param name="serviceProviderResolver">Resolver for <see cref="global::Nalu.SharpState.IStateMachineServiceProviderResolver{T}"/> (instantiated as <c>IStateMachineServiceProviderResolver&lt;global::System.IServiceProvider&gt;</c>).</param>
+        /// <param name="serviceProviderResolver">Resolver for transition services and scoped <c>ReactAsync</c> providers.</param>
         /// <returns>A new <see cref="IActor"/> instance at the machine's initial state.</returns>
-        public static IActor CreateActor(global::Sample.Ctx context, global::Nalu.SharpState.IStateMachineServiceProviderResolver<global::System.IServiceProvider> serviceProviderResolver) => CreateActorWithState(context, serviceProviderResolver, GetInitialState());
+        public static IActor CreateActor(global::Sample.Ctx context, global::Nalu.SharpState.IStateMachineServiceProviderResolver serviceProviderResolver) => CreateActorWithState(context, serviceProviderResolver, GetInitialState());
         
         private sealed class Actor : IActor
         {
-            private readonly global::Nalu.SharpState.StateMachineEngine<global::Sample.Ctx, global::System.IServiceProvider, State, Trigger, IActor> _engine;
+            private readonly global::Nalu.SharpState.StateMachineEngine<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor> _engine;
             
-            internal Actor(global::Nalu.SharpState.StateMachineDefinition<global::Sample.Ctx, global::System.IServiceProvider, State, Trigger, IActor> definition, State currentState, global::Sample.Ctx context, global::Nalu.SharpState.IStateMachineServiceProviderResolver<global::System.IServiceProvider> serviceProviderResolver)
+            internal Actor(global::Nalu.SharpState.StateMachineDefinition<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor> definition, State currentState, global::Sample.Ctx context, global::Nalu.SharpState.IStateMachineServiceProviderResolver serviceProviderResolver)
             {
-                _engine = new global::Nalu.SharpState.StateMachineEngine<global::Sample.Ctx, global::System.IServiceProvider, State, Trigger, IActor>(definition, currentState, context, this, serviceProviderResolver);
+                _engine = new global::Nalu.SharpState.StateMachineEngine<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor>(definition, currentState, context, this, serviceProviderResolver);
             }
             
             public State CurrentState => _engine.CurrentState;
             
             public global::Sample.Ctx Context => _engine.Context;
             
-            public global::Nalu.SharpState.UnhandledTriggerHandler<State, Trigger>? OnUnhandled
+            public global::Nalu.SharpState.UnhandledTriggerHandler<State, Trigger, TriggerArgs>? OnUnhandled
             {
                 get => _engine.OnUnhandled;
                 set => _engine.OnUnhandled = value;
             }
             
-            public event global::Nalu.SharpState.StateChangedHandler<State, Trigger>? StateChanged
+            public event global::Nalu.SharpState.StateChangedHandler<State, Trigger, TriggerArgs>? StateChanged
             {
                 add => _engine.StateChanged += value;
                 remove => _engine.StateChanged -= value;
             }
             
-            public event global::Nalu.SharpState.ReactionFailedHandler<State, Trigger>? ReactionFailed
+            public event global::Nalu.SharpState.ReactionFailedHandler<State, Trigger, TriggerArgs>? ReactionFailed
             {
                 add => _engine.ReactionFailed += value;
                 remove => _engine.ReactionFailed -= value;
@@ -256,59 +297,33 @@ namespace Sample
             
             public bool IsIn(State state) => _engine.IsIn(state);
             
-            public bool CanConnect(string deviceId) => _engine.CanFire(Trigger.Connect, global::Nalu.SharpState.TriggerArgs.From(deviceId));
+            public bool CanConnect(string deviceId) => _engine.CanFire(Trigger.Connect, new TriggerArgs(new ConnectArgs(deviceId)));
             
-            public void Connect(string deviceId) => _engine.Fire(Trigger.Connect, global::Nalu.SharpState.TriggerArgs.From(deviceId));
+            public void Connect(string deviceId) => _engine.Fire(Trigger.Connect, new TriggerArgs(new ConnectArgs(deviceId)));
             
-            public bool CanDisconnect() => _engine.CanFire(Trigger.Disconnect, global::Nalu.SharpState.TriggerArgs.Empty);
+            public bool CanDisconnect() => _engine.CanFire(Trigger.Disconnect, new TriggerArgs(new DisconnectArgs()));
             
-            public void Disconnect() => _engine.Fire(Trigger.Disconnect, global::Nalu.SharpState.TriggerArgs.Empty);
+            public void Disconnect() => _engine.Fire(Trigger.Disconnect, new TriggerArgs(new DisconnectArgs()));
         }
         
-        private sealed class GeneratedStateConfigurator : global::Nalu.SharpState.StateConfigurator<global::Sample.Ctx, global::System.IServiceProvider, State, Trigger, IActor>, IStateConfigurator
+        private sealed class GeneratedStateConfigurator : global::Nalu.SharpState.StateConfigurator<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor>, IStateConfigurator
         {
             internal void ApplyParent(State parent) => SetParent(parent);
             
             internal void ApplyInitialChild(State initial) => SetInitialChild(initial);
             
-            public IStateConfigurator WhenEntering(Action<global::Sample.Ctx> action)
+            public IStateConfigurator OnConnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, ConnectArgs>> configure)
             {
-                global::System.ArgumentNullException.ThrowIfNull(action);
-                SetEntryAction((ctx, _) => action(ctx));
-                return this;
-            }
-            
-            public IStateConfigurator WhenEntering(Action<global::Sample.Ctx, global::System.IServiceProvider> action)
-            {
-                SetEntryAction(action);
-                return this;
-            }
-            
-            public IStateConfigurator WhenExiting(Action<global::Sample.Ctx> action)
-            {
-                global::System.ArgumentNullException.ThrowIfNull(action);
-                SetExitAction((ctx, _) => action(ctx));
-                return this;
-            }
-            
-            public IStateConfigurator WhenExiting(Action<global::Sample.Ctx, global::System.IServiceProvider> action)
-            {
-                SetExitAction(action);
-                return this;
-            }
-            
-            public IStateConfigurator OnConnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, global::System.IServiceProvider, State, IActor, string>> configure)
-            {
-                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, global::System.IServiceProvider, State, IActor, string>();
+                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor, ConnectArgs>(static args => args.TryGetValue(out ConnectArgs value) ? value : throw new global::System.InvalidOperationException("Trigger argument payload does not match trigger 'Connect'."));
                 configure(builder);
                 builder.Validate();
                 AddTransitions(Trigger.Connect, builder.BuildTransitions());
                 return this;
             }
             
-            public IStateConfigurator OnDisconnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, global::System.IServiceProvider, State, IActor>> configure)
+            public IStateConfigurator OnDisconnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, DisconnectArgs>> configure)
             {
-                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, global::System.IServiceProvider, State, IActor>();
+                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor, DisconnectArgs>(static args => args.TryGetValue(out DisconnectArgs value) ? value : throw new global::System.InvalidOperationException("Trigger argument payload does not match trigger 'Disconnect'."));
                 configure(builder);
                 builder.Validate();
                 AddTransitions(Trigger.Disconnect, builder.BuildTransitions());

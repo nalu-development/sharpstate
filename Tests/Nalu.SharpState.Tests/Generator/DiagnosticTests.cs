@@ -271,9 +271,9 @@ public class DiagnosticTests
             [StateDefinition(Initial = true)]
             private static IStateConfiguration A { get; } = ConfigureState()
                 .OnGo(t => t
-                    .When((ctx, step) => step >= 0)
-                    .Target((ctx, step) => ctx.UseB && step == ctx.Counter ? State.B : State.C)
-                    .Invoke((ctx, step) => ctx.Counter += step)
+                    .When((ctx, args) => args.Step >= 0)
+                    .Target((ctx, args) => ctx.UseB && args.Step == ctx.Counter ? State.B : State.C)
+                    .Invoke((ctx, args) => ctx.Counter += args.Step)
                     .ReactAsync((_, _, _) => default));
 
             [StateDefinition] private static IStateConfiguration B { get; } = ConfigureState();
@@ -309,7 +309,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void NSS011_reported_when_trigger_has_more_than_three_parameters()
+    public void Trigger_with_seventeen_parameters_does_not_report_generator_diagnostic()
     {
         var source = """
         using Nalu.SharpState;
@@ -321,11 +321,14 @@ public class DiagnosticTests
         [StateMachineDefinition(typeof(Ctx))]
         public static partial class M
         {
-            [StateTriggerDefinition] static partial void TooMany(int a, int b, int c, int d);
+            [StateTriggerDefinition] static partial void TooMany(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j, int k, int l, int m, int n, int o, int p, int q);
 
-            [StateDefinition(Initial = true)] private static IStateConfiguration A { get; } = ConfigureState();
+            [StateDefinition(Initial = true)]
+            private static IStateConfiguration A { get; } = ConfigureState()
+                .OnTooMany(t => t.Target(State.A).Invoke((_, _) => { }));
         }
         """;
-        GetDiagnostics(source).Should().Contain(d => d.Id == "NSS011");
+        GetDiagnostics(source).Should().BeEmpty();
+        GetCompilationErrors(source).Should().BeEmpty();
     }
 }

@@ -5,25 +5,25 @@ namespace Nalu.SharpState;
 /// walks the hierarchy to resolve transitions, commits state changes, and schedules any post-transition reactions.
 /// </summary>
 /// <typeparam name="TContext">Type of the user-supplied context carried by the machine.</typeparam>
-/// <typeparam name="TServiceProvider">Type of the service provider passed to guards, actions, and reactions.</typeparam>
+/// <typeparam name="TArgs">Machine-specific trigger argument union.</typeparam>
 /// <typeparam name="TState">Enum type listing all states of the machine.</typeparam>
 /// <typeparam name="TTrigger">Enum type listing all triggers of the machine.</typeparam>
 /// <typeparam name="TActor">Type of the actor passed into post-transition reactions.</typeparam>
-public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrigger, TActor>
+public sealed class StateMachineEngine<TContext, TArgs, TState, TTrigger, TActor>
     where TContext : class
     where TState : struct, Enum
     where TTrigger : struct, Enum
 {
-    private readonly StateMachineDefinition<TContext, TServiceProvider, TState, TTrigger, TActor> _definition;
+    private readonly StateMachineDefinition<TContext, TArgs, TState, TTrigger, TActor> _definition;
     private readonly TActor _actor;
     private readonly TContext _context;
-    private readonly IStateMachineServiceProviderResolver<TServiceProvider> _serviceProviderResolver;
-    private readonly TServiceProvider _serviceProvider;
+    private readonly IStateMachineServiceProviderResolver _serviceProviderResolver;
+    private readonly IServiceProvider _serviceProvider;
     private TState _currentState;
     private bool _isDispatching;
 
     /// <summary>
-    /// Initializes a new <see cref="StateMachineEngine{TContext, TServiceProvider, TState, TTrigger, TActor}"/>.
+    /// Initializes a new <see cref="StateMachineEngine{TContext, TArgs, TState, TTrigger, TActor}"/>.
     /// If <paramref name="currentState"/> is a composite, its initial child chain is resolved to a leaf before the engine settles.
     /// </summary>
     /// <param name="definition">The immutable definition to dispatch against.</param>
@@ -34,11 +34,11 @@ public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrig
     /// <exception cref="ArgumentNullException"><paramref name="definition"/>, <paramref name="context"/>, or <paramref name="serviceProviderResolver"/> is <c>null</c>.</exception>
     /// <exception cref="KeyNotFoundException"><paramref name="currentState"/> is not registered in the definition.</exception>
     public StateMachineEngine(
-        StateMachineDefinition<TContext, TServiceProvider, TState, TTrigger, TActor> definition,
+        StateMachineDefinition<TContext, TArgs, TState, TTrigger, TActor> definition,
         TState currentState,
         TContext context,
         TActor actor,
-        IStateMachineServiceProviderResolver<TServiceProvider> serviceProviderResolver)
+        IStateMachineServiceProviderResolver serviceProviderResolver)
     {
         _definition = definition ?? throw new ArgumentNullException(nameof(definition));
         _context = context ?? throw new ArgumentNullException(nameof(context));
@@ -66,14 +66,14 @@ public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrig
 
     /// <summary>
     /// Raised after a transition has committed. Parameters are the source leaf, the new leaf, and the trigger that caused the change.
-    /// Not risen for internal transitions (<see cref="Transition{TContext, TServiceProvider, TState, TActor}.IsInternal"/>) or unhandled triggers.
+    /// Not risen for internal transitions (<see cref="Transition{TContext, TArgs, TState, TActor}.IsInternal"/>) or unhandled triggers.
     /// </summary>
-    public event StateChangedHandler<TState, TTrigger>? StateChanged;
+    public event StateChangedHandler<TState, TTrigger, TArgs>? StateChanged;
 
     /// <summary>
     /// Raised when a background <c>ReactAsync(...)</c> callback fails after the transition already completed.
     /// </summary>
-    public event ReactionFailedHandler<TState, TTrigger>? ReactionFailed;
+    public event ReactionFailedHandler<TState, TTrigger, TArgs>? ReactionFailed;
 
     /// <summary>
     /// Callback invoked when a trigger fires but no transition matches (neither on the current leaf
@@ -82,9 +82,9 @@ public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrig
     /// Defaults to a handler that throws <see cref="InvalidOperationException"/>.
     /// Set to <c>null</c> to silently ignore unhandled triggers, or assign a custom handler.
     /// </summary>
-    public UnhandledTriggerHandler<TState, TTrigger>? OnUnhandled { get; set; } = DefaultUnhandled;
+    public UnhandledTriggerHandler<TState, TTrigger, TArgs>? OnUnhandled { get; set; } = DefaultUnhandled;
 
-    private static void DefaultUnhandled(TState currentState, TTrigger trigger, TriggerArgs args)
+    private static void DefaultUnhandled(TState currentState, TTrigger trigger, TArgs args)
         => throw new InvalidOperationException(
             $"Trigger '{trigger}' is not handled from state '{currentState}'.");
 
@@ -100,7 +100,7 @@ public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrig
     /// External transitions run exit actions, transition action, state commit, entry actions, and <see cref="StateChanged"/>
     /// before any configured <c>ReactAsync(...)</c> callback is scheduled in the captured synchronization context.
     /// </summary>
-    public void Fire(TTrigger trigger, TriggerArgs args)
+    public void Fire(TTrigger trigger, TArgs args)
     {
         if (_isDispatching)
         {
@@ -131,12 +131,12 @@ public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrig
     /// Determines whether the specified trigger currently has a matching transition.
     /// Guards are evaluated against the current state and supplied arguments, but no actions run and no state changes are committed.
     /// </summary>
-    public bool CanFire(TTrigger trigger, TriggerArgs args)
+    public bool CanFire(TTrigger trigger, TArgs args)
         => FindMatchingTransition(trigger, args).HasValue;
 
-    private (Transition<TContext, TServiceProvider, TState, TActor> Transition, TState Source)? FindMatchingTransition(
+    private (Transition<TContext, TArgs, TState, TActor> Transition, TState Source)? FindMatchingTransition(
         TTrigger trigger,
-        TriggerArgs args)
+        TArgs args)
     {
         var source = _currentState;
         var state = source;
@@ -166,9 +166,9 @@ public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrig
     private void CommitTransition(
         TTrigger trigger,
         TState source,
-        Transition<TContext, TServiceProvider, TState, TActor> transition,
-        TriggerArgs args,
-        TServiceProvider serviceProvider)
+        Transition<TContext, TArgs, TState, TActor> transition,
+        TArgs args,
+        IServiceProvider serviceProvider)
     {
         if (transition.TargetSelector is not null)
         {
@@ -210,7 +210,7 @@ public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrig
 
     private void NotifyContextAboutStateChange(TState resolvedLeaf) => (_context as IStateAwareContext<TState>)?.OnStateChanged(resolvedLeaf);
 
-    private void InvokeExitActions(TState source, TState destination, TServiceProvider serviceProvider)
+    private void InvokeExitActions(TState source, TState destination, IServiceProvider serviceProvider)
     {
         foreach (var state in EnumerateExitPath(source, destination))
         {
@@ -219,7 +219,7 @@ public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrig
         }
     }
 
-    private void InvokeEntryActions(TState source, TState destination, TServiceProvider serviceProvider)
+    private void InvokeEntryActions(TState source, TState destination, IServiceProvider serviceProvider)
     {
         foreach (var state in EnumerateEntryPath(source, destination))
         {
@@ -232,8 +232,8 @@ public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrig
         TState source,
         TState destination,
         TTrigger trigger,
-        Transition<TContext, TServiceProvider, TState, TActor> transition,
-        TriggerArgs args)
+        Transition<TContext, TArgs, TState, TActor> transition,
+        TArgs args)
     {
         if (transition.ReactionAsync is null)
         {
@@ -256,11 +256,11 @@ public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrig
 #pragma warning disable VSTHRD100
     private async void ExecuteReaction(
 #pragma warning restore VSTHRD100
-        Func<TActor, TContext, TServiceProvider, TriggerArgs, ValueTask> reactionAsync,
+        Func<TActor, TContext, IServiceProvider, TArgs, ValueTask> reactionAsync,
         TState source,
         TState destination,
         TTrigger trigger,
-        TriggerArgs args)
+        TArgs args)
     {
         try
         {
@@ -313,20 +313,20 @@ public sealed class StateMachineEngine<TContext, TServiceProvider, TState, TTrig
 
     private sealed class ReactionWorkItem
     {
-        private readonly StateMachineEngine<TContext, TServiceProvider, TState, TTrigger, TActor> _engine;
-        private readonly Func<TActor, TContext, TServiceProvider, TriggerArgs, ValueTask> _reactionAsync;
+        private readonly StateMachineEngine<TContext, TArgs, TState, TTrigger, TActor> _engine;
+        private readonly Func<TActor, TContext, IServiceProvider, TArgs, ValueTask> _reactionAsync;
         private readonly TState _source;
         private readonly TState _destination;
         private readonly TTrigger _trigger;
-        private readonly TriggerArgs _args;
+        private readonly TArgs _args;
 
         public ReactionWorkItem(
-            StateMachineEngine<TContext, TServiceProvider, TState, TTrigger, TActor> engine,
-            Func<TActor, TContext, TServiceProvider, TriggerArgs, ValueTask> reactionAsync,
+            StateMachineEngine<TContext, TArgs, TState, TTrigger, TActor> engine,
+            Func<TActor, TContext, IServiceProvider, TArgs, ValueTask> reactionAsync,
             TState source,
             TState destination,
             TTrigger trigger,
-            TriggerArgs args)
+            TArgs args)
         {
             _engine = engine;
             _reactionAsync = reactionAsync;

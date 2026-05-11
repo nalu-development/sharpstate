@@ -5,7 +5,7 @@ The source generator emits targeted diagnostics instead of generating incorrect 
 ```ini
 # .editorconfig
 dotnet_diagnostic.NSS001.severity = error
-dotnet_diagnostic.NSS011.severity = error
+dotnet_diagnostic.NSS010.severity = error
 ```
 
 Every diagnostic listed below is reported as **error** by default.
@@ -145,15 +145,6 @@ only one is allowed
 
 Mark only one local state per region as initial.
 
-### `NSS011` — [StateTriggerDefinition] has too many parameters
-
-```
-[StateTriggerDefinition] method 'Submit' has 4 parameters; at most 3 are supported. Define a record
-struct or a named tuple to group the values and pass a single parameter.
-```
-
-Each trigger can take at most three parameters. If you need more values, use a `record struct`, a named tuple (for example `(int A, string B)`), or another single type and declare one parameter of that type.
-
 ### `NSS009` — Triggers cannot be declared inside a `[SubStateMachine]`
 
 ```
@@ -173,7 +164,6 @@ On top of compile-time diagnostics, a few exceptions surface misconfigurations t
 | `KeyNotFoundException: State 'X' is not registered in the state machine definition` | You passed a `State` to `CreateActorWithState` that does not appear in the definition. | Use a value from the generated `State` enum; do not cast arbitrary integers to `State`. |
 | `ArgumentNullException` on `CreateActor` / `CreateActorWithState` | `context` or `serviceProviderResolver` was `null`, or the internal `definition` was `null`. | Pass non-null arguments. The definition is injected by the generator and is never null in practice. |
 | `InvalidOperationException: State 'X' declares parent 'Y' but 'Y' does not declare an initial child via a nested [SubStateMachine(parent: Y)] region with one [StateDefinition(Initial = true)] child.` | A runtime-built definition has a dangling parent reference. | For generated definitions this is enforced at compile time; for hand-built ones, always pair a parent with a region that has exactly one initial child. |
-| `InvalidOperationException: Unsupported trigger argument count 'N'` | `TriggerArgs.ToArray()` on a value whose `Count` is not 0–3. | In normal use, build `TriggerArgs` with `Empty` and `From(...)` only. This path is defensive (for example against corrupted state). See [StateChanged](index.md#statechanged) for `Get<T>(index)` vs `ToArray()`. |
 
 ## Common pitfalls
 

@@ -18,10 +18,9 @@ private partial class ConnectedRegion
     private static IStateConfiguration Authenticated { get; } = ConfigureState()
         .OnMessage(t => t
             .Stay()
-            .Invoke((ctx, services, text) =>
-                services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>()
-                    .CreateLogger("Network")
-                    .LogInformation("Message: {Text}", text)));
+            .Invoke<Microsoft.Extensions.Logging.ILoggerFactory>((ctx, args, loggerFactory) =>
+                loggerFactory.CreateLogger("Network")
+                    .LogInformation("Message: {Text}", args.Text)));
 }
 ```
 
@@ -38,7 +37,6 @@ Every `[StateDefinition]` inside the class is treated as a child of `parent`. Ex
 ## A two-level example
 
 ```csharp
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nalu.SharpState;
 
@@ -75,11 +73,11 @@ public static partial class NetworkMachine
 
         [StateDefinition]
         private static IStateConfiguration Authenticated { get; } = ConfigureState()
-            .OnMessage(t => t.Stay().Invoke((ctx, services, msg) =>
+            .OnMessage(t => t.Stay().Invoke<ILoggerFactory>((ctx, args, loggerFactory) =>
             {
-                ctx.LastMessageLength = msg.Length;
-                services.GetRequiredService<ILoggerFactory>().CreateLogger("Network")
-                    .LogInformation("Message length {Length}", msg.Length);
+                ctx.LastMessageLength = args.Text.Length;
+                loggerFactory.CreateLogger("Network")
+                    .LogInformation("Message length {Length}", args.Text.Length);
             }));
 
         [SubStateMachine(parent: State.Authenticated)]
@@ -97,7 +95,7 @@ public static partial class NetworkMachine
 }
 ```
 
-The snippets above resolve **`ILoggerFactory`** from **`IServiceProvider`** (`GetRequiredService` is from **`Microsoft.Extensions.DependencyInjection`**). Add **`Nalu.SharpState.DependencyInjection`** and use **`StateMachineServiceProviderResolver`** when creating the actor, as in the [Service provider and actor factories](index.md#service-provider-and-actor-factories) section. A typical host registers **`ILoggerFactory`** by default.
+The snippets above request **`ILoggerFactory`** as a callback service parameter. Use **`StateMachineServiceProviderResolver`** from **`Nalu.SharpState`** (add the **`Nalu.SharpState.DependencyInjection`** package) when creating the actor, as in the [Service provider and actor factories](index.md#service-provider-and-actor-factories) section. A typical host registers **`ILoggerFactory`** by default.
 
 The hierarchy this produces:
 
@@ -119,9 +117,10 @@ Three rules govern how the runtime walks this tree.
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using Nalu.SharpState;
+using Nalu.SharpState;
 
 IServiceProvider services = ...; // composition root
-var resolver = new StateMachineServiceProviderResolver(services);
+var resolver = new StateMachineServiceProviderResolver(services, services.GetRequiredService<IServiceScopeFactory>());
 
 var machine = NetworkMachine.CreateActor(new NetworkContext(), resolver);
 
@@ -145,9 +144,10 @@ When a trigger fires, the engine walks **up** from the current leaf looking for 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
 using Nalu.SharpState;
+using Nalu.SharpState;
 
 IServiceProvider services = ...;
-var resolver = new StateMachineServiceProviderResolver(services);
+var resolver = new StateMachineServiceProviderResolver(services, services.GetRequiredService<IServiceScopeFactory>());
 
 // Current state: Editing (deep leaf, 3 levels down)
 var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), resolver, NetworkMachine.State.Editing);
@@ -206,7 +206,7 @@ For **dynamic** targets, pass labeled hints after the selector so the diagrams s
 
 ```csharp
 .OnRoute(t => t.Target(
-    (ctx, request) => request.IsAdmin ? State.AdminDashboard : State.UserDashboard,
+    (ctx, args) => args.Request.IsAdmin ? State.AdminDashboard : State.UserDashboard,
     (State.AdminDashboard, "Admin request"),
     (State.UserDashboard, "Standard request")))
 ```

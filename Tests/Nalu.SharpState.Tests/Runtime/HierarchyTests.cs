@@ -1,4 +1,5 @@
 using FluentAssertions;
+using TriggerArgs = Nalu.SharpState.Tests.Runtime.TestTriggerArgs;
 
 namespace Nalu.SharpState.Tests.Runtime;
 

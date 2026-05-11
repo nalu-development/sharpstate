@@ -3,24 +3,24 @@ namespace Nalu.SharpState;
 /// <summary>
 /// Generic base class for per-machine state configurators. Holds the accumulated per-trigger transition list,
 /// the optional hierarchy declarations (<c>Parent</c>, <c>AsStateMachine</c>), and implements
-/// <see cref="IStateConfiguration{TContext, TServiceProvider, TState, TTrigger, TActor}"/> so the chain can be returned directly from a
+/// <see cref="IStateConfiguration{TContext, TArgs, TState, TTrigger, TActor}"/> so the chain can be returned directly from a
 /// <c>[StateDefinition]</c> property without a separate <c>Build()</c> step.
 /// </summary>
 /// <typeparam name="TContext">Type of the user-supplied context carried by the machine.</typeparam>
-/// <typeparam name="TServiceProvider">Type of the service provider passed to guards, actions, and reactions.</typeparam>
+/// <typeparam name="TArgs">Machine-specific trigger argument union.</typeparam>
 /// <typeparam name="TState">Enum type listing all states of the machine.</typeparam>
 /// <typeparam name="TTrigger">Enum type listing all triggers of the machine.</typeparam>
 /// <typeparam name="TActor">Type of the actor passed into post-transition reactions.</typeparam>
-public abstract class StateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor>
-    : IStateConfiguration<TContext, TServiceProvider, TState, TTrigger, TActor>
+public abstract class StateConfigurator<TContext, TArgs, TState, TTrigger, TActor>
+    : IStateConfiguration<TContext, TArgs, TState, TTrigger, TActor>, IStateConfiguratorLifecycleBacking<TContext>
     where TState : struct, Enum
     where TTrigger : struct, Enum
 {
-    private readonly InternalEnumMap<TTrigger, List<Transition<TContext, TServiceProvider, TState, TActor>>> _transitions = new();
+    private readonly InternalEnumMap<TTrigger, List<Transition<TContext, TArgs, TState, TActor>>> _transitions = new();
     private TState? _parent;
     private TState? _initialChild;
-    private Action<TContext, TServiceProvider>? _entryAction;
-    private Action<TContext, TServiceProvider>? _exitAction;
+    private Action<TContext, IServiceProvider>? _entryAction;
+    private Action<TContext, IServiceProvider>? _exitAction;
 
     /// <inheritdoc />
     public TState? ParentState => _parent;
@@ -29,13 +29,13 @@ public abstract class StateConfigurator<TContext, TServiceProvider, TState, TTri
     public TState? InitialChildState => _initialChild;
 
     /// <inheritdoc />
-    public Action<TContext, TServiceProvider>? EntryAction => _entryAction;
+    public Action<TContext, IServiceProvider>? EntryAction => _entryAction;
 
     /// <inheritdoc />
-    public Action<TContext, TServiceProvider>? ExitAction => _exitAction;
+    public Action<TContext, IServiceProvider>? ExitAction => _exitAction;
 
     /// <inheritdoc />
-    public bool TryGetTransitions(TTrigger trigger, out IReadOnlyList<Transition<TContext, TServiceProvider, TState, TActor>> transitions)
+    public bool TryGetTransitions(TTrigger trigger, out IReadOnlyList<Transition<TContext, TArgs, TState, TActor>> transitions)
     {
         if (_transitions.TryGetValue(trigger, out var list))
         {
@@ -43,17 +43,17 @@ public abstract class StateConfigurator<TContext, TServiceProvider, TState, TTri
             return true;
         }
 
-        transitions = Array.Empty<Transition<TContext, TServiceProvider, TState, TActor>>();
+        transitions = Array.Empty<Transition<TContext, TArgs, TState, TActor>>();
         return false;
     }
 
     /// <summary>
     /// Appends the supplied transitions to the per-trigger bucket. Generated <c>On&lt;Trigger&gt;</c> methods call this
-    /// after running the user's configuration lambda and validating the resulting <see cref="StateTriggerBuilderBase{TContext, TServiceProvider, TState, TActor}"/>.
+    /// after running the user's configuration lambda and validating the resulting builder.
     /// </summary>
     /// <param name="trigger">The trigger the transitions belong to.</param>
     /// <param name="transitions">The transitions to add.</param>
-    protected void AddTransitions(TTrigger trigger, IReadOnlyList<Transition<TContext, TServiceProvider, TState, TActor>> transitions)
+    protected void AddTransitions(TTrigger trigger, IReadOnlyList<Transition<TContext, TArgs, TState, TActor>> transitions)
     {
         if (transitions.Count == 0)
         {
@@ -62,7 +62,7 @@ public abstract class StateConfigurator<TContext, TServiceProvider, TState, TTri
 
         if (!_transitions.TryGetValue(trigger, out var list))
         {
-            list = new List<Transition<TContext, TServiceProvider, TState, TActor>>(transitions.Count);
+            list = new List<Transition<TContext, TArgs, TState, TActor>>(transitions.Count);
             _transitions[trigger] = list;
         }
 
@@ -103,11 +103,11 @@ public abstract class StateConfigurator<TContext, TServiceProvider, TState, TTri
 
     /// <summary>
     /// Declares a synchronous callback to run after the machine enters this state.
-    /// The callback receives the context and the same <typeparamref name="TServiceProvider"/> used for synchronous
+    /// The callback receives the context and the same <see cref="IServiceProvider"/> used for synchronous
     /// guards and transition actions on that transition (not the scoped provider used only for <c>ReactAsync</c>).
     /// May be called at most once per configurator.
     /// </summary>
-    protected void SetEntryAction(Action<TContext, TServiceProvider> action)
+    protected void SetEntryAction(Action<TContext, IServiceProvider> action)
     {
         ArgumentNullException.ThrowIfNull(action);
 
@@ -121,11 +121,11 @@ public abstract class StateConfigurator<TContext, TServiceProvider, TState, TTri
 
     /// <summary>
     /// Declares a synchronous callback to run before the machine exits this state.
-    /// The callback receives the context and the same <typeparamref name="TServiceProvider"/> used for synchronous
+    /// The callback receives the context and the same <see cref="IServiceProvider"/> used for synchronous
     /// guards and transition actions on that transition (not the scoped provider used only for <c>ReactAsync</c>).
     /// May be called at most once per configurator.
     /// </summary>
-    protected void SetExitAction(Action<TContext, TServiceProvider> action)
+    protected void SetExitAction(Action<TContext, IServiceProvider> action)
     {
         ArgumentNullException.ThrowIfNull(action);
 
@@ -136,4 +136,12 @@ public abstract class StateConfigurator<TContext, TServiceProvider, TState, TTri
 
         _exitAction = action;
     }
+
+    /// <summary>Forwards to <see cref="SetEntryAction"/> (used by default <c>WhenEntering</c> implementations).</summary>
+    void IStateConfiguratorLifecycleBacking<TContext>.LifecycleSetEntryAction(Action<TContext, IServiceProvider> action)
+        => SetEntryAction(action);
+
+    /// <summary>Forwards to <see cref="SetExitAction"/> (used by default <c>WhenExiting</c> implementations).</summary>
+    void IStateConfiguratorLifecycleBacking<TContext>.LifecycleSetExitAction(Action<TContext, IServiceProvider> action)
+        => SetExitAction(action);
 }

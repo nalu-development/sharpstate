@@ -3,14 +3,13 @@ namespace Nalu.SharpState;
 /// <summary>
 /// Resolves the provider used by synchronous transition clauses and by <c>ReactAsync</c> reactions.
 /// </summary>
-/// <typeparam name="TServiceProvider">Service provider type passed into transition clauses and reactions.</typeparam>
-public interface IStateMachineServiceProviderResolver<TServiceProvider>
+public interface IStateMachineServiceProviderResolver
 {
     /// <summary>
     /// Returns the provider captured by the actor for synchronous <c>When</c>, <c>Target</c>, and <c>Invoke</c> clauses.
     /// </summary>
     /// <returns>The actor-scoped provider used by synchronous transition clauses.</returns>
-    TServiceProvider GetServiceProvider();
+    IServiceProvider GetServiceProvider();
     
     /// <summary>
     /// Creates the provider and ownership token for one <c>ReactAsync</c> reaction.
@@ -20,5 +19,5 @@ public interface IStateMachineServiceProviderResolver<TServiceProvider>
     /// <returns>
     /// Token disposed after the reaction finishes, such as an <c>IServiceScope</c>; return a no-op token when no cleanup is needed.
     /// </returns>
-    IDisposable CreateScopedServiceProvider(out TServiceProvider serviceProvider);
+    IDisposable CreateScopedServiceProvider(out IServiceProvider serviceProvider);
 }

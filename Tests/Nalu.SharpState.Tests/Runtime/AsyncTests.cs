@@ -1,4 +1,5 @@
 using FluentAssertions;
+using TriggerArgs = Nalu.SharpState.Tests.Runtime.TestTriggerArgs;
 
 namespace Nalu.SharpState.Tests.Runtime;
 
@@ -201,7 +202,7 @@ public class AsyncTests
             new TestContext(),
             new TestActor(),
             TestServiceProviders.EmptyResolver);
-        (FlatState from, FlatState to, FlatTrigger trigger, TriggerArgs args, Exception exception)? failure = null;
+        (FlatState from, FlatState to, FlatTrigger trigger, IServiceProvider args, Exception exception)? failure = null;
         engine.ReactionFailed += (from, to, trigger, args, exception) => failure = (from, to, trigger, args, exception);
 
         RunOn(syncContext, () => engine.Fire(FlatTrigger.Go, TriggerArgs.From(5)));
@@ -227,7 +228,7 @@ public class AsyncTests
 
         var definition = new StateMachineDefinition<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(map);
         var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver);
-        (FlatState state, FlatTrigger trigger, TriggerArgs args)? captured = null;
+        (FlatState state, FlatTrigger trigger, IServiceProvider args)? captured = null;
         engine.OnUnhandled = (state, trigger, args) => captured = (state, trigger, args);
 
         engine.Fire(FlatTrigger.NoMatch, TriggerArgs.From(5));

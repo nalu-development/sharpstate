@@ -1,4 +1,4 @@
-namespace Nalu.SharpState.Tests.EndToEnd;
+namespace Nalu.SharpState.AotTester;
 
 public class DoorContext
 {
@@ -29,8 +29,9 @@ public static partial class DoorMachine
         .OnOpen(t => t
                      .When((_, args) => args.Reason is not "spying", "Not spying")
                      .Target(State.Opened)
-                     .Invoke((ctx, args) =>
+                     .Invoke<IServiceProvider>((ctx, args, serviceProvider) =>
                          {
+                             _ = serviceProvider;
                              ctx.OpenCount++;
                              ctx.LastReason = args.Reason;
                          }

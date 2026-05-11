@@ -2,119 +2,176 @@
 
 namespace Nalu.SharpState;
 
-/// <summary>
-/// Continuation builder for a configured transition with no trigger parameters.
-/// </summary>
-public interface ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor>
+public delegate bool StateGuard<in TContext, in TArgs>(TContext context, TArgs args);
+public delegate bool StateGuard<in TContext, in TArgs, in T1>(TContext context, TArgs args, T1 service1);
+public delegate bool StateGuard<in TContext, in TArgs, in T1, in T2>(TContext context, TArgs args, T1 service1, T2 service2);
+public delegate bool StateGuard<in TContext, in TArgs, in T1, in T2, in T3>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3);
+public delegate bool StateGuard<in TContext, in TArgs, in T1, in T2, in T3, in T4>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4);
+public delegate bool StateGuard<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5);
+public delegate bool StateGuard<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6);
+public delegate bool StateGuard<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7);
+public delegate bool StateGuard<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8);
+public delegate bool StateGuard<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9);
+public delegate bool StateGuard<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10);
+public delegate bool StateGuard<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11);
+public delegate bool StateGuard<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12);
+public delegate bool StateGuard<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13);
+public delegate bool StateGuard<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, in T14>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13, T14 service14);
+public delegate bool StateGuard<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, in T14, in T15>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13, T14 service14, T15 service15);
+public delegate bool StateGuard<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, in T14, in T15, in T16>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13, T14 service14, T15 service15, T16 service16);
+
+public delegate void StateAction<in TContext, in TArgs>(TContext context, TArgs args);
+public delegate void StateAction<in TContext, in TArgs, in T1>(TContext context, TArgs args, T1 service1);
+public delegate void StateAction<in TContext, in TArgs, in T1, in T2>(TContext context, TArgs args, T1 service1, T2 service2);
+public delegate void StateAction<in TContext, in TArgs, in T1, in T2, in T3>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3);
+public delegate void StateAction<in TContext, in TArgs, in T1, in T2, in T3, in T4>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4);
+public delegate void StateAction<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5);
+public delegate void StateAction<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6);
+public delegate void StateAction<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7);
+public delegate void StateAction<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8);
+public delegate void StateAction<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9);
+public delegate void StateAction<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10);
+public delegate void StateAction<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11);
+public delegate void StateAction<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12);
+public delegate void StateAction<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13);
+public delegate void StateAction<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, in T14>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13, T14 service14);
+public delegate void StateAction<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, in T14, in T15>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13, T14 service14, T15 service15);
+public delegate void StateAction<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, in T14, in T15, in T16>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13, T14 service14, T15 service15, T16 service16);
+
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs>(TActor actor, TContext context, TArgs args);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1>(TActor actor, TContext context, TArgs args, T1 service1);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1, in T2>(TActor actor, TContext context, TArgs args, T1 service1, T2 service2);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1, in T2, in T3>(TActor actor, TContext context, TArgs args, T1 service1, T2 service2, T3 service3);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1, in T2, in T3, in T4>(TActor actor, TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5>(TActor actor, TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6>(TActor actor, TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7>(TActor actor, TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8>(TActor actor, TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9>(TActor actor, TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10>(TActor actor, TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11>(TActor actor, TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12>(TActor actor, TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13>(TActor actor, TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, in T14>(TActor actor, TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13, T14 service14);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, in T14, in T15>(TActor actor, TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13, T14 service14, T15 service15);
+public delegate ValueTask StateReaction<in TActor, in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, in T14, in T15, in T16>(TActor actor, TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13, T14 service14, T15 service15, T16 service16);
+
+public delegate TState StateTargetSelector<in TContext, in TArgs, out TState>(TContext context, TArgs args);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, out TState>(TContext context, TArgs args, T1 service1);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, in T2, out TState>(TContext context, TArgs args, T1 service1, T2 service2);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, in T2, in T3, out TState>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, in T2, in T3, in T4, out TState>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, out TState>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, out TState>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, out TState>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, out TState>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, out TState>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, out TState>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, out TState>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, out TState>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, out TState>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, in T14, out TState>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13, T14 service14);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, in T14, in T15, out TState>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13, T14 service14, T15 service15);
+public delegate TState StateTargetSelector<in TContext, in TArgs, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, in T14, in T15, in T16, out TState>(TContext context, TArgs args, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13, T14 service14, T15 service15, T16 service16);
+
+public delegate void StateLifecycleAction<in TContext>(TContext context);
+public delegate void StateLifecycleAction<in TContext, in T1>(TContext context, T1 service1);
+public delegate void StateLifecycleAction<in TContext, in T1, in T2>(TContext context, T1 service1, T2 service2);
+public delegate void StateLifecycleAction<in TContext, in T1, in T2, in T3>(TContext context, T1 service1, T2 service2, T3 service3);
+public delegate void StateLifecycleAction<in TContext, in T1, in T2, in T3, in T4>(TContext context, T1 service1, T2 service2, T3 service3, T4 service4);
+public delegate void StateLifecycleAction<in TContext, in T1, in T2, in T3, in T4, in T5>(TContext context, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5);
+public delegate void StateLifecycleAction<in TContext, in T1, in T2, in T3, in T4, in T5, in T6>(TContext context, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6);
+public delegate void StateLifecycleAction<in TContext, in T1, in T2, in T3, in T4, in T5, in T6, in T7>(TContext context, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7);
+public delegate void StateLifecycleAction<in TContext, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8>(TContext context, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8);
+public delegate void StateLifecycleAction<in TContext, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9>(TContext context, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9);
+public delegate void StateLifecycleAction<in TContext, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10>(TContext context, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10);
+public delegate void StateLifecycleAction<in TContext, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11>(TContext context, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11);
+public delegate void StateLifecycleAction<in TContext, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12>(TContext context, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12);
+public delegate void StateLifecycleAction<in TContext, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13>(TContext context, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13);
+public delegate void StateLifecycleAction<in TContext, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, in T14>(TContext context, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13, T14 service14);
+public delegate void StateLifecycleAction<in TContext, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, in T14, in T15>(TContext context, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13, T14 service14, T15 service15);
+public delegate void StateLifecycleAction<in TContext, in T1, in T2, in T3, in T4, in T5, in T6, in T7, in T8, in T9, in T10, in T11, in T12, in T13, in T14, in T15, in T16>(TContext context, T1 service1, T2 service2, T3 service3, T4 service4, T5 service5, T6 service6, T7 service7, T8 service8, T9 service9, T10 service10, T11 service11, T12 service12, T13 service13, T14 service14, T15 service15, T16 service16);
+
+public interface ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs>
     where TContext : class
     where TState : struct, Enum
 {
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> Invoke(Action<TContext> action);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> Invoke(Action<TContext, TServiceProvider> action);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> ReactAsync(Func<TActor, TContext, ValueTask> action);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> ReactAsync(Func<TActor, TContext, TServiceProvider, ValueTask> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke(StateAction<TContext, TArgs> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1>(StateAction<TContext, TArgs, T1> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2>(StateAction<TContext, TArgs, T1, T2> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3>(StateAction<TContext, TArgs, T1, T2, T3> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4>(StateAction<TContext, TArgs, T1, T2, T3, T4> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Invoke<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(StateAction<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync(StateReaction<TActor, TContext, TArgs> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1>(StateReaction<TActor, TContext, TArgs, T1> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2>(StateReaction<TActor, TContext, TArgs, T1, T2> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3>(StateReaction<TActor, TContext, TArgs, T1, T2, T3> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> action);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> ReactAsync<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(StateReaction<TActor, TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16> action);
 }
 
-/// <summary>
-/// Fluent builder for triggers that take no parameters.
-/// </summary>
-public interface ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor>
+public interface ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs>
     where TContext : class
     where TState : struct, Enum
 {
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor> When(Func<TContext, bool> guard, string? label = null);
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor> When(Func<TContext, TServiceProvider, bool> guard, string? label = null);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> Target(TState target);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> Target(Func<TContext, TState> targetSelector, params (TState Target, string Label)[] targetHints);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> Target(Func<TContext, TServiceProvider, TState> targetSelector, params (TState Target, string Label)[] targetHints);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor> Stay();
-    void Ignore();
-}
-
-/// <summary>
-/// Continuation builder for a configured transition with one trigger parameter.
-/// </summary>
-public interface ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0>
-    where TContext : class
-    where TState : struct, Enum
-{
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> Invoke(Action<TContext, TArg0> action);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> Invoke(Action<TContext, TServiceProvider, TArg0> action);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> ReactAsync(Func<TActor, TContext, TArg0, ValueTask> action);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> ReactAsync(Func<TActor, TContext, TServiceProvider, TArg0, ValueTask> action);
-}
-
-/// <summary>
-/// Fluent builder for triggers that take one parameter.
-/// </summary>
-public interface ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0>
-    where TContext : class
-    where TState : struct, Enum
-{
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0> When(Func<TContext, TArg0, bool> guard, string? label = null);
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0> When(Func<TContext, TServiceProvider, TArg0, bool> guard, string? label = null);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> Target(TState target);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> Target(Func<TContext, TArg0, TState> targetSelector, params (TState Target, string Label)[] targetHints);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> Target(Func<TContext, TServiceProvider, TArg0, TState> targetSelector, params (TState Target, string Label)[] targetHints);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0> Stay();
-    void Ignore();
-}
-
-/// <summary>
-/// Continuation builder for a configured transition with two trigger parameters.
-/// </summary>
-public interface ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1>
-    where TContext : class
-    where TState : struct, Enum
-{
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> Invoke(Action<TContext, TArg0, TArg1> action);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> Invoke(Action<TContext, TServiceProvider, TArg0, TArg1> action);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> ReactAsync(Func<TActor, TContext, TArg0, TArg1, ValueTask> action);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> ReactAsync(Func<TActor, TContext, TServiceProvider, TArg0, TArg1, ValueTask> action);
-}
-
-/// <summary>
-/// Fluent builder for triggers that take two parameters.
-/// </summary>
-public interface ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1>
-    where TContext : class
-    where TState : struct, Enum
-{
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> When(Func<TContext, TArg0, TArg1, bool> guard, string? label = null);
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> When(Func<TContext, TServiceProvider, TArg0, TArg1, bool> guard, string? label = null);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> Target(TState target);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> Target(Func<TContext, TArg0, TArg1, TState> targetSelector, params (TState Target, string Label)[] targetHints);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> Target(Func<TContext, TServiceProvider, TArg0, TArg1, TState> targetSelector, params (TState Target, string Label)[] targetHints);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1> Stay();
-    void Ignore();
-}
-
-/// <summary>
-/// Continuation builder for a configured transition with three trigger parameters.
-/// </summary>
-public interface ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2>
-    where TContext : class
-    where TState : struct, Enum
-{
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> Invoke(Action<TContext, TArg0, TArg1, TArg2> action);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> Invoke(Action<TContext, TServiceProvider, TArg0, TArg1, TArg2> action);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> ReactAsync(Func<TActor, TContext, TArg0, TArg1, TArg2, ValueTask> action);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> ReactAsync(Func<TActor, TContext, TServiceProvider, TArg0, TArg1, TArg2, ValueTask> action);
-}
-
-/// <summary>
-/// Fluent builder for triggers that take three parameters.
-/// </summary>
-public interface ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2>
-    where TContext : class
-    where TState : struct, Enum
-{
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> When(Func<TContext, TArg0, TArg1, TArg2, bool> guard, string? label = null);
-    ISyncStateTriggerBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> When(Func<TContext, TServiceProvider, TArg0, TArg1, TArg2, bool> guard, string? label = null);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> Target(TState target);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> Target(Func<TContext, TArg0, TArg1, TArg2, TState> targetSelector, params (TState Target, string Label)[] targetHints);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> Target(Func<TContext, TServiceProvider, TArg0, TArg1, TArg2, TState> targetSelector, params (TState Target, string Label)[] targetHints);
-    ISyncStateTransitionBuilder<TContext, TServiceProvider, TState, TActor, TArg0, TArg1, TArg2> Stay();
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When(StateGuard<TContext, TArgs> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1>(StateGuard<TContext, TArgs, T1> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2>(StateGuard<TContext, TArgs, T1, T2> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3>(StateGuard<TContext, TArgs, T1, T2, T3> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4>(StateGuard<TContext, TArgs, T1, T2, T3, T4> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> guard, string? label = null);
+    ISyncStateTriggerBuilder<TContext, TState, TActor, TArgs> When<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(StateGuard<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16> guard, string? label = null);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target(TState target);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target(StateTargetSelector<TContext, TArgs, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1>(StateTargetSelector<TContext, TArgs, T1, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2>(StateTargetSelector<TContext, TArgs, T1, T2, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3>(StateTargetSelector<TContext, TArgs, T1, T2, T3, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, TState> targetSelector, params (TState Target, string Label)[] targetHints);
+    ISyncStateTransitionBuilder<TContext, TState, TActor, TArgs> Stay();
     void Ignore();
 }
 

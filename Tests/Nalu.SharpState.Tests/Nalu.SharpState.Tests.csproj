@@ -14,7 +14,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\Source\Nalu.SharpState\Nalu.SharpState.csproj" />
         <ProjectReference Include="..\..\Source\Nalu.SharpState.DependencyInjection\Nalu.SharpState.DependencyInjection.csproj" />
-        <!-- Generator diagnostics: NSS001 through NSS011 (see Nalu.SharpState.Generators/Diagnostics/Descriptors.cs) -->
+        <!-- Generator diagnostics: NSS001 through NSS010 (see Nalu.SharpState.Generators/Diagnostics/Descriptors.cs) -->
         <ProjectReference Include="..\..\Source\Nalu.SharpState.Generators\Nalu.SharpState.Generators.csproj"
                           OutputItemType="Analyzer"
                           ReferenceOutputAssembly="true" />

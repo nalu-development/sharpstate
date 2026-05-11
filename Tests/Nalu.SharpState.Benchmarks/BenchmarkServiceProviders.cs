@@ -13,7 +13,7 @@ internal static class BenchmarkServiceProviders
         public object? GetService(Type serviceType) => null;
     }
 
-    private sealed class EmptyServiceProviderResolver : IStateMachineServiceProviderResolver<IServiceProvider>
+    private sealed class EmptyServiceProviderResolver : IStateMachineServiceProviderResolver
     {
         public static readonly EmptyServiceProviderResolver Instance = new();
 
@@ -43,6 +43,6 @@ internal static class BenchmarkServiceProviders
         }
     }
 
-    public static readonly IStateMachineServiceProviderResolver<IServiceProvider> EmptyResolver =
+    public static readonly IStateMachineServiceProviderResolver EmptyResolver =
         EmptyServiceProviderResolver.Instance;
 }

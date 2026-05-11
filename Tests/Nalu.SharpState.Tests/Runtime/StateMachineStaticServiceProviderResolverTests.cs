@@ -7,8 +7,8 @@ public class StateMachineStaticServiceProviderResolverTests
     [Fact]
     public void Static_resolver_reuses_same_provider_for_sync_and_reaction()
     {
-        var services = new TestServices();
-        var resolver = new StateMachineStaticServiceProviderResolver<TestServices>(services);
+        var services = EmptyServiceProvider.Instance;
+        var resolver = new StateMachineStaticServiceProviderResolver(services);
 
         resolver.GetServiceProvider().Should().BeSameAs(services);
 
@@ -16,6 +16,4 @@ public class StateMachineStaticServiceProviderResolverTests
         reactionServices.Should().BeSameAs(services);
         ownership.Dispose();
     }
-
-    private sealed class TestServices;
 }

@@ -6,6 +6,7 @@
         <Nullable>enable</Nullable>
         <!-- VSTHRD200: ReactAsync is configuration syntax, not an awaitable call site. -->
         <NoWarn>$(NoWarn);VSTHRD200</NoWarn>
+        <IsAotCompatible>true</IsAotCompatible>
     </PropertyGroup>
 
     <ItemGroup>

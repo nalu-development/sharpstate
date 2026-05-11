@@ -19,6 +19,6 @@ internal static class TestServiceProviders
     /// <summary>
     /// Resolver backed by an empty <see cref="IServiceProvider"/>.
     /// </summary>
-    public static readonly IStateMachineServiceProviderResolver<IServiceProvider> EmptyResolver =
+    public static readonly IStateMachineServiceProviderResolver EmptyResolver =
         StateMachineEmptyServiceProviderResolver.Instance;
 }

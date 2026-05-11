@@ -8,7 +8,6 @@
 
 ```csharp
 using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
 using Nalu.SharpState;
 
 // Register in DI, e.g. services.AddSingleton<IApprovalService, ApprovalService>();
@@ -28,12 +27,11 @@ public static partial class ReviewMachine
     private static IStateConfiguration Pending { get; } = ConfigureState()
         .OnRequestApproval(t => t
             .Target(State.Approving)
-            // TServiceProvider overload: resolve collaborators from DI, not from the context.
-            .ReactAsync(async (actor, ctx, services, id) =>
+            // Request collaborators as typed callback parameters.
+            .ReactAsync<IApprovalService>(async (actor, ctx, args, approvals) =>
             {
-                var approvals = services.GetRequiredService<IApprovalService>();
                 try {
-                    await approvals.ApproveAsync(id);
+                    await approvals.ApproveAsync(args.Id);
                     actor.Approve();
                 } catch {
                     actor.Reject();
@@ -53,7 +51,7 @@ public static partial class ReviewMachine
 }
 ```
 
-`GetRequiredService` is an extension from **`Microsoft.Extensions.DependencyInjection`**. Register **`IApprovalService`** (and logging types such as **`ILogger<T>`** where you use them) in your DI container.
+Register **`IApprovalService`** (and logging types such as **`ILogger<T>`** where you use them) in your DI container. SharpState resolves requested service parameters with `IServiceProvider.GetService(typeof(T))` and throws if the result is `null`.
 
 For external transitions, the execution order is:
 
@@ -75,9 +73,9 @@ If you use a dynamic `Target((ctx, args...) => ...)` and it resolves to the curr
 - If a context exists (for example a UI thread), the reaction starts there.
 - If no context exists, the reaction is queued on the thread pool.
 
-This keeps the main trigger path synchronous while still giving UI applications predictable follow-up scheduling. The callback receives the generated `IActor` first, so it can fire more triggers after awaited work completes. Overloads may include **`TServiceProvider`** after the context; that value comes from **`CreateScopedServiceProvider(out TServiceProvider)`**, and the engine disposes the returned token after the reaction.
+This keeps the main trigger path synchronous while still giving UI applications predictable follow-up scheduling. The callback receives the generated `IActor` first, so it can fire more triggers after awaited work completes. Overloads start with `(actor, context, args)` and may request service parameters after that. Those services come from `CreateScopedServiceProvider(out IServiceProvider)`, and the engine disposes the returned token after the reaction.
 
-With **`Microsoft.Extensions.DependencyInjection`**, use **`StateMachineServiceProviderResolver`** (or **`AddScopedStateMachineServiceProviderResolver()`**) when each `ReactAsync` should receive its own DI scope. That separate reaction scope is intentional: the reaction must not keep using services from the caller's scope, and once the reaction scope is opened it can continue even if the caller scope is disposed. Use **`AddSingletonStateMachineServiceProviderResolver()`** when synchronous clauses and reactions should share the root provider. For custom rules, implement **`IStateMachineServiceProviderResolver<IServiceProvider>`** yourself. See [Service provider and actor factories](index.html#service-provider-and-actor-factories). For **`AddScoped<T>()`** types resolved from the reaction provider (and optional custom **`CreateScopedServiceProvider`**), see [Scoped services in ReactAsync](index.html#scoped-services-in-reactasync).
+With **`Microsoft.Extensions.DependencyInjection`**, add the **`Nalu.SharpState.DependencyInjection`** package and use **`StateMachineServiceProviderResolver`** from **`Nalu.SharpState`** (or **`AddScopedStateMachineServiceProviderResolver`**) when each `ReactAsync` should receive its own child DI scope. Use **`StateMachineStaticServiceProviderResolver`** from **`Nalu.SharpState`** (optionally **`AddSingletonStateMachineServiceProviderResolver`**) when synchronous clauses and reactions should share the same provider. For custom rules, implement **`IStateMachineServiceProviderResolver`** yourself. See [Service provider and actor factories](index.html#service-provider-and-actor-factories).
 
 In ASP.NET Core, do not rely on live `HttpContext` or request-scoped services inside `ReactAsync`. `AsyncLocal` values such as `IHttpContextAccessor.HttpContext` may flow to the scheduled reaction, but the request can finish before the reaction runs. Copy request data you need, such as correlation IDs or `HttpContext.Items`, into the machine context, trigger arguments, or an immutable snapshot service before firing the trigger.
 
@@ -101,7 +99,7 @@ The event is raised with:
 - the committed source leaf state
 - the committed destination leaf state
 - the trigger
-- the boxed trigger arguments
+- the machine-specific trigger args union
 - the thrown exception
 
 ## When to use `Invoke(...)` vs `ReactAsync(...)`

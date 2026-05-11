@@ -11,6 +11,7 @@
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests/Nalu.SharpState.Tests/Nalu.SharpState.Tests.csproj" />
+    <Project Path="Tests/Nalu.SharpState.AotTester/Nalu.SharpState.AotTester.csproj" />
     <Project Path="Tests/Nalu.SharpState.Benchmarks/Nalu.SharpState.Benchmarks.csproj" />
   </Folder>
 </Solution>

@@ -18,7 +18,6 @@ internal sealed record StateMachineModel(
     string ClassAccessibility,
     string TypeParameters,
     string ContextTypeDisplay,
-    string ServiceProviderTypeDisplay,
     EquatableArray<ContainingTypeModel> ContainingTypes,
     string? RootInitialState,
     EquatableArray<StateModel> States,
@@ -79,19 +78,12 @@ internal sealed record StateMachineModel(
             a.AttributeClass is { } ac
             && ac.ToDisplayString() == "Nalu.SharpState.StateMachineDefinitionAttribute");
         var contextType = "global::System.Object";
-        var serviceProviderType = "global::System.IServiceProvider";
         if (attribute is not null)
         {
             if (attribute.ConstructorArguments.Length > 0
                 && attribute.ConstructorArguments[0].Value is INamedTypeSymbol ctxSym)
             {
                 contextType = ctxSym.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            }
-
-            if (attribute.ConstructorArguments.Length > 1
-                && attribute.ConstructorArguments[1].Value is INamedTypeSymbol spSym)
-            {
-                serviceProviderType = spSym.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             }
         }
 
@@ -132,7 +124,6 @@ internal sealed record StateMachineModel(
             AccessibilityString(classSymbol.DeclaredAccessibility),
             TypeParameterList(classSymbol),
             contextType,
-            serviceProviderType,
             new EquatableArray<ContainingTypeModel>(containing.ToImmutableArray()),
             rootInitialState,
             new EquatableArray<StateModel>(states.ToImmutableArray()),
@@ -369,19 +360,6 @@ internal sealed record StateMachineModel(
                     method.Name));
             }
 
-            if (method.Parameters.Length > 3)
-            {
-                var loc = methodSyntax?.ParameterList?.GetLocation()
-                    ?? methodSyntax?.Identifier.GetLocation()
-                    ?? method.Locations.FirstOrDefault();
-                diagnostics.Add(DiagnosticInfo.Create(
-                    Descriptors.TriggerTooManyParameters,
-                    loc,
-                    method.Name,
-                    method.Parameters.Length.ToString()));
-                continue;
-            }
-
             if (!seenTriggers.Add(method.Name))
             {
                 var loc = methodSyntax?.Identifier.GetLocation() ?? method.Locations.FirstOrDefault();
@@ -403,6 +381,8 @@ internal sealed record StateMachineModel(
             triggers.Add(new TriggerModel(
                 method.Name,
                 new EquatableArray<ParameterModel>(parameters),
+                AccessibilityString(method.DeclaredAccessibility),
+                method.IsStatic,
                 DocumentationCommentId(method, ct)));
         }
     }

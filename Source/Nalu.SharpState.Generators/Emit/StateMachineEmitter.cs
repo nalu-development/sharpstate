@@ -69,7 +69,6 @@ internal static class StateMachineEmitter
     private static void EmitMachineBody(SourceWriter w, StateMachineModel m)
     {
         var context = m.ContextTypeDisplay;
-        var serviceProvider = m.ServiceProviderTypeDisplay;
         var className = m.ClassName;
         var typeParams = m.TypeParameters;
 
@@ -81,25 +80,29 @@ internal static class StateMachineEmitter
             w.WriteBlankLine();
             EmitTriggerEnum(w, m);
             w.WriteBlankLine();
-            EmitConfigurationInterface(w, context, serviceProvider);
+            EmitTriggerArgsTypes(w, m);
             w.WriteBlankLine();
-            EmitConfiguratorInterface(w, context, serviceProvider, m);
+            EmitConfigurationInterface(w, context);
             w.WriteBlankLine();
-            EmitActorInterface(w, context, serviceProvider, m);
+            EmitConfiguratorInterface(w, context, m);
+            w.WriteBlankLine();
+            EmitActorInterface(w, context, m);
             w.WriteBlankLine();
             if (m.Triggers.Count > 0)
             {
+                EmitTriggerPartialImplementations(w, m);
+                w.WriteBlankLine();
                 EmitTriggerDefinitionReferenceConstructor(w, m);
                 w.WriteBlankLine();
             }
 
-            EmitCreateActorFactoryDelegates(w, context, serviceProvider);
+            EmitCreateActorFactoryDelegates(w, context);
             w.WriteBlankLine();
             w.WriteLine("private static IStateConfigurator ConfigureState() => new GeneratedStateConfigurator();");
             w.WriteBlankLine();
-            w.WriteLine($"private static readonly global::Nalu.SharpState.StateMachineDefinition<{context}, {serviceProvider}, State, Trigger, IActor> _definition = BuildDefinition();");
+            w.WriteLine($"private static readonly global::Nalu.SharpState.StateMachineDefinition<{context}, TriggerArgs, State, Trigger, IActor> _definition = BuildDefinition();");
             w.WriteBlankLine();
-            EmitBuildDefinition(w, context, serviceProvider, m);
+            EmitBuildDefinition(w, context, m);
             w.WriteBlankLine();
             EmitGetInitialStateDocs(w);
             w.WriteLine($"public static State GetInitialState() => State.{m.RootInitialState};");
@@ -110,25 +113,56 @@ internal static class StateMachineEmitter
             EmitToMermaidDocs(w);
             w.WriteLine($"public static string ToMermaid() => global::Nalu.SharpState.StateMachineExporter.ToMermaid(_definition, GetInitialState(), \"{m.ClassName}\");");
             w.WriteBlankLine();
-            EmitCreateActorWithStateMethodDocs(w, context, serviceProvider);
-            w.WriteLine($"public static IActor CreateActorWithState({context} context, global::Nalu.SharpState.IStateMachineServiceProviderResolver<{serviceProvider}> serviceProviderResolver, State state) => new Actor(_definition, state, context, serviceProviderResolver);");
+            EmitCreateActorWithStateMethodDocs(w, context);
+            w.WriteLine($"public static IActor CreateActorWithState({context} context, global::Nalu.SharpState.IStateMachineServiceProviderResolver serviceProviderResolver, State state) => new Actor(_definition, state, context, serviceProviderResolver);");
             w.WriteBlankLine();
-            EmitCreateActorMethodDocs(w, context, serviceProvider);
-            w.WriteLine($"public static IActor CreateActor({context} context, global::Nalu.SharpState.IStateMachineServiceProviderResolver<{serviceProvider}> serviceProviderResolver) => CreateActorWithState(context, serviceProviderResolver, GetInitialState());");
+            EmitCreateActorMethodDocs(w, context);
+            w.WriteLine($"public static IActor CreateActor({context} context, global::Nalu.SharpState.IStateMachineServiceProviderResolver serviceProviderResolver) => CreateActorWithState(context, serviceProviderResolver, GetInitialState());");
             w.WriteBlankLine();
-            EmitActorClass(w, context, serviceProvider, m);
+            EmitActorClass(w, context, m);
             w.WriteBlankLine();
-            EmitGeneratedConfigurator(w, context, serviceProvider, m);
-            EmitRegionRegistrars(w, context, serviceProvider, m);
+            EmitGeneratedConfigurator(w, context, m);
+            EmitRegionRegistrars(w, context, m);
         }
     }
 
+    private static void EmitTriggerPartialImplementations(SourceWriter w, StateMachineModel m)
+    {
+        for (var i = 0; i < m.Triggers.Count; i++)
+        {
+            var t = m.Triggers[i];
+            var paramList = string.Join(", ", t.Parameters.Select(p => $"{p.TypeDisplay} {p.Name}"));
+            var staticModifier = t.IsStatic ? "static " : string.Empty;
+            // Match declaring partial: default (private) accessibility is usually written without the "private" keyword (CS8799).
+            var accessPrefix = t.AccessibilityKeyword == "private"
+                ? string.Empty
+                : $"{t.AccessibilityKeyword} ";
+            w.WriteLine($"{accessPrefix}{staticModifier}partial void {t.Name}({paramList})");
+            using (w.Block())
+            {
+                foreach (var p in t.Parameters)
+                {
+                    w.WriteLine($"_ = {p.Name};");
+                }
+            }
+
+            if (i + 1 < m.Triggers.Count)
+            {
+                w.WriteBlankLine();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Emits a type constructor that calls each trigger with <c>default</c> so tooling sees the overloads referenced,
+    /// and (for non-static machines) hides the implicit public constructor.
+    /// </summary>
     private static void EmitTriggerDefinitionReferenceConstructor(SourceWriter w, StateMachineModel m)
     {
         var machineName = m.ClassName;
 
         // Static classes cannot have instance constructors; everything else uses a private ctor so the machine type
-        // is not instantiable from user code while still referencing trigger parameters.
+        // is not instantiable from user code while still referencing trigger parameters from generated code.
         if (m.IsStaticClass)
         {
             w.WriteLine($"static {machineName}()");
@@ -187,23 +221,23 @@ internal static class StateMachineEmitter
         return root;
     }
 
-    private static void EmitRegionRegistrars(SourceWriter w, string context, string serviceProvider, StateMachineModel m)
+    private static void EmitRegionRegistrars(SourceWriter w, string context, StateMachineModel m)
     {
         var root = BuildRegionTree(m);
         foreach (var top in root.Children.Values)
         {
             w.WriteBlankLine();
-            EmitRegionClass(w, context, serviceProvider, top);
+            EmitRegionClass(w, context, top);
         }
     }
 
-    private static void EmitRegionClass(SourceWriter w, string context, string serviceProvider, RegionNode node)
+    private static void EmitRegionClass(SourceWriter w, string context, RegionNode node)
     {
         w.WriteLine($"partial class {node.Name}");
         using (w.Block())
         {
             w.WriteLine(
-                $"internal static void __Register(global::Nalu.SharpState.InternalEnumMap<State, global::Nalu.SharpState.IStateConfiguration<{context}, {serviceProvider}, State, Trigger, IActor>> map)");
+                $"internal static void __Register(global::Nalu.SharpState.InternalEnumMap<State, global::Nalu.SharpState.IStateConfiguration<{context}, TriggerArgs, State, Trigger, IActor>> map)");
             using (w.Block())
             {
                 foreach (var s in node.States)
@@ -220,7 +254,7 @@ internal static class StateMachineEmitter
             foreach (var child in node.Children.Values)
             {
                 w.WriteBlankLine();
-                EmitRegionClass(w, context, serviceProvider, child);
+                EmitRegionClass(w, context, child);
             }
         }
     }
@@ -280,49 +314,184 @@ internal static class StateMachineEmitter
         }
     }
 
-    private static void EmitConfigurationInterface(SourceWriter w, string context, string serviceProvider)
+    private static void EmitTriggerArgsTypes(SourceWriter w, StateMachineModel m)
     {
-        w.WriteLine($"protected interface IStateConfiguration : global::Nalu.SharpState.IStateConfiguration<{context}, {serviceProvider}, State, Trigger, IActor>");
-        using (w.Block())
-        { }
-    }
+        foreach (var trigger in m.Triggers)
+        {
+            EmitTriggerArgsPayload(w, trigger);
+            w.WriteBlankLine();
+        }
 
-    private static void EmitConfiguratorInterface(SourceWriter w, string context, string serviceProvider, StateMachineModel m)
-    {
-        w.WriteLine("protected interface IStateConfigurator : IStateConfiguration");
+        w.WriteLine("public readonly struct TriggerArgs");
         using (w.Block())
         {
-            EmitWhenEnteringContextOnlyDocs(w, context, serviceProvider);
-            w.WriteLine($"IStateConfigurator WhenEntering(Action<{context}> action);");
-            w.WriteBlankLine();
-            EmitWhenEnteringDocs(w, context, serviceProvider);
-            w.WriteLine($"IStateConfigurator WhenEntering(Action<{context}, {serviceProvider}> action);");
-            w.WriteBlankLine();
-            EmitWhenExitingContextOnlyDocs(w, context, serviceProvider);
-            w.WriteLine($"IStateConfigurator WhenExiting(Action<{context}> action);");
-            w.WriteBlankLine();
-            EmitWhenExitingDocs(w, context, serviceProvider);
-            w.WriteLine($"IStateConfigurator WhenExiting(Action<{context}, {serviceProvider}> action);");
+            w.WriteLine("private readonly int _kind;");
+            for (var i = 0; i < m.Triggers.Count; i++)
+            {
+                var trigger = m.Triggers[i];
+                w.WriteLine($"private readonly {ArgsTypeName(trigger)} _value{i + 1};");
+            }
 
-            foreach (var t in m.Triggers)
+            if (m.Triggers.Count > 0)
             {
                 w.WriteBlankLine();
-                EmitConfiguratorTriggerDocs(w, context, serviceProvider, t);
-                w.WriteLine($"IStateConfigurator On{t.Name}(Action<{BuilderInterfaceType(context, serviceProvider, t)}> configure);");
+            }
+
+            for (var i = 0; i < m.Triggers.Count; i++)
+            {
+                var trigger = m.Triggers[i];
+                var argType = ArgsTypeName(trigger);
+                if (i > 0)
+                {
+                    w.WriteBlankLine();
+                }
+
+                w.WriteLine($"public TriggerArgs({argType} value)");
+                using (w.Block())
+                {
+                    w.WriteLine($"_kind = {i + 1};");
+                    for (var j = 0; j < m.Triggers.Count; j++)
+                    {
+                        w.WriteLine($"_value{j + 1} = {(i == j ? "value" : "default")};");
+                    }
+                }
+            }
+
+            if (m.Triggers.Count > 0)
+            {
+                w.WriteBlankLine();
+            }
+
+            if (m.Triggers.Count == 0)
+            {
+                w.WriteLine("public object? Value => null;");
+            }
+            else
+            {
+                w.WriteLine("public object? Value => _kind switch");
+                w.WriteLine("{");
+                w.Indent++;
+                for (var i = 0; i < m.Triggers.Count; i++)
+                {
+                    w.WriteLine($"{i + 1} => _value{i + 1},");
+                }
+                w.WriteLine("_ => null,");
+                w.Indent--;
+                w.WriteLine("};");
+            }
+
+            w.WriteBlankLine();
+            w.WriteLine("public bool HasValue => _kind != 0;");
+
+            for (var i = 0; i < m.Triggers.Count; i++)
+            {
+                var trigger = m.Triggers[i];
+                var argType = ArgsTypeName(trigger);
+                w.WriteBlankLine();
+                w.WriteLine($"public bool TryGetValue(out {argType} value)");
+                using (w.Block())
+                {
+                    w.WriteLine($"value = _kind == {i + 1} ? _value{i + 1} : default;");
+                    w.WriteLine($"return _kind == {i + 1};");
+                }
+            }
+
+            w.WriteBlankLine();
+            EmitTriggerArgsUnionToString(w, m.Triggers.Count);
+        }
+    }
+
+    private static void EmitTriggerArgsUnionToString(SourceWriter w, int triggerCount)
+    {
+        if (triggerCount == 0)
+        {
+            w.WriteLine("public override string ToString() => \"null\";");
+            return;
+        }
+
+        w.WriteLine("public override string ToString() => _kind switch");
+        w.WriteLine("{");
+        w.Indent++;
+        for (var i = 0; i < triggerCount; i++)
+        {
+            w.WriteLine($"{i + 1} => _value{i + 1}.ToString()!,");
+        }
+
+        w.WriteLine("_ => \"null\",");
+        w.Indent--;
+        w.WriteLine("};");
+    }
+
+    private static void EmitTriggerArgsPayload(SourceWriter w, TriggerModel trigger)
+    {
+        w.WriteLine($"public readonly struct {ArgsTypeName(trigger)}");
+        using (w.Block())
+        {
+            foreach (var parameter in trigger.Parameters)
+            {
+                w.WriteLine($"public readonly {parameter.TypeDisplay} {FieldName(parameter.Name)};");
+            }
+
+            if (trigger.Parameters.Count == 0)
+            {
+                return;
+            }
+
+            w.WriteBlankLine();
+            var parameterList = string.Join(", ", trigger.Parameters.Select(p => $"{p.TypeDisplay} {p.Name}"));
+            w.WriteLine($"public {ArgsTypeName(trigger)}({parameterList})");
+            using (w.Block())
+            {
+                foreach (var parameter in trigger.Parameters)
+                {
+                    w.WriteLine($"{FieldName(parameter.Name)} = {parameter.Name};");
+                }
+            }
+
+            w.WriteBlankLine();
+            var deconstructParams = string.Join(", ", trigger.Parameters.Select(p => $"out {p.TypeDisplay} {p.Name}"));
+            w.WriteLine($"public void Deconstruct({deconstructParams})");
+            using (w.Block())
+            {
+                foreach (var parameter in trigger.Parameters)
+                {
+                    w.WriteLine($"{parameter.Name} = {FieldName(parameter.Name)};");
+                }
             }
         }
     }
 
-    private static void EmitActorInterface(SourceWriter w, string context, string serviceProvider, StateMachineModel m)
+    private static void EmitConfigurationInterface(SourceWriter w, string context)
+    {
+        w.WriteLine($"protected interface IStateConfiguration : global::Nalu.SharpState.IStateConfiguration<{context}, TriggerArgs, State, Trigger, IActor>");
+        using (w.Block())
+        { }
+    }
+
+    private static void EmitConfiguratorInterface(SourceWriter w, string context, StateMachineModel m)
+    {
+        w.WriteLine($"protected interface IStateConfigurator : global::Nalu.SharpState.IStateLifecycleFluent<IStateConfigurator, {context}>, IStateConfiguration");
+        using (w.Block())
+        {
+            for (var i = 0; i < m.Triggers.Count; i++)
+            {
+                var t = m.Triggers[i];
+                EmitConfiguratorTriggerDocs(w, context, t);
+                w.WriteLine($"IStateConfigurator On{t.Name}(Action<{BuilderInterfaceType(context, t)}> configure);");
+                if (i < m.Triggers.Count - 1)
+                {
+                    w.WriteBlankLine();
+                }
+            }
+        }
+    }
+
+    private static void EmitActorInterface(SourceWriter w, string context, StateMachineModel m)
     {
         var machineTypeCref = ToDocCref(MachineTypeCref(m));
         w.WriteLine("/// <summary>");
         w.WriteLine($"/// <see cref=\"{machineTypeCref}\"/> runtime actor.");
         w.WriteLine("/// </summary>");
-        w.WriteLine("/// <remarks>");
-        w.WriteLine($"/// The machine's service provider type argument is <c>{serviceProvider}</c>.");
-        w.WriteLine($"/// Use the generated <c>CreateActor</c> or <c>CreateActorWithState</c> overloads with an <see cref=\"global::Nalu.SharpState.IStateMachineServiceProviderResolver{{T}}\"/> implementation (instantiated as <c>IStateMachineServiceProviderResolver&lt;{serviceProvider}&gt;</c>) for synchronous transitions and scoped providers for <c>ReactAsync</c>.");
-        w.WriteLine("/// </remarks>");
         w.WriteLine("public interface IActor");
         using (w.Block())
         {
@@ -339,17 +508,17 @@ internal static class StateMachineEmitter
             w.WriteLine("/// <summary>");
             w.WriteLine("/// Gets or sets the callback invoked when a trigger has no matching transition.");
             w.WriteLine("/// </summary>");
-            w.WriteLine("global::Nalu.SharpState.UnhandledTriggerHandler<State, Trigger>? OnUnhandled { get; set; }");
+            w.WriteLine("global::Nalu.SharpState.UnhandledTriggerHandler<State, Trigger, TriggerArgs>? OnUnhandled { get; set; }");
             w.WriteBlankLine();
             w.WriteLine("/// <summary>");
             w.WriteLine("/// Raised after a transition commits and changes the current state.");
             w.WriteLine("/// </summary>");
-            w.WriteLine("event global::Nalu.SharpState.StateChangedHandler<State, Trigger>? StateChanged;");
+            w.WriteLine("event global::Nalu.SharpState.StateChangedHandler<State, Trigger, TriggerArgs>? StateChanged;");
             w.WriteBlankLine();
             w.WriteLine("/// <summary>");
             w.WriteLine("/// Raised when a background reaction scheduled by <c>ReactAsync(...)</c> fails.");
             w.WriteLine("/// </summary>");
-            w.WriteLine("event global::Nalu.SharpState.ReactionFailedHandler<State, Trigger>? ReactionFailed;");
+            w.WriteLine("event global::Nalu.SharpState.ReactionFailedHandler<State, Trigger, TriggerArgs>? ReactionFailed;");
             w.WriteBlankLine();
             w.WriteLine("/// <summary>");
             w.WriteLine("/// Determines whether the current leaf equals <paramref name=\"state\"/> or is contained by it.");
@@ -368,44 +537,44 @@ internal static class StateMachineEmitter
         }
     }
 
-    private static void EmitCreateActorFactoryDelegates(SourceWriter w, string context, string serviceProvider)
+    private static void EmitCreateActorFactoryDelegates(SourceWriter w, string context)
     {
-        EmitCreateActorWithStateFactoryDelegate(w, context, serviceProvider);
+        EmitCreateActorWithStateFactoryDelegate(w, context);
         w.WriteBlankLine();
-        EmitCreateActorFactoryDelegate(w, context, serviceProvider);
+        EmitCreateActorFactoryDelegate(w, context);
     }
 
-    private static void EmitCreateActorWithStateFactoryDelegate(SourceWriter w, string context, string serviceProvider)
+    private static void EmitCreateActorWithStateFactoryDelegate(SourceWriter w, string context)
     {
         w.WriteLine("/// <summary>");
         w.WriteLine("/// Factory delegate that creates a new <see cref=\"IActor\"/> at a given <see cref=\"State\"/>, bound to this generated state machine definition.");
         w.WriteLine("/// Useful for dependency injection and unit tests.");
         w.WriteLine("/// </summary>");
         w.WriteLine($"/// <param name=\"context\">The shared <see cref=\"{ToDocCref(context)}\"/> passed to guards, actions, and reactions.</param>");
-        w.WriteLine($"/// <param name=\"serviceProviderResolver\">Resolver used for <see cref=\"global::Nalu.SharpState.IStateMachineServiceProviderResolver{{T}}.GetServiceProvider\"/> during transitions and scoped providers for <c>ReactAsync</c>.</param>");
+        w.WriteLine("/// <param name=\"serviceProviderResolver\">Resolver used during transitions and scoped providers for <c>ReactAsync</c>.</param>");
         w.WriteLine("/// <param name=\"state\">The starting state. Composite states resolve to their initial leaf.</param>");
         w.WriteLine("/// <returns>A new <see cref=\"IActor\"/> instance.</returns>");
-        w.WriteLine($"public delegate IActor CreateActorWithStateFactory({context} context, global::Nalu.SharpState.IStateMachineServiceProviderResolver<{serviceProvider}> serviceProviderResolver, State state);");
+        w.WriteLine($"public delegate IActor CreateActorWithStateFactory({context} context, global::Nalu.SharpState.IStateMachineServiceProviderResolver serviceProviderResolver, State state);");
     }
 
-    private static void EmitCreateActorFactoryDelegate(SourceWriter w, string context, string serviceProvider)
+    private static void EmitCreateActorFactoryDelegate(SourceWriter w, string context)
     {
         w.WriteLine("/// <summary>");
         w.WriteLine("/// Factory delegate that creates a new <see cref=\"IActor\"/> starting at <see cref=\"GetInitialState()\"/>, bound to this generated state machine definition.");
         w.WriteLine("/// Useful for dependency injection and unit tests.");
         w.WriteLine("/// </summary>");
         w.WriteLine($"/// <param name=\"context\">The shared <see cref=\"{ToDocCref(context)}\"/> passed to guards, actions, and reactions.</param>");
-        w.WriteLine($"/// <param name=\"serviceProviderResolver\">Resolver used for <see cref=\"global::Nalu.SharpState.IStateMachineServiceProviderResolver{{T}}.GetServiceProvider\"/> during transitions and scoped providers for <c>ReactAsync</c>.</param>");
+        w.WriteLine("/// <param name=\"serviceProviderResolver\">Resolver used during transitions and scoped providers for <c>ReactAsync</c>.</param>");
         w.WriteLine("/// <returns>A new <see cref=\"IActor\"/> instance.</returns>");
-        w.WriteLine($"public delegate IActor CreateActorFactory({context} context, global::Nalu.SharpState.IStateMachineServiceProviderResolver<{serviceProvider}> serviceProviderResolver);");
+        w.WriteLine($"public delegate IActor CreateActorFactory({context} context, global::Nalu.SharpState.IStateMachineServiceProviderResolver serviceProviderResolver);");
     }
 
-    private static void EmitBuildDefinition(SourceWriter w, string context, string serviceProvider, StateMachineModel m)
+    private static void EmitBuildDefinition(SourceWriter w, string context, StateMachineModel m)
     {
-        w.WriteLine($"private static global::Nalu.SharpState.StateMachineDefinition<{context}, {serviceProvider}, State, Trigger, IActor> BuildDefinition()");
+        w.WriteLine($"private static global::Nalu.SharpState.StateMachineDefinition<{context}, TriggerArgs, State, Trigger, IActor> BuildDefinition()");
         using (w.Block())
         {
-            w.WriteLine($"var map = new global::Nalu.SharpState.InternalEnumMap<State, global::Nalu.SharpState.IStateConfiguration<{context}, {serviceProvider}, State, Trigger, IActor>>();");
+            w.WriteLine($"var map = new global::Nalu.SharpState.InternalEnumMap<State, global::Nalu.SharpState.IStateConfiguration<{context}, TriggerArgs, State, Trigger, IActor>>();");
 
             var root = BuildRegionTree(m);
             foreach (var s in root.States)
@@ -418,23 +587,23 @@ internal static class StateMachineEmitter
                 w.WriteLine($"{child.Name}.__Register(map);");
             }
 
-            w.WriteLine($"return new global::Nalu.SharpState.StateMachineDefinition<{context}, {serviceProvider}, State, Trigger, IActor>(map);");
+            w.WriteLine($"return new global::Nalu.SharpState.StateMachineDefinition<{context}, TriggerArgs, State, Trigger, IActor>(map);");
         }
     }
 
-    private static void EmitActorClass(SourceWriter w, string context, string serviceProvider, StateMachineModel m)
+    private static void EmitActorClass(SourceWriter w, string context, StateMachineModel m)
     {
         w.WriteLine("private sealed class Actor : IActor");
         using (w.Block())
         {
-            w.WriteLine($"private readonly global::Nalu.SharpState.StateMachineEngine<{context}, {serviceProvider}, State, Trigger, IActor> _engine;");
+            w.WriteLine($"private readonly global::Nalu.SharpState.StateMachineEngine<{context}, TriggerArgs, State, Trigger, IActor> _engine;");
             w.WriteBlankLine();
             w.WriteLine(
-                $"internal Actor(global::Nalu.SharpState.StateMachineDefinition<{context}, {serviceProvider}, State, Trigger, IActor> definition, State currentState, {context} context, global::Nalu.SharpState.IStateMachineServiceProviderResolver<{serviceProvider}> serviceProviderResolver)");
+                $"internal Actor(global::Nalu.SharpState.StateMachineDefinition<{context}, TriggerArgs, State, Trigger, IActor> definition, State currentState, {context} context, global::Nalu.SharpState.IStateMachineServiceProviderResolver serviceProviderResolver)");
             using (w.Block())
             {
                 w.WriteLine(
-                    $"_engine = new global::Nalu.SharpState.StateMachineEngine<{context}, {serviceProvider}, State, Trigger, IActor>(definition, currentState, context, this, serviceProviderResolver);");
+                    $"_engine = new global::Nalu.SharpState.StateMachineEngine<{context}, TriggerArgs, State, Trigger, IActor>(definition, currentState, context, this, serviceProviderResolver);");
             }
 
             w.WriteBlankLine();
@@ -442,7 +611,7 @@ internal static class StateMachineEmitter
             w.WriteBlankLine();
             w.WriteLine($"public {context} Context => _engine.Context;");
             w.WriteBlankLine();
-            w.WriteLine("public global::Nalu.SharpState.UnhandledTriggerHandler<State, Trigger>? OnUnhandled");
+            w.WriteLine("public global::Nalu.SharpState.UnhandledTriggerHandler<State, Trigger, TriggerArgs>? OnUnhandled");
             using (w.Block())
             {
                 w.WriteLine("get => _engine.OnUnhandled;");
@@ -450,7 +619,7 @@ internal static class StateMachineEmitter
             }
 
             w.WriteBlankLine();
-            w.WriteLine("public event global::Nalu.SharpState.StateChangedHandler<State, Trigger>? StateChanged");
+            w.WriteLine("public event global::Nalu.SharpState.StateChangedHandler<State, Trigger, TriggerArgs>? StateChanged");
             using (w.Block())
             {
                 w.WriteLine("add => _engine.StateChanged += value;");
@@ -458,7 +627,7 @@ internal static class StateMachineEmitter
             }
 
             w.WriteBlankLine();
-            w.WriteLine("public event global::Nalu.SharpState.ReactionFailedHandler<State, Trigger>? ReactionFailed");
+            w.WriteLine("public event global::Nalu.SharpState.ReactionFailedHandler<State, Trigger, TriggerArgs>? ReactionFailed");
             using (w.Block())
             {
                 w.WriteLine("add => _engine.ReactionFailed += value;");
@@ -492,66 +661,32 @@ internal static class StateMachineEmitter
         w.WriteLine($"public void {t.Name}({paramList}) => _engine.Fire(Trigger.{t.Name}, {triggerArgs});");
     }
 
-    private static void EmitGeneratedConfigurator(SourceWriter w, string context, string serviceProvider, StateMachineModel m)
+    private static void EmitGeneratedConfigurator(SourceWriter w, string context, StateMachineModel m)
     {
         w.WriteLine(
-            $"private sealed class GeneratedStateConfigurator : global::Nalu.SharpState.StateConfigurator<{context}, {serviceProvider}, State, Trigger, IActor>, IStateConfigurator");
+            $"private sealed class GeneratedStateConfigurator : global::Nalu.SharpState.StateConfigurator<{context}, TriggerArgs, State, Trigger, IActor>, IStateConfigurator");
         using (w.Block())
         {
             w.WriteLine("internal void ApplyParent(State parent) => SetParent(parent);");
             w.WriteBlankLine();
             w.WriteLine("internal void ApplyInitialChild(State initial) => SetInitialChild(initial);");
-            w.WriteBlankLine();
-
-            w.WriteLine($"public IStateConfigurator WhenEntering(Action<{context}> action)");
-            using (w.Block())
-            {
-                w.WriteLine("global::System.ArgumentNullException.ThrowIfNull(action);");
-                w.WriteLine($"SetEntryAction((ctx, _) => action(ctx));");
-                w.WriteLine("return this;");
-            }
-
-            w.WriteBlankLine();
-            w.WriteLine($"public IStateConfigurator WhenEntering(Action<{context}, {serviceProvider}> action)");
-            using (w.Block())
-            {
-                w.WriteLine("SetEntryAction(action);");
-                w.WriteLine("return this;");
-            }
-
-            w.WriteBlankLine();
-            w.WriteLine($"public IStateConfigurator WhenExiting(Action<{context}> action)");
-            using (w.Block())
-            {
-                w.WriteLine("global::System.ArgumentNullException.ThrowIfNull(action);");
-                w.WriteLine($"SetExitAction((ctx, _) => action(ctx));");
-                w.WriteLine("return this;");
-            }
-
-            w.WriteBlankLine();
-            w.WriteLine($"public IStateConfigurator WhenExiting(Action<{context}, {serviceProvider}> action)");
-            using (w.Block())
-            {
-                w.WriteLine("SetExitAction(action);");
-                w.WriteLine("return this;");
-            }
 
             foreach (var t in m.Triggers)
             {
                 w.WriteBlankLine();
-                EmitConfiguratorTriggerMethod(w, context, serviceProvider, t);
+                EmitConfiguratorTriggerMethod(w, context, t);
             }
         }
     }
 
-    private static void EmitConfiguratorTriggerMethod(SourceWriter w, string context, string serviceProvider, TriggerModel t)
+    private static void EmitConfiguratorTriggerMethod(SourceWriter w, string context, TriggerModel t)
     {
-        var builderType = BuilderInterfaceType(context, serviceProvider, t);
-        var concreteBuilder = ConcreteBuilderType(context, serviceProvider, t);
+        var builderType = BuilderInterfaceType(context, t);
+        var concreteBuilder = ConcreteBuilderType(context, t);
         w.WriteLine($"public IStateConfigurator On{t.Name}(Action<{builderType}> configure)");
         using (w.Block())
         {
-            w.WriteLine($"var builder = new {concreteBuilder}();");
+            w.WriteLine($"var builder = new {concreteBuilder}(static args => args.TryGetValue(out {ArgsTypeName(t)} value) ? value : throw new global::System.InvalidOperationException(\"Trigger argument payload does not match trigger '{t.Name}'.\"));");
             w.WriteLine("configure(builder);");
             w.WriteLine("builder.Validate();");
             w.WriteLine($"AddTransitions(Trigger.{t.Name}, builder.BuildTransitions());");
@@ -603,24 +738,24 @@ internal static class StateMachineEmitter
         w.WriteLine("/// <returns>The initial root <see cref=\"State\"/>.</returns>");
     }
 
-    private static void EmitCreateActorWithStateMethodDocs(SourceWriter w, string context, string serviceProvider)
+    private static void EmitCreateActorWithStateMethodDocs(SourceWriter w, string context)
     {
         w.WriteLine("/// <summary>");
         w.WriteLine("/// Creates a new <see cref=\"IActor\"/> bound to this generated state machine definition.");
         w.WriteLine("/// </summary>");
         w.WriteLine($"/// <param name=\"context\">The shared <see cref=\"{ToDocCref(context)}\"/> passed to guards, actions, and reactions.</param>");
-        w.WriteLine($"/// <param name=\"serviceProviderResolver\">Resolver for <see cref=\"global::Nalu.SharpState.IStateMachineServiceProviderResolver{{T}}\"/> (instantiated as <c>IStateMachineServiceProviderResolver&lt;{serviceProvider}&gt;</c>).</param>");
+        w.WriteLine("/// <param name=\"serviceProviderResolver\">Resolver for transition services and scoped <c>ReactAsync</c> providers.</param>");
         w.WriteLine("/// <param name=\"state\">The starting state. Composite states resolve to their initial leaf.</param>");
         w.WriteLine("/// <returns>A new <see cref=\"IActor\"/> instance.</returns>");
     }
 
-    private static void EmitCreateActorMethodDocs(SourceWriter w, string context, string serviceProvider)
+    private static void EmitCreateActorMethodDocs(SourceWriter w, string context)
     {
         w.WriteLine("/// <summary>");
         w.WriteLine("/// Creates a new <see cref=\"IActor\"/> bound to this generated state machine definition.");
         w.WriteLine("/// </summary>");
         w.WriteLine($"/// <param name=\"context\">The shared <see cref=\"{ToDocCref(context)}\"/> used to create an actor starting from <see cref=\"GetInitialState()\"/>.</param>");
-        w.WriteLine($"/// <param name=\"serviceProviderResolver\">Resolver for <see cref=\"global::Nalu.SharpState.IStateMachineServiceProviderResolver{{T}}\"/> (instantiated as <c>IStateMachineServiceProviderResolver&lt;{serviceProvider}&gt;</c>).</param>");
+        w.WriteLine("/// <param name=\"serviceProviderResolver\">Resolver for transition services and scoped <c>ReactAsync</c> providers.</param>");
         w.WriteLine("/// <returns>A new <see cref=\"IActor\"/> instance at the machine's initial state.</returns>");
     }
 
@@ -640,54 +775,10 @@ internal static class StateMachineEmitter
         w.WriteLine("/// <returns>The Mermaid state diagram source representing the machine graph.</returns>");
     }
 
-    private static void EmitWhenEnteringContextOnlyDocs(SourceWriter w, string context, string serviceProvider)
-    {
-        w.WriteLine("/// <summary>");
-        w.WriteLine("/// Declares a synchronous callback to run after the machine enters this state.");
-        w.WriteLine(
-            $"/// Convenience overload: the callback receives only <see cref=\"{ToDocCref(context)}\"/>; it is wrapped as <see cref=\"{ToDocCref($"global::Nalu.SharpState.StateConfigurator<{context}, {serviceProvider}, State, Trigger, IActor>.SetEntryAction(Action<{context}, {serviceProvider}>)")}\"/> with the service provider ignored.");
-        w.WriteLine("/// </summary>");
-        w.WriteLine($"/// <param name=\"action\">The callback to run after the state is entered; receives only <see cref=\"{ToDocCref(context)}\"/>.</param>");
-        w.WriteLine("/// <returns>The same configurator for chaining.</returns>");
-    }
-
-    private static void EmitWhenEnteringDocs(SourceWriter w, string context, string serviceProvider)
-    {
-        w.WriteLine("/// <summary>");
-        w.WriteLine("/// Declares a synchronous callback to run after the machine enters this state.");
-        w.WriteLine(
-            $"/// See <see cref=\"{ToDocCref($"global::Nalu.SharpState.StateConfigurator<{context}, {serviceProvider}, State, Trigger, IActor>.SetEntryAction(Action<{context}, {serviceProvider}>)")}\"/>.");
-        w.WriteLine("/// </summary>");
-        w.WriteLine("/// <param name=\"action\">The callback to run after the state is entered; receives the context and the synchronous transition service provider.</param>");
-        w.WriteLine("/// <returns>The same configurator for chaining.</returns>");
-    }
-
-    private static void EmitWhenExitingContextOnlyDocs(SourceWriter w, string context, string serviceProvider)
-    {
-        w.WriteLine("/// <summary>");
-        w.WriteLine("/// Declares a synchronous callback to run before the machine exits this state.");
-        w.WriteLine(
-            $"/// Convenience overload: the callback receives only <see cref=\"{ToDocCref(context)}\"/>; it is wrapped as <see cref=\"{ToDocCref($"global::Nalu.SharpState.StateConfigurator<{context}, {serviceProvider}, State, Trigger, IActor>.SetExitAction(Action<{context}, {serviceProvider}>)")}\"/> with the service provider ignored.");
-        w.WriteLine("/// </summary>");
-        w.WriteLine($"/// <param name=\"action\">The callback to run before the state is exited; receives only <see cref=\"{ToDocCref(context)}\"/>.</param>");
-        w.WriteLine("/// <returns>The same configurator for chaining.</returns>");
-    }
-
-    private static void EmitWhenExitingDocs(SourceWriter w, string context, string serviceProvider)
-    {
-        w.WriteLine("/// <summary>");
-        w.WriteLine("/// Declares a synchronous callback to run before the machine exits this state.");
-        w.WriteLine(
-            $"/// See <see cref=\"{ToDocCref($"global::Nalu.SharpState.StateConfigurator<{context}, {serviceProvider}, State, Trigger, IActor>.SetExitAction(Action<{context}, {serviceProvider}>)")}\"/>.");
-        w.WriteLine("/// </summary>");
-        w.WriteLine("/// <param name=\"action\">The callback to run before the state is exited; receives the context and the synchronous transition service provider.</param>");
-        w.WriteLine("/// <returns>The same configurator for chaining.</returns>");
-    }
-
-    private static void EmitConfiguratorTriggerDocs(SourceWriter w, string context, string serviceProvider, TriggerModel t)
+    private static void EmitConfiguratorTriggerDocs(SourceWriter w, string context, TriggerModel t)
     {
         var actorMethodCref = ActorMethodCref(t);
-        var builderCref = ToDocCref(BuilderInterfaceType(context, serviceProvider, t));
+        var builderCref = ToDocCref(BuilderInterfaceType(context, t));
         w.WriteLine("/// <summary>");
         w.WriteLine($"/// Configures what happens when <see cref=\"{actorMethodCref}\"/> is invoked.");
         w.WriteLine("/// </summary>");
@@ -695,39 +786,27 @@ internal static class StateMachineEmitter
         w.WriteLine("/// <returns>The same configurator for chaining.</returns>");
     }
 
-    private static string BuilderInterfaceType(string context, string serviceProvider, TriggerModel t)
-    {
-        const string kind = "ISyncStateTriggerBuilder";
-        if (t.Parameters.Count == 0)
-        {
-            return $"global::Nalu.SharpState.{kind}<{context}, {serviceProvider}, State, IActor>";
-        }
+    private static string BuilderInterfaceType(string context, TriggerModel t)
+        => $"global::Nalu.SharpState.ISyncStateTriggerBuilder<{context}, State, IActor, {ArgsTypeName(t)}>";
 
-        var args = string.Join(", ", t.Parameters.Select(p => p.TypeDisplay));
-        return $"global::Nalu.SharpState.{kind}<{context}, {serviceProvider}, State, IActor, {args}>";
-    }
-
-    private static string ConcreteBuilderType(string context, string serviceProvider, TriggerModel t)
-    {
-        if (t.Parameters.Count == 0)
-        {
-            return $"global::Nalu.SharpState.StateTriggerBuilder<{context}, {serviceProvider}, State, IActor>";
-        }
-
-        var args = string.Join(", ", t.Parameters.Select(p => p.TypeDisplay));
-        return $"global::Nalu.SharpState.StateTriggerBuilder<{context}, {serviceProvider}, State, IActor, {args}>";
-    }
+    private static string ConcreteBuilderType(string context, TriggerModel t)
+        => $"global::Nalu.SharpState.StateTriggerBuilder<{context}, TriggerArgs, State, IActor, {ArgsTypeName(t)}>";
 
     private static string TriggerArgsFactory(TriggerModel t)
     {
-        if (t.Parameters.Count == 0)
-        {
-            return "global::Nalu.SharpState.TriggerArgs.Empty";
-        }
-
         var args = string.Join(", ", t.Parameters.Select(p => p.Name));
-        return $"global::Nalu.SharpState.TriggerArgs.From({args})";
+        var payload = t.Parameters.Count == 0
+            ? $"new {ArgsTypeName(t)}()"
+            : $"new {ArgsTypeName(t)}({args})";
+        return $"new TriggerArgs({payload})";
     }
+
+    private static string ArgsTypeName(TriggerModel t) => $"{t.Name}Args";
+
+    private static string FieldName(string parameterName)
+        => string.IsNullOrEmpty(parameterName)
+            ? parameterName
+            : char.ToUpperInvariant(parameterName[0]) + parameterName.Substring(1);
 
     private static string ActorMethodCref(TriggerModel t)
     {

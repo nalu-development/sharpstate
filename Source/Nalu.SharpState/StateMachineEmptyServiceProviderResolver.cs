@@ -3,7 +3,7 @@ namespace Nalu.SharpState;
 /// <summary>
 /// Resolver backed by an empty <see cref="IServiceProvider"/> for machines that do not resolve services.
 /// </summary>
-public sealed class StateMachineEmptyServiceProviderResolver : IStateMachineServiceProviderResolver<IServiceProvider>
+public sealed class StateMachineEmptyServiceProviderResolver : IStateMachineServiceProviderResolver
 {
     /// <summary>
     /// Shared resolver instance for machines that do not resolve services.

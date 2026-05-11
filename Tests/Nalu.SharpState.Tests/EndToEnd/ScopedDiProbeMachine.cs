@@ -1,7 +1,7 @@
 namespace Nalu.SharpState.Tests.EndToEnd;
 
 /// <summary>
-/// Scoped service registered in Microsoft.Extensions.DependencyInjection to assert the reaction scope is disposed.
+/// Scoped service registered in Microsoft.Extensions.DependencyInjection to assert the reaction scope is disposed of.
 /// </summary>
 public sealed class ScopedResource : IDisposable
 {
@@ -27,9 +27,9 @@ public static partial class ScopedDiProbeMachine
     private static IStateConfiguration Idle { get; } = ConfigureState()
         .OnGo(t => t
             .Target(State.Done)
-            .ReactAsync((_, ctx, services) =>
+            .ReactAsync<ScopedResource>((_, ctx, _, scopedResource) =>
             {
-                ctx.Captured = (ScopedResource?)services.GetService(typeof(ScopedResource));
+                ctx.Captured = scopedResource;
                 return default;
             }));
 

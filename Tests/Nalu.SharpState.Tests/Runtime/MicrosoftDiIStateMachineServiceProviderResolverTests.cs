@@ -5,15 +5,15 @@ namespace Nalu.SharpState.Tests.Runtime;
 
 public class MicrosoftDiIStateMachineServiceProviderResolverTests
 {
-    private sealed class TestOpenGenericResolver<T> : IStateMachineServiceProviderResolver<T>
+    private sealed class TestResolver : IStateMachineServiceProviderResolver
     {
-        private readonly T _instance;
+        private readonly IServiceProvider _instance;
 
-        public TestOpenGenericResolver(T instance) => _instance = instance;
+        public TestResolver(IServiceProvider instance) => _instance = instance;
 
-        public T GetServiceProvider() => _instance;
+        public IServiceProvider GetServiceProvider() => _instance;
 
-        public IDisposable CreateScopedServiceProvider(out T serviceProvider)
+        public IDisposable CreateScopedServiceProvider(out IServiceProvider serviceProvider)
         {
             serviceProvider = _instance;
             return StateMachineReactiveNonOwningScope.Instance;
@@ -21,18 +21,18 @@ public class MicrosoftDiIStateMachineServiceProviderResolverTests
     }
 
     [Fact]
-    public void Microsoft_dependency_injection_resolves_AddScoped_closed_generic_implementation()
+    public void Microsoft_dependency_injection_resolves_scoped_resolver_implementation()
     {
         var services = new ServiceCollection();
-        services.AddScoped<IStateMachineServiceProviderResolver<IServiceProvider>, TestOpenGenericResolver<IServiceProvider>>();
+        services.AddScoped<IStateMachineServiceProviderResolver, TestResolver>();
 
         using var root = services.BuildServiceProvider();
         using var scope = root.CreateScope();
         var sp = scope.ServiceProvider;
 
-        var resolver = sp.GetRequiredService<IStateMachineServiceProviderResolver<IServiceProvider>>();
+        var resolver = sp.GetRequiredService<IStateMachineServiceProviderResolver>();
 
-        resolver.Should().BeOfType<TestOpenGenericResolver<IServiceProvider>>();
+        resolver.Should().BeOfType<TestResolver>();
         ReferenceEquals(resolver.GetServiceProvider(), sp).Should().BeTrue();
         using (resolver.CreateScopedServiceProvider(out var reactionSp))
         {
@@ -41,35 +41,15 @@ public class MicrosoftDiIStateMachineServiceProviderResolverTests
     }
 
     [Fact]
-    public void Microsoft_dependency_injection_resolves_AddScoped_open_generic_implementation()
-    {
-        var services = new ServiceCollection();
-        services.AddScoped(typeof(IStateMachineServiceProviderResolver<>), typeof(TestOpenGenericResolver<>));
-
-        using var root = services.BuildServiceProvider();
-        using var scope = root.CreateScope();
-        var sp = scope.ServiceProvider;
-
-        var resolver = sp.GetRequiredService<IStateMachineServiceProviderResolver<IServiceProvider>>();
-
-        resolver.Should().BeOfType<TestOpenGenericResolver<IServiceProvider>>();
-        ReferenceEquals(resolver.GetServiceProvider(), sp).Should().BeTrue();
-        using (resolver.CreateScopedServiceProvider(out var reactionSp))
-        {
-            ReferenceEquals(reactionSp, sp).Should().BeTrue();
-        }
-    }
-
-    [Fact]
-    public void AddSingletonStateMachineServiceProviderResolver_registers_StateMachineStaticServiceProviderResolver()
+    public void StateMachineStaticServiceProviderResolver_reuses_provider()
     {
         var marker = new object();
         var services = new ServiceCollection();
         services.AddSingleton(_ => marker);
-        services.AddSingletonStateMachineServiceProviderResolver();
+        services.AddSingleton<IStateMachineServiceProviderResolver, StateMachineStaticServiceProviderResolver>();
 
         using var root = services.BuildServiceProvider();
-        var resolver = root.GetRequiredService<IStateMachineServiceProviderResolver<IServiceProvider>>();
+        var resolver = root.GetRequiredService<IStateMachineServiceProviderResolver>();
 
         resolver.Should().BeOfType<StateMachineStaticServiceProviderResolver>();
         resolver.GetServiceProvider().GetRequiredService<object>().Should().BeSameAs(marker);
@@ -81,7 +61,28 @@ public class MicrosoftDiIStateMachineServiceProviderResolverTests
     }
 
     [Fact]
-    public void AddScopedStateMachineServiceProviderResolver_registers_StateMachineServiceProviderResolver_per_scope()
+    public void StateMachineServiceProviderResolver_creates_reaction_scope_when_scope_factory_is_available()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<IStateMachineServiceProviderResolver, StateMachineServiceProviderResolver>();
+
+        using var root = services.BuildServiceProvider();
+        using var scope = root.CreateScope();
+        var sp = scope.ServiceProvider;
+
+        var resolver = sp.GetRequiredService<IStateMachineServiceProviderResolver>();
+
+        resolver.Should().BeOfType<StateMachineServiceProviderResolver>();
+        ReferenceEquals(resolver.GetServiceProvider(), sp).Should().BeTrue();
+        using (resolver.CreateScopedServiceProvider(out var reactionSp))
+        {
+            ReferenceEquals(reactionSp, sp).Should().BeFalse();
+            reactionSp.Should().NotBeSameAs(sp);
+        }
+    }
+
+    [Fact]
+    public void AddScopedStateMachineServiceProviderResolver_registers_scoped_resolver_that_creates_child_scopes()
     {
         var services = new ServiceCollection();
         services.AddScopedStateMachineServiceProviderResolver();
@@ -90,14 +91,29 @@ public class MicrosoftDiIStateMachineServiceProviderResolverTests
         using var scope = root.CreateScope();
         var sp = scope.ServiceProvider;
 
-        var resolver = sp.GetRequiredService<IStateMachineServiceProviderResolver<IServiceProvider>>();
+        var resolver = sp.GetRequiredService<IStateMachineServiceProviderResolver>();
 
         resolver.Should().BeOfType<StateMachineServiceProviderResolver>();
         ReferenceEquals(resolver.GetServiceProvider(), sp).Should().BeTrue();
         using (resolver.CreateScopedServiceProvider(out var reactionSp))
         {
             ReferenceEquals(reactionSp, sp).Should().BeFalse();
-            reactionSp.Should().NotBeSameAs(sp);
+        }
+    }
+
+    [Fact]
+    public void AddSingletonStateMachineServiceProviderResolver_registers_static_resolver()
+    {
+        var services = new ServiceCollection();
+        services.AddSingletonStateMachineServiceProviderResolver();
+
+        using var root = services.BuildServiceProvider();
+        var resolver = root.GetRequiredService<IStateMachineServiceProviderResolver>();
+
+        resolver.Should().BeOfType<StateMachineStaticServiceProviderResolver>();
+        using (resolver.CreateScopedServiceProvider(out var reactionSp))
+        {
+            ReferenceEquals(reactionSp, resolver.GetServiceProvider()).Should().BeTrue();
         }
     }
 }

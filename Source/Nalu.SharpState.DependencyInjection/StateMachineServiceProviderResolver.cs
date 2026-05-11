@@ -3,17 +3,16 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Nalu.SharpState;
 
 /// <summary>
-/// Resolver that uses the injected <see cref="IServiceProvider"/> for synchronous dispatch and opens a child DI scope for
-/// each <c>ReactAsync</c> reaction.
+/// Resolver backed by an <see cref="IServiceProvider"/>.
+/// Synchronous clauses use <see cref="GetServiceProvider"/>; each <c>ReactAsync</c> reaction opens a child DI scope.
 /// </summary>
-public class StateMachineServiceProviderResolver : IStateMachineServiceProviderResolver<IServiceProvider>
+public class StateMachineServiceProviderResolver : IStateMachineServiceProviderResolver
 {
     private readonly IServiceProvider _serviceProvider;
 
     /// <summary>
-    /// Initializes a resolver backed by <paramref name="serviceProvider"/>.
+    /// Initializes a resolver that uses <paramref name="serviceProvider"/> to retrieve dependencies.
     /// </summary>
-    /// <param name="serviceProvider">Provider returned by <see cref="GetServiceProvider"/>.</param>
     public StateMachineServiceProviderResolver(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));

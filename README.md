@@ -16,9 +16,13 @@ dotnet add package Nalu.SharpState
 
 The package includes the analyzer; no extra registration call is required.
 
+For **`Microsoft.Extensions.DependencyInjection`** helpers (**`ServiceCollectionStateMachineExtensions`** — `AddScopedStateMachineServiceProviderResolver`, `AddSingletonStateMachineServiceProviderResolver`), add the **`Nalu.SharpState.DependencyInjection`** NuGet package. **`StateMachineServiceProviderResolver`** is in **`Nalu.SharpState`**.
+
 ## At a glance
 
-Define a context (with eventual service dependencies), mark a `public static partial` class with `[StateMachineDefinition]`, add `[StateTriggerDefinition]` methods for inputs and `[StateDefinition]` properties for states, then wire transitions with `ConfigureState()` (see the full [door sample](Tests/Nalu.SharpState.Tests/EndToEnd/DoorMachine.cs) in the test suite). The machine’s **service provider** type defaults to `IServiceProvider`; you pass an **`IStateMachineServiceProviderResolver<IServiceProvider>`** when creating an actor (see [Service provider](https://nalu-development.github.io/sharpstate/index.html#service-provider-and-actor-factories) in the guide).
+Define a context, mark a `public static partial` class with `[StateMachineDefinition]`, add `[StateTriggerDefinition]` methods for inputs and `[StateDefinition]` properties for states, then wire transitions with `ConfigureState()` (see the full [door sample](Tests/Nalu.SharpState.Tests/EndToEnd/DoorMachine.cs) in the test suite). Actors take an **`IStateMachineServiceProviderResolver`** when created (see [Service provider](https://nalu-development.github.io/sharpstate/index.html#service-provider-and-actor-factories) in the guide).
+
+There is no analyzer-enforced ceiling on **`[StateTriggerDefinition]` parameter count**; the generator emits a per-trigger payload type regardless. Fluent **`When` / `Invoke` / `ReactAsync`** and lifecycle hooks optionally take up to sixteen **injected dependency** generic parameters (**`T1`…`T16`**), separate from trigger arguments.
 
 ```csharp
 public class DoorContext
@@ -36,9 +40,9 @@ public static partial class DoorMachine
     [StateDefinition(Initial = true)]
     private static IStateConfiguration Closed { get; } = ConfigureState()
         .OnOpen(t => t
-            .When((_, reason) => reason is not "spying", "Not spying")
+            .When((_, args) => args.Reason is not "spying", "Not spying")
             .Target(State.Opened)
-            .Invoke((ctx, reason) => { ctx.OpenCount++; ctx.LastReason = reason; }));
+            .Invoke((ctx, args) => { ctx.OpenCount++; ctx.LastReason = args.Reason; }));
 
     [StateDefinition]
     private static IStateConfiguration Opened { get; } = ConfigureState()
@@ -70,10 +74,10 @@ The synchronous trigger API can still schedule async follow-up work after a tran
 private static IStateConfiguration Pending { get; } = ConfigureState()
     .OnRequestApproval(t => t
         .Target(State.Approving)
-        .ReactAsync(async (actor, ctx, id) =>
+        .ReactAsync(async (actor, ctx, args) =>
         {
             try {
-                await ctx.ApproveService.ApproveAsync(id);
+                await ctx.ApproveService.ApproveAsync(args.Id);
                 actor.Approve();
             } catch {
                 actor.Reject();
@@ -87,22 +91,22 @@ Details and ordering: [Post-Transition Reactions](https://nalu-development.githu
 
 Outperform the industry standard ([Stateless](https://github.com/dotnet-state-machine/stateless)) with **4x to 8x faster execution** and **7x to 12x** lower memory overhead depending on the usage.
 
-| Method             | StateChanges | Mean        | Error     | StdDev    | Gen0      | Gen1     | Allocated   |
-|------------------- |------------- |------------:|----------:|----------:|----------:|---------:|------------:|
-| SingletonActor     | 100          |    10.32 us |  0.029 us |  0.025 us |    4.3945 |        - |    35.94 KB |
-| SingletonStateless | 100          |    41.63 us |  0.484 us |  0.404 us |   30.0293 |        - |   245.31 KB |
-| TransientActor     | 100          |    11.27 us |  0.027 us |  0.023 us |    5.9204 |        - |    48.44 KB |
-| TransientStateless | 100          |    89.98 us |  1.224 us |  1.022 us |   75.0732 |   1.3428 |   614.08 KB |
-| SingletonActor     | 10000        | 1,020.74 us |  6.633 us |  5.539 us |  439.4531 |        - |  3593.75 KB |
-| SingletonStateless | 10000        | 3,956.54 us | 41.182 us | 38.521 us | 2953.1250 |        - | 24140.63 KB |
-| TransientActor     | 10000        | 1,120.78 us |  6.764 us |  5.648 us |  591.7969 |        - |  4843.75 KB |
-| TransientStateless | 10000        | 8,699.77 us | 87.558 us | 77.618 us | 7468.7500 | 140.6250 | 61016.85 KB |
+| Method             | StateChanges |         Mean |      Error |     StdDev |      Gen0 |     Gen1 |   Allocated |
+|--------------------|--------------|-------------:|-----------:|-----------:|----------:|---------:|------------:|
+| SingletonActor     | 100          |     8.623 us |  0.0326 us |  0.0305 us |    4.3945 |        - |    35.94 KB |                                                                                                                                                                                                                                                                                                                        
+| SingletonStateless | 100          |    38.696 us |  0.1156 us |  0.1081 us |   30.0293 |        - |   245.31 KB |
+| TransientActor     | 100          |    10.327 us |  0.0399 us |  0.0373 us |    6.1188 |        - |       50 KB |
+| TransientStateless | 100          |    85.534 us |  0.3368 us |  0.3150 us |   74.5850 |   1.4648 |   610.17 KB |
+| SingletonActor     | 10000        |   881.644 us |  1.7978 us |  1.5012 us |  439.4531 |        - |  3593.75 KB |
+| SingletonStateless | 10000        | 3,949.194 us |  9.3175 us |  8.7156 us | 2953.1250 |        - | 24140.63 KB |
+| TransientActor     | 10000        | 1,068.211 us | 15.9207 us | 14.8922 us |  611.3281 |        - |     5000 KB |
+| TransientStateless | 10000        | 8,699.315 us | 54.7741 us | 51.2358 us | 7468.7500 | 140.6250 | 61016.85 KB |
 
 See the [benchmarks](https://github.com/nalu-development/sharpstate/tree/main/Tests/Nalu.SharpState.Benchmarks) for more details.
 
 ### Dependency Injection and Unit Testing
 
-The generator adds **`CreateActorFactory`** / **`CreateActorWithStateFactory`** delegates aligned with the static `CreateActor` / `CreateActorWithState` overloads that take **`IStateMachineServiceProviderResolver<IServiceProvider>`**, so you can register them in a container, inject them where you build actors, and stub `IActor` in tests. Prefer **`Nalu.SharpState.DependencyInjection`** (**`StateMachineServiceProviderResolver`**, **`AddScopedStateMachineServiceProviderResolver()`**, etc.): **`CreateScopedServiceProvider(out IServiceProvider)`** returns an **`IServiceScope`** for each **`ReactAsync`**, which the engine disposes afterward. The context you pass into every transition can still hold domain state; async reactions stay mockable. See [Service provider](https://nalu-development.github.io/sharpstate/index.html#service-provider-and-actor-factories) and [Testability](https://nalu-development.github.io/sharpstate/index.html#testability) in the full guide.
+The generator adds **`CreateActorFactory`** / **`CreateActorWithStateFactory`** delegates aligned with the static `CreateActor` / `CreateActorWithState` overloads that take **`IStateMachineServiceProviderResolver`**, so you can register them in a container, inject them where you build actors, and stub `IActor` in tests. **`StateMachineStaticServiceProviderResolver`** stays in **`Nalu.SharpState`**; **`StateMachineServiceProviderResolver`** is also in **`Nalu.SharpState`** but ships in the **`Nalu.SharpState.DependencyInjection`** assembly; **`ServiceCollectionStateMachineExtensions`** extend **`Microsoft.Extensions.DependencyInjection`** in that same assembly. The context you pass into every transition can still hold domain state; async reactions stay mockable. See [Service provider](https://nalu-development.github.io/sharpstate/index.html#service-provider-and-actor-factories) and [Testability](https://nalu-development.github.io/sharpstate/index.html#testability) in the full guide.
 
 ### Visualize the configured state machine
 
@@ -119,6 +123,7 @@ For the door sample above, that call produces the DOT below; the diagram is the 
 <tr valign="middle">
 <td>
 
+<code>
 <pre>
 digraph G {
   label = "DoorMachine";
@@ -136,6 +141,7 @@ digraph G {
   trigger_1 -> state_1;
 }
 </pre>
+</code>
 
 </td>
 <td width="35%">
@@ -152,6 +158,7 @@ Mermaid export is often more convenient in Markdown documentation:
 <tr valign="middle">
 <td>
 
+<code>
 <pre>
 ---
 title: "DoorMachine"
@@ -167,6 +174,7 @@ stateDiagram-v2
   choice_0 --> state_1 : [Not spying]
   state_1 --> state_0 : Close
 </pre>
+</code>
 
 </td>
 <td>

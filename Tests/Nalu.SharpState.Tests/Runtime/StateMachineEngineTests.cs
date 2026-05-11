@@ -1,4 +1,5 @@
 using FluentAssertions;
+using TriggerArgs = Nalu.SharpState.Tests.Runtime.TestTriggerArgs;
 
 namespace Nalu.SharpState.Tests.Runtime;
 
@@ -33,7 +34,7 @@ public class StateMachineEngineTests
         });
 
         var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver);
-        (FlatState from, FlatState to, FlatTrigger trigger, TriggerArgs args)? captured = null;
+        (FlatState from, FlatState to, FlatTrigger trigger, IServiceProvider args)? captured = null;
         engine.StateChanged += (from, to, trig, args) => captured = (from, to, trig, args);
 
         engine.Fire(FlatTrigger.Go, TriggerArgs.From(42, "payload"));
@@ -52,7 +53,7 @@ public class StateMachineEngineTests
     {
         var definition = BuildFlat();
         var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(definition, FlatState.A, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver);
-        (FlatState state, FlatTrigger trigger, TriggerArgs args)? captured = null;
+        (FlatState state, FlatTrigger trigger, IServiceProvider args)? captured = null;
         engine.OnUnhandled = (s, t, a) => captured = (s, t, a);
 
         engine.Fire(FlatTrigger.NoMatch, TriggerArgs.From(123));
@@ -379,10 +380,10 @@ public class StateMachineEngineTests
 
 internal static class TestConfiguratorExtensions
 {
-    public static TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor> AddAllFor<TContext, TServiceProvider, TState, TTrigger, TActor>(
-        this TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor> self,
+    public static TestStateConfigurator<TContext, TArgs, TState, TTrigger, TActor> AddAllFor<TContext, TArgs, TState, TTrigger, TActor>(
+        this TestStateConfigurator<TContext, TArgs, TState, TTrigger, TActor> self,
         TTrigger trigger,
-        IReadOnlyList<Transition<TContext, TServiceProvider, TState, TActor>> transitions)
+        IReadOnlyList<Transition<TContext, TArgs, TState, TActor>> transitions)
         where TContext : class
         where TState : struct, Enum
         where TTrigger : struct, Enum

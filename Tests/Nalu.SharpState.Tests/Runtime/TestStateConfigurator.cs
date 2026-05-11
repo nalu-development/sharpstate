@@ -1,52 +1,52 @@
 namespace Nalu.SharpState.Tests.Runtime;
 
-internal sealed class TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor>
-    : StateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor>
+internal sealed class TestStateConfigurator<TContext, TArgs, TState, TTrigger, TActor>
+    : StateConfigurator<TContext, TArgs, TState, TTrigger, TActor>
     where TContext : class
     where TState : struct, Enum
     where TTrigger : struct, Enum
 {
-    public TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor> On(
+    public TestStateConfigurator<TContext, TArgs, TState, TTrigger, TActor> On(
         TTrigger trigger,
-        Transition<TContext, TServiceProvider, TState, TActor> transition)
+        Transition<TContext, TArgs, TState, TActor> transition)
     {
         AddTransitions(trigger, [transition]);
         return this;
     }
 
-    public TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor> Parent(TState parent)
+    public TestStateConfigurator<TContext, TArgs, TState, TTrigger, TActor> Parent(TState parent)
     {
         SetParent(parent);
         return this;
     }
 
-    public TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor> AsStateMachine(TState initial)
+    public TestStateConfigurator<TContext, TArgs, TState, TTrigger, TActor> AsStateMachine(TState initial)
     {
         SetInitialChild(initial);
         return this;
     }
 
-    public TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor> WhenEntering(Action<TContext> action)
+    public TestStateConfigurator<TContext, TArgs, TState, TTrigger, TActor> WhenEntering(Action<TContext> action)
     {
         ArgumentNullException.ThrowIfNull(action);
         SetEntryAction((ctx, _) => action(ctx));
         return this;
     }
 
-    public TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor> WhenEntering(Action<TContext, TServiceProvider> action)
+    public TestStateConfigurator<TContext, TArgs, TState, TTrigger, TActor> WhenEntering(Action<TContext, IServiceProvider> action)
     {
         SetEntryAction(action);
         return this;
     }
 
-    public TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor> WhenExiting(Action<TContext> action)
+    public TestStateConfigurator<TContext, TArgs, TState, TTrigger, TActor> WhenExiting(Action<TContext> action)
     {
         ArgumentNullException.ThrowIfNull(action);
         SetExitAction((ctx, _) => action(ctx));
         return this;
     }
 
-    public TestStateConfigurator<TContext, TServiceProvider, TState, TTrigger, TActor> WhenExiting(Action<TContext, TServiceProvider> action)
+    public TestStateConfigurator<TContext, TArgs, TState, TTrigger, TActor> WhenExiting(Action<TContext, IServiceProvider> action)
     {
         SetExitAction(action);
         return this;
@@ -55,22 +55,22 @@ internal sealed class TestStateConfigurator<TContext, TServiceProvider, TState, 
 
 internal static class TestTransition
 {
-    public static Transition<TContext, TServiceProvider, TState, TActor> ToTarget<TContext, TServiceProvider, TState, TActor>(
+    public static Transition<TContext, TArgs, TState, TActor> ToTarget<TContext, TArgs, TState, TActor>(
         TState target,
-        Func<TContext, TServiceProvider, TriggerArgs, bool>? guard = null,
+        Func<TContext, IServiceProvider, TArgs, bool>? guard = null,
         List<string>? guardLabels = null,
-        Action<TContext, TServiceProvider, TriggerArgs>? syncAction = null,
-        Func<TActor, TContext, TServiceProvider, TriggerArgs, ValueTask>? reactionAsync = null)
+        Action<TContext, IServiceProvider, TArgs>? syncAction = null,
+        Func<TActor, TContext, IServiceProvider, TArgs, ValueTask>? reactionAsync = null)
         where TContext : class
         where TState : struct, Enum
         => new(target, null, false, guard, guardLabels, syncAction, reactionAsync);
 
-    public static Transition<TContext, TServiceProvider, TState, TActor> ToDynamicTarget<TContext, TServiceProvider, TState, TActor>(
-        Func<TContext, TServiceProvider, TriggerArgs, TState> targetSelector,
-        Func<TContext, TServiceProvider, TriggerArgs, bool>? guard = null,
+    public static Transition<TContext, TArgs, TState, TActor> ToDynamicTarget<TContext, TArgs, TState, TActor>(
+        Func<TContext, IServiceProvider, TArgs, TState> targetSelector,
+        Func<TContext, IServiceProvider, TArgs, bool>? guard = null,
         List<string>? guardLabels = null,
-        Action<TContext, TServiceProvider, TriggerArgs>? syncAction = null,
-        Func<TActor, TContext, TServiceProvider, TriggerArgs, ValueTask>? reactionAsync = null,
+        Action<TContext, IServiceProvider, TArgs>? syncAction = null,
+        Func<TActor, TContext, IServiceProvider, TArgs, ValueTask>? reactionAsync = null,
         params (TState Target, string Label)[] targetHints)
         where TContext : class
         where TState : struct, Enum
@@ -84,10 +84,10 @@ internal static class TestTransition
             reactionAsync,
             targetHints.Length > 0 ? targetHints : null);
 
-    public static Transition<TContext, TServiceProvider, TState, TActor> Stay<TContext, TServiceProvider, TState, TActor>(
-        Action<TContext, TServiceProvider, TriggerArgs>? syncAction = null,
-        Func<TActor, TContext, TServiceProvider, TriggerArgs, ValueTask>? reactionAsync = null,
-        Func<TContext, TServiceProvider, TriggerArgs, bool>? guard = null,
+    public static Transition<TContext, TArgs, TState, TActor> Stay<TContext, TArgs, TState, TActor>(
+        Action<TContext, IServiceProvider, TArgs>? syncAction = null,
+        Func<TActor, TContext, IServiceProvider, TArgs, ValueTask>? reactionAsync = null,
+        Func<TContext, IServiceProvider, TArgs, bool>? guard = null,
         List<string>? guardLabels = null)
         where TContext : class
         where TState : struct, Enum

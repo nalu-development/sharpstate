@@ -37,7 +37,7 @@ public static partial class NetworkMachine
 
         [StateDefinition]
         private static IStateConfiguration Authenticated { get; } = ConfigureState()
-            .OnMessage(t => t.Stay().Invoke((ctx, text) => ctx.Log.Add(text)));
+            .OnMessage(t => t.Stay().Invoke((ctx, args) => ctx.Log.Add(args.Text)));
 
         [SubStateMachine(parent: State.Authenticated)]
         private partial class AuthenticatedRegion

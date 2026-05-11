@@ -3,26 +3,25 @@ namespace Nalu.SharpState;
 /// <summary>
 /// Resolver that reuses the same provider instance for synchronous dispatch and <c>ReactAsync</c> reactions.
 /// </summary>
-/// <typeparam name="TServiceProvider">Service provider type passed to transition clauses and reactions.</typeparam>
-public class StateMachineStaticServiceProviderResolver<TServiceProvider> : IStateMachineServiceProviderResolver<TServiceProvider>
+public class StateMachineStaticServiceProviderResolver : IStateMachineServiceProviderResolver
 {
-    private readonly TServiceProvider _serviceProvider;
+    private readonly IServiceProvider _serviceProvider;
 
     /// <summary>
     /// Initializes a resolver backed by <paramref name="serviceProvider"/>.
     /// </summary>
     /// <param name="serviceProvider">Provider returned for synchronous clauses and reactions.</param>
-    public StateMachineStaticServiceProviderResolver(TServiceProvider serviceProvider)
+    public StateMachineStaticServiceProviderResolver(IServiceProvider serviceProvider)
     {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         _serviceProvider = serviceProvider;
     }
 
     /// <inheritdoc />
-    public TServiceProvider GetServiceProvider() => _serviceProvider;
+    public IServiceProvider GetServiceProvider() => _serviceProvider;
 
     /// <inheritdoc />
-    public IDisposable CreateScopedServiceProvider(out TServiceProvider serviceProvider)
+    public IDisposable CreateScopedServiceProvider(out IServiceProvider serviceProvider)
     {
         serviceProvider = _serviceProvider;
         return StateMachineReactiveNonOwningScope.Instance;

@@ -33,9 +33,9 @@ public static partial class DoorMachine
     [StateDefinition(Initial = true)]
     private static IStateConfiguration Closed { get; } = ConfigureState()
         .OnOpen(t => t
-                     .When((_, reason) => reason is not "spying", "Not spying")
+                     .When((_, args) => args.Reason is not "spying", "Not spying")
                      .Target(State.Opened)
-                     .Invoke((ctx, reason) => ctx.LastReason = reason)
+                     .Invoke((ctx, args) => ctx.LastReason = args.Reason)
         );
 
     /// <summary>
@@ -44,7 +44,7 @@ public static partial class DoorMachine
     [StateDefinition]
     private static IStateConfiguration Opened { get; } = ConfigureState()
                                                          .OnClose(t => t.Target(State.Closed))
-                                                         .WhenEntering((ctx, _) => ctx.OpenCount++);
+                                                         .WhenEntering(ctx => ctx.OpenCount++);
 }
 
 [MemoryDiagnoser]
@@ -73,21 +73,17 @@ public class StateMachineBenchmark
     }
     
     private DoorMachine.IActor _doorActor = null!;
-    private DoorContext _doorActorContext = null!;
     private StateMachine<DoorMachine.State, DoorMachine.Trigger> _doorStateless = null!;
-    private DoorContext _doorStatelessContext = null!;
     private StateMachine<DoorMachine.State, DoorMachine.Trigger>.TriggerWithParameters<string> _openWithReasonTrigger = null!;
 
     [GlobalSetup]
     public void Setup()
     {
-        var (doorActorContext, doorActor) = CreateDoorActor();
-        _doorActorContext = doorActorContext;
+        var (_, doorActor) = CreateDoorActor();
         _doorActor = doorActor;
 
-        var (doorStateless, doorStatelessContext, openWithReasonTrigger) = DoorStateless();
+        var (doorStateless, _, openWithReasonTrigger) = DoorStateless();
         _doorStateless = doorStateless;
-        _doorStatelessContext = doorStatelessContext;
         _openWithReasonTrigger = openWithReasonTrigger;
     }
 

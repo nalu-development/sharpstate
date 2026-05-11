@@ -5,7 +5,8 @@
         {
           "src": "./",
           "files": [
-            "Source/Nalu.SharpState/Nalu.SharpState.csproj"
+            "Source/Nalu.SharpState/Nalu.SharpState.csproj",
+            "Source/Nalu.SharpState.DependencyInjection/Nalu.SharpState.DependencyInjection.csproj"
           ]
         }
       ],
