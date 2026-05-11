@@ -78,4 +78,252 @@ public class StateTriggerBuilderTests
 
         builder.BuildTransitions()[0].IsInternal.Should().BeTrue();
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Validate_throws_when_target_and_stay_are_both_set(bool targetFirst)
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
+        if (targetFirst)
+        {
+            builder.Target(FlatState.B);
+            builder.Stay();
+        }
+        else
+        {
+            builder.Stay();
+            builder.Target(FlatState.B);
+        }
+
+        var act = builder.Validate;
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Target*Stay*");
+    }
+
+    [Fact]
+    public void Constructor_getArgs_throws_on_null()
+    {
+        var act = () => new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>(null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("getArgs");
+    }
+
+    [Fact]
+    public void Target_selector_throws_on_null_delegate()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
+
+        var act = () => builder.Target((StateTargetSelector<TestContext, TestTriggerArgs, FlatState>)null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("targetSelector");
+    }
+
+    [Fact]
+    public void When_throws_on_null_delegate()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
+
+        var act = () => builder.When((StateGuard<TestContext, TestTriggerArgs>)null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("guard");
+    }
+
+    [Fact]
+    public void Invoke_throws_on_null_delegate()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
+
+        var act = () => builder.Invoke((StateAction<TestContext, TestTriggerArgs>)null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("action");
+    }
+
+    [Fact]
+    public void ReactAsync_throws_on_null_delegate()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
+
+        var act = () => builder.ReactAsync((StateReaction<TestActor, TestContext, TestTriggerArgs>)null!);
+
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("action");
+    }
+
+    [Fact]
+    public void When_multiple_guards_are_combined_with_and_short_circuits_and_labels_skip_nulls()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
+        var secondEvaluated = false;
+        builder
+            .When((_, _) => false, "first")
+            .When((_, _) =>
+            {
+                secondEvaluated = true;
+                return true;
+            })
+            .When((_, _) => true, label: null)
+            .When((_, _) => true, "last")
+            .Target(FlatState.B);
+        builder.Validate();
+
+        var transition = builder.BuildTransitions()[0];
+        var context = new TestContext();
+        transition.Guard!(context, EmptyServiceProvider.Instance, TestTriggerArgs.Empty).Should().BeFalse();
+        secondEvaluated.Should().BeFalse();
+        transition.GuardLabels.Should().Equal("first", "last");
+    }
+
+    [Fact]
+    public void Multiple_When_true_and_true_runs_both_guards()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
+        var calls = 0;
+        builder
+            .When((_, _) =>
+            {
+                calls++;
+                return true;
+            })
+            .When((_, _) =>
+            {
+                calls++;
+                return true;
+            })
+            .Target(FlatState.B);
+        builder.Validate();
+
+        var transition = builder.BuildTransitions()[0];
+        transition.Guard!(new TestContext(), EmptyServiceProvider.Instance, TestTriggerArgs.Empty).Should().BeTrue();
+        calls.Should().Be(2);
+    }
+
+    [Fact]
+    public void Invoke_multiple_actions_execute_in_declaration_order()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
+        builder.Target(FlatState.B)
+            .Invoke((ctx, _) => ctx.Log.Add("1"))
+            .Invoke((ctx, _) => ctx.Log.Add("2"));
+        builder.Validate();
+
+        var transition = builder.BuildTransitions()[0];
+        var context = new TestContext();
+        transition.SyncAction!(context, EmptyServiceProvider.Instance, TestTriggerArgs.Empty);
+
+        context.Log.Should().Equal("1", "2");
+    }
+
+    [Fact]
+    public async Task ReactAsync_multiple_reactions_execute_in_declaration_order()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
+        builder.Target(FlatState.B)
+            .ReactAsync(async (_, ctx, _) =>
+            {
+                await Task.Yield();
+                ctx.Log.Add("1");
+            })
+            .ReactAsync(async (_, ctx, _) =>
+            {
+                await Task.Yield();
+                ctx.Log.Add("2");
+            });
+        builder.Validate();
+
+        var transition = builder.BuildTransitions()[0];
+        var context = new TestContext();
+        await transition.ReactionAsync!(new TestActor(), context, EmptyServiceProvider.Instance, TestTriggerArgs.Empty);
+
+        context.Log.Should().Equal("1", "2");
+    }
+
+    [Fact]
+    public void Target_dynamic_hints_are_stored_when_provided()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
+        builder.Target((_, _) => FlatState.B, (FlatState.C, "see-c"));
+        builder.Validate();
+
+        var transition = builder.BuildTransitions()[0];
+        transition.DynamicTargetHints.Should().NotBeNull();
+        transition.DynamicTargetHints!.Should().ContainSingle()
+            .Which.Should().Be((FlatState.C, "see-c"));
+    }
+
+    [Fact]
+    public void Target_dynamic_hints_are_null_when_not_provided()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
+        builder.Target((_, _) => FlatState.B);
+        builder.Validate();
+
+        builder.BuildTransitions()[0].DynamicTargetHints.Should().BeNull();
+    }
+
+    [Fact]
+    public void Transition_target_throws_for_internal_transition()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
+        builder.Stay();
+        builder.Validate();
+
+        var transition = builder.BuildTransitions()[0];
+        var act = () => _ = transition.Target;
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Internal*");
+    }
+
+    [Fact]
+    public void Transition_target_throws_for_dynamic_transition()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
+        builder.Target((_, _) => FlatState.B);
+        builder.Validate();
+
+        var transition = builder.BuildTransitions()[0];
+        var act = () => _ = transition.Target;
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Dynamic*");
+    }
+
+    [Fact]
+    public void Default_constructor_cast_fails_for_mismatched_machine_and_trigger_arg_types()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, int>();
+        builder.When((_, _) => true).Target(FlatState.B);
+        builder.Validate();
+
+        var transition = builder.BuildTransitions()[0];
+        var act = () => transition.Guard!(new TestContext(), EmptyServiceProvider.Instance, TestTriggerArgs.Empty);
+
+        act.Should().Throw<InvalidCastException>();
+    }
+
+    [Fact]
+    public void BuildTransitions_without_validate_returns_transition_for_default_ctor_builder_without_guard()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
+        builder.Target(FlatState.B);
+
+        var transition = builder.BuildTransitions().Should().ContainSingle().Subject;
+        transition.Target.Should().Be(FlatState.B);
+    }
+
+    [Fact]
+    public void BuildTransitions_without_validate_can_produce_shape_without_target()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
+
+        var transition = builder.BuildTransitions().Should().ContainSingle().Subject;
+        transition.IsInternal.Should().BeFalse();
+        transition.Target.Should().Be(default(FlatState));
+    }
 }

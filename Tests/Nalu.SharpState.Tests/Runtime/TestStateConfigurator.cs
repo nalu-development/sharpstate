@@ -95,3 +95,17 @@ internal static class TestTransition
 }
 
 internal sealed class TestActor;
+
+/// <summary>
+/// Configurator that implements <see cref="IStateLifecycleFluent{TFluent, TContext}"/> for default-interface lifecycle tests.
+/// </summary>
+internal sealed class LifecycleFluentTestConfigurator
+    : StateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>,
+      IStateLifecycleFluent<LifecycleFluentTestConfigurator, TestContext>
+{
+    public LifecycleFluentTestConfigurator On(FlatTrigger trigger, Transition<TestContext, IServiceProvider, FlatState, TestActor> transition)
+    {
+        AddTransitions(trigger, [transition]);
+        return this;
+    }
+}
