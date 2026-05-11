@@ -41,12 +41,12 @@ public static partial class DoorMachine
     private static IStateConfiguration Closed { get; } = ConfigureState()
         .OnOpen(t => t
             .When((_, args) => args.Reason is not "spying", "Not spying")
-            .Target(State.Opened)
+            .TransitionTo(State.Opened)
             .Invoke((ctx, args) => { ctx.OpenCount++; ctx.LastReason = args.Reason; }));
 
     [StateDefinition]
     private static IStateConfiguration Opened { get; } = ConfigureState()
-        .OnClose(t => t.Target(State.Closed));
+        .OnClose(t => t.TransitionTo(State.Closed));
 }
 ```
 
@@ -73,7 +73,7 @@ The synchronous trigger API can still schedule async follow-up work after a tran
 [StateDefinition]
 private static IStateConfiguration Pending { get; } = ConfigureState()
     .OnRequestApproval(t => t
-        .Target(State.Approving)
+        .TransitionTo(State.Approving)
         .ReactAsync(async (actor, ctx, args) =>
         {
             try {
@@ -202,7 +202,7 @@ stateDiagram-v2
 For dynamic targets, pass labeled hints so diagrams can document the possible runtime branches:
 
 ```csharp
-.OnRoute(t => t.Target(
+.OnRoute(t => t.TransitionTo(
     (ctx, request) => request.IsAdmin ? State.Admin : State.Standard,
     (State.Admin, "Admin request"),
     (State.Standard, "Standard request")))

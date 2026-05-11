@@ -79,12 +79,12 @@ public abstract class StateTriggerBuilderBase<TContext, TMachineArgs, TState, TA
     {
         if (_hasTarget && _stay)
         {
-            throw new InvalidOperationException("A transition cannot declare both a Target and Stay(). Choose one.");
+            throw new InvalidOperationException("A transition cannot declare both TransitionTo() and Stay(). Choose one.");
         }
 
         if (!_hasTarget && !_stay)
         {
-            throw new InvalidOperationException("A transition must declare either a Target state or Stay() for an internal transition.");
+            throw new InvalidOperationException("A transition must declare either TransitionTo() for an external target state or Stay() for an internal transition.");
         }
     }
 
@@ -115,125 +115,125 @@ public sealed class StateTriggerBuilder<TContext, TMachineArgs, TState, TActor> 
     where TContext : class
     where TState : struct, Enum
 {
-    public IStateTransitionBuilder<TContext, TState, TActor> Target(TState target)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo(TState target)
     {
         SetTarget(target);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target(StateTriggerParameterlessTargetSelector<TContext, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo(StateTriggerParameterlessTargetSelector<TContext, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, _, _) => targetSelector(context), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1>(StateTriggerParameterlessTargetSelector<TContext, T1, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1>(StateTriggerParameterlessTargetSelector<TContext, T1, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1, T2>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1, T2>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1, T2, T3>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1, T2, T3>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1, T2, T3, T4>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1, T2, T3, T4>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1, T2, T3, T4, T5>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1, T2, T3, T4, T5>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1, T2, T3, T4, T5, T6>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1, T2, T3, T4, T5, T6>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1, T2, T3, T4, T5, T6, T7>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1, T2, T3, T4, T5, T6, T7>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1, T2, T3, T4, T5, T6, T7, T8>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp), StateMachineServiceResolver.Resolve<T15>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionBuilder<TContext, TState, TActor> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionBuilder<TContext, TState, TActor> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(StateTriggerParameterlessTargetSelector<TContext, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, _) => targetSelector(context, StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp), StateMachineServiceResolver.Resolve<T15>(sp), StateMachineServiceResolver.Resolve<T16>(sp)), targetHints);
@@ -625,125 +625,125 @@ public sealed class StateTriggerBuilder<TContext, TMachineArgs, TState, TActor, 
         _getArgs = getArgs ?? throw new ArgumentNullException(nameof(getArgs));
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target(TState target)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo(TState target)
     {
         SetTarget(target);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target(StateTargetSelector<TContext, TArgs, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo(StateTargetSelector<TContext, TArgs, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, _, args) => targetSelector(context, _getArgs(args)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1>(StateTargetSelector<TContext, TArgs, T1, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1>(StateTargetSelector<TContext, TArgs, T1, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1, T2>(StateTargetSelector<TContext, TArgs, T1, T2, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1, T2>(StateTargetSelector<TContext, TArgs, T1, T2, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3>(StateTargetSelector<TContext, TArgs, T1, T2, T3, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1, T2, T3>(StateTargetSelector<TContext, TArgs, T1, T2, T3, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1, T2, T3, T4>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1, T2, T3, T4, T5>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1, T2, T3, T4, T5, T6>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1, T2, T3, T4, T5, T6, T7>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp), StateMachineServiceResolver.Resolve<T15>(sp)), targetHints);
         return this;
     }
 
-    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> Target<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, TState> targetSelector, params (TState Target, string Label)[] targetHints)
+    public IStateTransitionArgsBuilder<TContext, TState, TActor, TArgs> TransitionTo<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16>(StateTargetSelector<TContext, TArgs, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, TState> targetSelector, params (TState Target, string Label)[] targetHints)
     {
         ArgumentNullException.ThrowIfNull(targetSelector);
         SetTarget((context, sp, args) => targetSelector(context, _getArgs(args), StateMachineServiceResolver.Resolve<T1>(sp), StateMachineServiceResolver.Resolve<T2>(sp), StateMachineServiceResolver.Resolve<T3>(sp), StateMachineServiceResolver.Resolve<T4>(sp), StateMachineServiceResolver.Resolve<T5>(sp), StateMachineServiceResolver.Resolve<T6>(sp), StateMachineServiceResolver.Resolve<T7>(sp), StateMachineServiceResolver.Resolve<T8>(sp), StateMachineServiceResolver.Resolve<T9>(sp), StateMachineServiceResolver.Resolve<T10>(sp), StateMachineServiceResolver.Resolve<T11>(sp), StateMachineServiceResolver.Resolve<T12>(sp), StateMachineServiceResolver.Resolve<T13>(sp), StateMachineServiceResolver.Resolve<T14>(sp), StateMachineServiceResolver.Resolve<T15>(sp), StateMachineServiceResolver.Resolve<T16>(sp)), targetHints);

@@ -22,18 +22,18 @@ public static partial class NetworkMachine
 
     [StateDefinition(Initial = true)]
     private static IStateConfiguration Idle { get; } = ConfigureState()
-        .OnConnect(t => t.Target(State.Connected));
+        .OnConnect(t => t.TransitionTo(State.Connected));
 
     [StateDefinition]
     private static IStateConfiguration Connected { get; } = ConfigureState()
-        .OnDisconnect(t => t.Target(State.Idle));
+        .OnDisconnect(t => t.TransitionTo(State.Idle));
 
     [SubStateMachine(parent: State.Connected)]
     private partial class ConnectedRegion
     {
         [StateDefinition(Initial = true)]
         private static IStateConfiguration Authenticating { get; } = ConfigureState()
-            .OnAuthOk(t => t.Target(State.Authenticated));
+            .OnAuthOk(t => t.TransitionTo(State.Authenticated));
 
         [StateDefinition]
         private static IStateConfiguration Authenticated { get; } = ConfigureState()
@@ -44,11 +44,11 @@ public static partial class NetworkMachine
         {
             [StateDefinition(Initial = true)]
             private static IStateConfiguration Browsing { get; } = ConfigureState()
-                .OnStartEdit(t => t.Target(State.Editing));
+                .OnStartEdit(t => t.TransitionTo(State.Editing));
 
             [StateDefinition]
             private static IStateConfiguration Editing { get; } = ConfigureState()
-                .OnSave(t => t.Target(State.Browsing));
+                .OnSave(t => t.TransitionTo(State.Browsing));
         }
     }
 }

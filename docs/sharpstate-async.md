@@ -26,7 +26,7 @@ public static partial class ReviewMachine
     [StateDefinition]
     private static IStateConfiguration Pending { get; } = ConfigureState()
         .OnRequestApproval(t => t
-            .Target(State.Approving)
+            .TransitionTo(State.Approving)
             // Request collaborators as typed callback parameters.
             .ReactAsync<IApprovalService>(async (actor, ctx, args, approvals) =>
             {
@@ -40,8 +40,8 @@ public static partial class ReviewMachine
 
     [StateDefinition]
     private static IStateConfiguration Approving { get; } = ConfigureState()
-        .OnApprove(t => t.Target(State.Approved))
-        .OnReject(t => t.Target(State.Rejected));
+        .OnApprove(t => t.TransitionTo(State.Approved))
+        .OnReject(t => t.TransitionTo(State.Rejected));
 
     [StateDefinition]
     private static IStateConfiguration Approved { get; } = ConfigureState();
@@ -64,7 +64,7 @@ For external transitions, the execution order is:
 
 For internal transitions (`Stay()` / `Ignore()`), only the inline `Invoke(...)` runs before the background reaction is scheduled.
 
-If you use a dynamic `Target((ctx, args...) => ...)` and it resolves to the current leaf for a specific fire, that fire also behaves like an internal transition.
+If you use a dynamic `TransitionTo((ctx, args...) => ...)` and it resolves to the current leaf for a specific fire, that fire also behaves like an internal transition.
 
 ## Synchronization context behavior
 

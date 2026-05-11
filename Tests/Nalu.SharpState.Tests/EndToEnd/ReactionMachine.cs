@@ -23,7 +23,7 @@ public static partial class ReactionMachine
                 return default;
             }))
         .OnFinish(t => t
-            .Target(State.Done)
+            .TransitionTo(State.Done)
             .ReactAsync((_, ctx) =>
             {
                 ctx.Inspections += 10;

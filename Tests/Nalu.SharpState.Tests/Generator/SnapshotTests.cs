@@ -27,11 +27,11 @@ public class SnapshotTests
 
             [StateDefinition(Initial = true)]
             private static IStateConfiguration Idle { get; } = ConfigureState()
-                .OnConnect(t => t.Target(State.Connected).Invoke((ctx, id) => ctx.DeviceId = id));
+                .OnConnect(t => t.TransitionTo(State.Connected).Invoke((ctx, id) => ctx.DeviceId = id));
 
             [StateDefinition]
             private static IStateConfiguration Connected { get; } = ConfigureState()
-                .OnDisconnect(t => t.Target(State.Idle));
+                .OnDisconnect(t => t.TransitionTo(State.Idle));
         }
         """;
         var result = GeneratorDriverHelper.RunGenerator(source, out _);
@@ -56,7 +56,7 @@ public class SnapshotTests
 
             [StateDefinition(Initial = true)]
             private static IStateConfiguration Idle { get; } = ConfigureState()
-                .OnStart(t => t.Target(State.Running));
+                .OnStart(t => t.TransitionTo(State.Running));
 
             [StateDefinition]
             private static IStateConfiguration Running { get; } = ConfigureState()
@@ -91,18 +91,18 @@ public class SnapshotTests
 
             [StateDefinition(Initial = true)]
             private static IStateConfiguration Idle { get; } = ConfigureState()
-                .OnConnect(t => t.Target(State.Connected));
+                .OnConnect(t => t.TransitionTo(State.Connected));
 
             [StateDefinition]
             private static IStateConfiguration Connected { get; } = ConfigureState()
-                .OnDisconnect(t => t.Target(State.Idle));
+                .OnDisconnect(t => t.TransitionTo(State.Idle));
 
             [SubStateMachine(parent: State.Connected)]
             private partial class ConnectedRegion
             {
                 [StateDefinition(Initial = true)]
                 private static IStateConfiguration Authenticating { get; } = ConfigureState()
-                    .OnAuthOk(t => t.Target(State.Authenticated));
+                    .OnAuthOk(t => t.TransitionTo(State.Authenticated));
 
                 [StateDefinition]
                 private static IStateConfiguration Authenticated { get; } = ConfigureState()
@@ -139,18 +139,18 @@ public class SnapshotTests
 
             [StateDefinition(Initial = true)]
             private static IStateConfiguration Idle { get; } = ConfigureState()
-                .OnConnect(t => t.Target(State.Connected));
+                .OnConnect(t => t.TransitionTo(State.Connected));
 
             [StateDefinition]
             private static IStateConfiguration Connected { get; } = ConfigureState()
-                .OnDisconnect(t => t.Target(State.Idle));
+                .OnDisconnect(t => t.TransitionTo(State.Idle));
 
             [SubStateMachine(parent: State.Connected)]
             private partial class ConnectedRegion
             {
                 [StateDefinition(Initial = true)]
                 private static IStateConfiguration Authenticating { get; } = ConfigureState()
-                    .OnAuthOk(t => t.Target(State.Authenticated));
+                    .OnAuthOk(t => t.TransitionTo(State.Authenticated));
 
                 [StateDefinition]
                 private static IStateConfiguration Authenticated { get; } = ConfigureState();
@@ -160,11 +160,11 @@ public class SnapshotTests
                 {
                     [StateDefinition(Initial = true)]
                     private static IStateConfiguration Browsing { get; } = ConfigureState()
-                        .OnStartEdit(t => t.Target(State.Editing));
+                        .OnStartEdit(t => t.TransitionTo(State.Editing));
 
                     [StateDefinition]
                     private static IStateConfiguration Editing { get; } = ConfigureState()
-                        .OnSave(t => t.Target(State.Browsing));
+                        .OnSave(t => t.TransitionTo(State.Browsing));
                 }
             }
         }
@@ -192,7 +192,7 @@ public class SnapshotTests
 
                 [StateDefinition(Initial = true)]
                 private static IStateConfiguration A { get; } = ConfigureState()
-                    .OnGo(t => t.Target(State.B));
+                    .OnGo(t => t.TransitionTo(State.B));
 
                 [StateDefinition]
                 private static IStateConfiguration B { get; } = ConfigureState();
@@ -226,7 +226,7 @@ public class SnapshotTests
             [StateDefinition(Initial = true)]
             private static IStateConfiguration Idle { get; } = ConfigureState()
                 .WhenExiting((ctx, _) => ctx.Exits++)
-                .OnStart(t => t.Target(State.Running));
+                .OnStart(t => t.TransitionTo(State.Running));
 
             [StateDefinition]
             private static IStateConfiguration Running { get; } = ConfigureState()
@@ -264,11 +264,11 @@ public class SnapshotTests
             /// </summary>
             [StateDefinition(Initial = true)]
             private static IStateConfiguration Closed { get; } = ConfigureState()
-                .OnOpen(t => t.Target(State.Opened));
+                .OnOpen(t => t.TransitionTo(State.Opened));
 
             [StateDefinition]
             private static IStateConfiguration Opened { get; } = ConfigureState()
-                .OnClose(t => t.Target(State.Closed));
+                .OnClose(t => t.TransitionTo(State.Closed));
         }
         """;
         var result = GeneratorDriverHelper.RunGenerator(source, out _);
@@ -292,7 +292,7 @@ public class SnapshotTests
 
             [StateDefinition(Initial = true)]
             private static IStateConfiguration A { get; } = ConfigureState()
-                .OnGo(t => t.Target(State.B));
+                .OnGo(t => t.TransitionTo(State.B));
 
             [StateDefinition]
             private static IStateConfiguration B { get; } = ConfigureState();

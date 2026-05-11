@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using FluentAssertions;
+// ReSharper disable NotAccessedPositionalProperty.Local
 
 namespace Nalu.SharpState.Tests.Runtime;
 
@@ -18,9 +19,9 @@ public class StateTriggerBuilderSixteenServiceOverloadTests
             services.TryGetValue(serviceType, out var value) ? value : null;
     }
 
-    private static readonly Assembly SharpStateAssembly = typeof(StateTriggerBuilder<,,,>).Assembly;
+    private static readonly Assembly _sharpStateAssembly = typeof(StateTriggerBuilder<,,,>).Assembly;
 
-    private static readonly Type[] DiTypes =
+    private static readonly Type[] _diTypes =
     [
         typeof(DiMarker01),
         typeof(DiMarker02),
@@ -40,7 +41,7 @@ public class StateTriggerBuilderSixteenServiceOverloadTests
         typeof(DiMarker16)
     ];
 
-    private static readonly object?[] DiInstances =
+    private static readonly object?[] _diInstances =
     [
         new DiMarker01(),
         new DiMarker02(),
@@ -103,7 +104,7 @@ public class StateTriggerBuilderSixteenServiceOverloadTests
     private static Type GetOpenGenericTypeByClrName(string baseName, int typeParameterCount)
     {
         var expected = baseName + "`" + typeParameterCount;
-        return SharpStateAssembly.GetTypes().Single(t => t.IsGenericTypeDefinition && t.Name == expected);
+        return _sharpStateAssembly.GetTypes().Single(t => t.IsGenericTypeDefinition && t.Name == expected);
     }
 
     private static IServiceProvider CreateProvider(int n)
@@ -111,7 +112,7 @@ public class StateTriggerBuilderSixteenServiceOverloadTests
         var map = new Dictionary<Type, object?>(n);
         for (var i = 0; i < n; i++)
         {
-            map[DiTypes[i]] = DiInstances[i];
+            map[_diTypes[i]] = _diInstances[i];
         }
 
         return new DictionaryProvider(map);
@@ -332,7 +333,7 @@ public class StateTriggerBuilderSixteenServiceOverloadTests
         GetGenericInstanceMethod(t, nameof(IStateTriggerBuilder<TestContext, FlatState, TestActor>.When), n)
             .MakeGenericMethod(diTypes)
             .Invoke(builder, [BuildParameterlessGuard(n, diTypes), null]);
-        GetGenericInstanceMethod(t, nameof(IStateTriggerBuilder<TestContext, FlatState, TestActor>.Target), n)
+        GetGenericInstanceMethod(t, nameof(IStateTriggerBuilder<TestContext, FlatState, TestActor>.TransitionTo), n)
             .MakeGenericMethod(diTypes)
             .Invoke(builder, [BuildParameterlessTarget(n, diTypes), Array.Empty<(FlatState, string)>()]);
         GetGenericInstanceMethod(t, nameof(IStateTransitionBuilder<TestContext, FlatState, TestActor>.Invoke), n)
@@ -349,7 +350,7 @@ public class StateTriggerBuilderSixteenServiceOverloadTests
         GetGenericInstanceMethod(t, nameof(IStateTriggerArgsBuilder<TestContext, FlatState, TestActor, TestTriggerArgs>.When), n)
             .MakeGenericMethod(diTypes)
             .Invoke(builder, [BuildArgsGuard(n, diTypes), null]);
-        GetGenericInstanceMethod(t, nameof(IStateTriggerArgsBuilder<TestContext, FlatState, TestActor, TestTriggerArgs>.Target), n)
+        GetGenericInstanceMethod(t, nameof(IStateTriggerArgsBuilder<TestContext, FlatState, TestActor, TestTriggerArgs>.TransitionTo), n)
             .MakeGenericMethod(diTypes)
             .Invoke(builder, [BuildArgsTarget(n, diTypes), Array.Empty<(FlatState, string)>()]);
         GetGenericInstanceMethod(t, nameof(IStateTransitionArgsBuilder<TestContext, FlatState, TestActor, TestTriggerArgs>.Invoke), n)
@@ -379,7 +380,7 @@ public class StateTriggerBuilderSixteenServiceOverloadTests
     [InlineData(16)]
     public async Task Parameterless_builder_di_overloads(int n)
     {
-        var diTypes = DiTypes.Take(n).ToArray();
+        var diTypes = _diTypes.Take(n).ToArray();
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor>();
         ChainParameterlessBuilder(builder, n, diTypes);
         builder.Validate();
@@ -415,7 +416,7 @@ public class StateTriggerBuilderSixteenServiceOverloadTests
     [InlineData(16)]
     public async Task Args_builder_di_overloads(int n)
     {
-        var diTypes = DiTypes.Take(n).ToArray();
+        var diTypes = _diTypes.Take(n).ToArray();
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
         ChainArgsBuilder(builder, n, diTypes);
         builder.Validate();

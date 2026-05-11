@@ -5,14 +5,14 @@ namespace Nalu.SharpState.Tests.Runtime;
 public class StateTriggerArgsBuilderTests
 {
     [Fact]
-    public void Validate_requires_Target_or_Stay()
+    public void Validate_requires_TransitionTo_or_Stay()
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
 
         var act = builder.Validate;
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Target*Stay*");
+            .WithMessage("*TransitionTo*Stay*");
     }
 
     [Fact]
@@ -20,7 +20,7 @@ public class StateTriggerArgsBuilderTests
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
 
-        builder.Target(FlatState.B);
+        builder.TransitionTo(FlatState.B);
         builder.Validate();
 
         var transition = builder.BuildTransitions().Should().ContainSingle().Subject;
@@ -34,7 +34,7 @@ public class StateTriggerArgsBuilderTests
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
         builder
             .When((ctx, args) => ctx.Counter == args.Get<int>(0), "counter matches")
-            .Target((_, args) => args.Get<string>(1) == "b" ? FlatState.B : FlatState.C)
+            .TransitionTo((_, args) => args.Get<string>(1) == "b" ? FlatState.B : FlatState.C)
             .Invoke((ctx, args) => ctx.LastArg = args.Get<string>(1));
         builder.Validate();
 
@@ -53,7 +53,7 @@ public class StateTriggerArgsBuilderTests
     public async Task ReactAsync_stores_background_reaction()
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
-        builder.Target(FlatState.B)
+        builder.TransitionTo(FlatState.B)
             .ReactAsync(async (_, ctx, args) =>
             {
                 await Task.Yield();
@@ -87,19 +87,19 @@ public class StateTriggerArgsBuilderTests
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
         if (targetFirst)
         {
-            builder.Target(FlatState.B);
+            builder.TransitionTo(FlatState.B);
             builder.Stay();
         }
         else
         {
             builder.Stay();
-            builder.Target(FlatState.B);
+            builder.TransitionTo(FlatState.B);
         }
 
         var act = builder.Validate;
 
         act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*Target*Stay*");
+            .WithMessage("*TransitionTo*Stay*");
     }
 
     [Fact]
@@ -112,11 +112,11 @@ public class StateTriggerArgsBuilderTests
     }
 
     [Fact]
-    public void Target_selector_throws_on_null_delegate()
+    public void TransitionTo_selector_throws_on_null_delegate()
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
 
-        var act = () => builder.Target(null!);
+        var act = () => builder.TransitionTo(null!);
 
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("targetSelector");
@@ -169,7 +169,7 @@ public class StateTriggerArgsBuilderTests
             })
             .When((_, _) => true, label: null)
             .When((_, _) => true, "last")
-            .Target(FlatState.B);
+            .TransitionTo(FlatState.B);
         builder.Validate();
 
         var transition = builder.BuildTransitions()[0];
@@ -195,7 +195,7 @@ public class StateTriggerArgsBuilderTests
                 calls++;
                 return true;
             })
-            .Target(FlatState.B);
+            .TransitionTo(FlatState.B);
         builder.Validate();
 
         var transition = builder.BuildTransitions()[0];
@@ -207,7 +207,7 @@ public class StateTriggerArgsBuilderTests
     public void Invoke_multiple_actions_execute_in_declaration_order()
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
-        builder.Target(FlatState.B)
+        builder.TransitionTo(FlatState.B)
             .Invoke((ctx, _) => ctx.Log.Add("1"))
             .Invoke((ctx, _) => ctx.Log.Add("2"));
         builder.Validate();
@@ -223,7 +223,7 @@ public class StateTriggerArgsBuilderTests
     public async Task ReactAsync_multiple_reactions_execute_in_declaration_order()
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
-        builder.Target(FlatState.B)
+        builder.TransitionTo(FlatState.B)
             .ReactAsync(async (_, ctx, _) =>
             {
                 await Task.Yield();
@@ -244,10 +244,10 @@ public class StateTriggerArgsBuilderTests
     }
 
     [Fact]
-    public void Target_dynamic_hints_are_stored_when_provided()
+    public void TransitionTo_dynamic_hints_are_stored_when_provided()
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
-        builder.Target((_, _) => FlatState.B, (FlatState.C, "see-c"));
+        builder.TransitionTo((_, _) => FlatState.B, (FlatState.C, "see-c"));
         builder.Validate();
 
         var transition = builder.BuildTransitions()[0];
@@ -257,10 +257,10 @@ public class StateTriggerArgsBuilderTests
     }
 
     [Fact]
-    public void Target_dynamic_hints_are_null_when_not_provided()
+    public void TransitionTo_dynamic_hints_are_null_when_not_provided()
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
-        builder.Target((_, _) => FlatState.B);
+        builder.TransitionTo((_, _) => FlatState.B);
         builder.Validate();
 
         builder.BuildTransitions()[0].DynamicTargetHints.Should().BeNull();
@@ -284,7 +284,7 @@ public class StateTriggerArgsBuilderTests
     public void Transition_target_throws_for_dynamic_transition()
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
-        builder.Target((_, _) => FlatState.B);
+        builder.TransitionTo((_, _) => FlatState.B);
         builder.Validate();
 
         var transition = builder.BuildTransitions()[0];
@@ -298,7 +298,7 @@ public class StateTriggerArgsBuilderTests
     public void Default_constructor_cast_fails_for_mismatched_machine_and_trigger_arg_types()
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, int>();
-        builder.When((_, _) => true).Target(FlatState.B);
+        builder.When((_, _) => true).TransitionTo(FlatState.B);
         builder.Validate();
 
         var transition = builder.BuildTransitions()[0];
@@ -311,7 +311,7 @@ public class StateTriggerArgsBuilderTests
     public void BuildTransitions_without_validate_returns_transition_for_default_ctor_builder_without_guard()
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
-        builder.Target(FlatState.B);
+        builder.TransitionTo(FlatState.B);
 
         var transition = builder.BuildTransitions().Should().ContainSingle().Subject;
         transition.Target.Should().Be(FlatState.B);
@@ -331,12 +331,12 @@ public class StateTriggerArgsBuilderTests
 public class StateTriggerBuilderTests
 {
     [Fact]
-    public void When_Invoke_Target_work_without_trigger_payload_but_receive_context()
+    public void When_Invoke_TransitionTo_work_without_trigger_payload_but_receive_context()
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor>();
         builder
             .When(ctx => ctx.Counter > 1)
-            .Target(_ => FlatState.C)
+            .TransitionTo(_ => FlatState.C)
             .Invoke(ctx => ctx.Log.Add("x"));
         builder.Validate();
 

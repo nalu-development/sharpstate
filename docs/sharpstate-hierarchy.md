@@ -12,7 +12,7 @@ private partial class ConnectedRegion
 {
     [StateDefinition(Initial = true)]
     private static IStateConfiguration Authenticating { get; } = ConfigureState()
-        .OnAuthOk(t => t.Target(State.Authenticated));
+        .OnAuthOk(t => t.TransitionTo(State.Authenticated));
 
     [StateDefinition]
     private static IStateConfiguration Authenticated { get; } = ConfigureState()
@@ -58,18 +58,18 @@ public static partial class NetworkMachine
 
     [StateDefinition(Initial = true)]
     private static IStateConfiguration Idle { get; } = ConfigureState()
-        .OnConnect(t => t.Target(State.Connected));
+        .OnConnect(t => t.TransitionTo(State.Connected));
 
     [StateDefinition]
     private static IStateConfiguration Connected { get; } = ConfigureState()
-        .OnDisconnect(t => t.Target(State.Idle));
+        .OnDisconnect(t => t.TransitionTo(State.Idle));
 
     [SubStateMachine(parent: State.Connected)]
     private partial class ConnectedRegion
     {
         [StateDefinition(Initial = true)]
         private static IStateConfiguration Authenticating { get; } = ConfigureState()
-            .OnAuthOk(t => t.Target(State.Authenticated));
+            .OnAuthOk(t => t.TransitionTo(State.Authenticated));
 
         [StateDefinition]
         private static IStateConfiguration Authenticated { get; } = ConfigureState()
@@ -85,11 +85,11 @@ public static partial class NetworkMachine
         {
             [StateDefinition(Initial = true)]
             private static IStateConfiguration Browsing { get; } = ConfigureState()
-                .OnStartEdit(t => t.Target(State.Editing));
+                .OnStartEdit(t => t.TransitionTo(State.Editing));
 
             [StateDefinition]
             private static IStateConfiguration Editing { get; } = ConfigureState()
-                .OnSave(t => t.Target(State.Browsing));
+                .OnSave(t => t.TransitionTo(State.Browsing));
         }
     }
 }
@@ -125,11 +125,11 @@ var resolver = new StateMachineServiceProviderResolver(services, services.GetReq
 var machine = NetworkMachine.CreateActor(new NetworkContext(), resolver);
 
 machine.Connect();
-// Target(Connected) -> initial Authenticating -> Authenticating has no deeper initial
+// TransitionTo(Connected) -> initial Authenticating -> Authenticating has no deeper initial
 machine.CurrentState.Should().Be(NetworkMachine.State.Authenticating);
 
 machine.AuthOk();
-// Target(Authenticated) -> initial Browsing -> Browsing is a leaf
+// TransitionTo(Authenticated) -> initial Browsing -> Browsing is a leaf
 machine.CurrentState.Should().Be(NetworkMachine.State.Browsing);
 machine.IsIn(NetworkMachine.State.Authenticated).Should().BeTrue();
 machine.IsIn(NetworkMachine.State.Connected).Should().BeTrue();
@@ -181,7 +181,7 @@ private partial class AuthenticatedRegion
 {
     [StateDefinition(Initial = true)]
     private static IStateConfiguration Editing { get; } = ConfigureState()
-        .OnSave(t => t.Target(State.Browsing))
+        .OnSave(t => t.TransitionTo(State.Browsing))
         // ancestor handles Disconnect, so no need to re-declare it here
         ;
 }
@@ -205,7 +205,7 @@ See [Diagnostics & Troubleshooting](sharpstate-diagnostics.md) for the full list
 For **dynamic** targets, pass labeled hints after the selector so the diagrams show real branches instead of a generic **Dynamic target** placeholder:
 
 ```csharp
-.OnRoute(t => t.Target(
+.OnRoute(t => t.TransitionTo(
     (ctx, args) => args.Request.IsAdmin ? State.AdminDashboard : State.UserDashboard,
     (State.AdminDashboard, "Admin request"),
     (State.UserDashboard, "Standard request")))

@@ -15,7 +15,7 @@ public static partial class HookMachine
     [StateDefinition(Initial = true)]
     private static IStateConfiguration Idle { get; } = ConfigureState()
         .WhenExiting(ctx => ctx.Log.Add("exit:Idle"))
-        .OnStart(t => t.Target(State.Running));
+        .OnStart(t => t.TransitionTo(State.Running));
 
     [StateDefinition]
     private static IStateConfiguration Running { get; } = ConfigureState()

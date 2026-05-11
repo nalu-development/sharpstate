@@ -60,7 +60,7 @@ public static partial class DoorMachine
     [StateDefinition(Initial = true)]
     private static IStateConfiguration Closed { get; } = ConfigureState()
         .OnOpen(t => t
-            .Target(State.Opened)
+            .TransitionTo(State.Opened)
             .Invoke((ctx, args) =>
             {
                 ctx.OpenCount++;
@@ -69,7 +69,7 @@ public static partial class DoorMachine
 
     [StateDefinition]
     private static IStateConfiguration Opened { get; } = ConfigureState()
-        .OnClose(t => t.Target(State.Closed));
+        .OnClose(t => t.TransitionTo(State.Closed));
 }
 ```
 
@@ -118,7 +118,7 @@ public static partial class DoorMachine;
 
 **`IStateMachineServiceProviderResolver`** has two jobs:
 
-- `GetServiceProvider()` supplies the provider captured by the actor for synchronous `When`, `Target`, `Invoke`, `WhenEntering`, and `WhenExiting` clauses.
+- `GetServiceProvider()` supplies the provider captured by the actor for synchronous `When`, `TransitionTo`, `Invoke`, `WhenEntering`, and `WhenExiting` clauses.
 - `CreateScopedServiceProvider(out IServiceProvider)` supplies the provider used by each `ReactAsync` and returns the token the engine disposes afterward.
 
 For machines that do not resolve services, pass **`StateMachineEmptyServiceProviderResolver.Instance`**:
@@ -190,17 +190,17 @@ Inside each `[StateDefinition]` property body you call `ConfigureState()` and ch
 
 | Method | Purpose |
 |--------|---------|
-| `Target(State s)` | Move to `s` when the trigger fires. If `s` is composite, its initial-child chain is resolved to a leaf. |
-| `Target((ctx, args) => State.X, ...)` | Compute the target at fire time from the context and the generated trigger args struct. Extra service parameters can be requested with generic overloads up to `T16`. Optional trailing target hints document possible destinations for diagrams only. |
+| `TransitionTo(State s)` | Move to `s` when the trigger fires. If `s` is composite, its initial-child chain is resolved to a leaf. |
+| `TransitionTo((ctx, args) => State.X, ...)` | Compute the target at fire time from the context and the generated trigger args struct. Extra service parameters can be requested with generic overloads up to `T16`. Optional trailing target hints document possible destinations for diagrams only. |
 | `Stay()` | Run the action but keep the current state. `StateChanged` is not raised. |
 | `Ignore()` | Syntax sugar for `Stay()` with no action. |
-| `When(predicate, label = null)` | Guards the transition before `Target(...)` or `Stay()`. Overloads start with `(context, args)` and can request services as `T1..T16` callback parameters. |
+| `When(predicate, label = null)` | Guards the transition before `TransitionTo(...)` or `Stay()`. Overloads start with `(context, args)` and can request services as `T1..T16` callback parameters. |
 | `Invoke(action)` | Runs side effects before the state commits. Overloads start with `(context, args)` and can request services as callback parameters. |
 | `ReactAsync(action)` | Schedules fire-and-forget work after the transition commits and after `StateChanged` fires. Overloads start with `(actor, context, args)` and can request services as callback parameters from the reaction scope. |
 | `WhenEntering(action)` | Runs after the state commits on an external transition into this state. Overloads start with `(context)` and can request services as callback parameters; lifecycle hooks do not receive trigger args. |
 | `WhenExiting(action)` | Runs before the state is left on an external transition. Same shape as `WhenEntering`. |
 
-If a dynamic `Target(...)` resolves to the current leaf state for a specific fire, SharpState treats that fire like an internal transition: no exit hooks, no state commit, no entry hooks, and no `StateChanged`.
+If a dynamic `TransitionTo(...)` resolves to the current leaf state for a specific fire, SharpState treats that fire like an internal transition: no exit hooks, no state commit, no entry hooks, and no `StateChanged`.
 
 You can register multiple transitions for the same trigger in the same state; the first one whose guard passes (or has no guard) wins:
 
@@ -209,9 +209,9 @@ You can register multiple transitions for the same trigger in the same state; th
 private static IStateConfiguration Idle { get; } = ConfigureState()
     .OnStart(t => t
         .When((ctx, args) => args.User.IsAdmin)
-        .Target(State.AdminDashboard))
+        .TransitionTo(State.AdminDashboard))
     .OnStart(t => t
-        .Target(State.UserDashboard));
+        .TransitionTo(State.UserDashboard));
 ```
 
 If no transition matches, the `OnUnhandled` callback fires.
@@ -230,7 +230,7 @@ private static IStateConfiguration Running { get; } = ConfigureState()
     })
     .WhenExiting(ctx => ctx.IsRunning = false)
     .OnStop(t => t
-        .Target(State.Stopped)
+        .TransitionTo(State.Stopped)
         .Invoke<Microsoft.Extensions.Logging.ILoggerFactory>((ctx, args, loggerFactory) =>
             loggerFactory.CreateLogger(nameof(MyMachine))
                 .LogInformation("Stopped; run began at {Started:o}", ctx.RunningStartedUtc)));
@@ -286,7 +286,7 @@ Console.WriteLine(door.IsIn(DoorMachine.State.Opened)); // true
 
 ### Context notifications (`IStateAwareContext`)
 
-If your context class implements `IStateAwareContext<State>`, the runtime invokes `OnStateChanged(State)` with the new **leaf** after exit/sync/entry work completes and **before** `StateChanged` is raised. Use this when the context should track the active leaf without subscribing to the event. It applies only to external transitions that change the leaf—not internal `Stay()`, fires where a dynamic `Target` resolves to the same leaf, or unhandled triggers.
+If your context class implements `IStateAwareContext<State>`, the runtime invokes `OnStateChanged(State)` with the new **leaf** after exit/sync/entry work completes and **before** `StateChanged` is raised. Use this when the context should track the active leaf without subscribing to the event. It applies only to external transitions that change the leaf—not internal `Stay()`, fires where a dynamic `TransitionTo` resolves to the same leaf, or unhandled triggers.
 
 ```csharp
 public sealed class MyContext : IStateAwareContext<MyMachine.State>
@@ -411,10 +411,10 @@ stateDiagram-v2
 </tr>
 </table>
 
-**Dynamic targets.** If you use `Target(selector)` without passing optional target hints, the diagram shows a single **Dynamic target** placeholder because the engine cannot know branches statically. Pass trailing labeled hints to document possible destinations:
+**Dynamic targets.** If you use `TransitionTo(selector)` without passing optional target hints, the diagram shows a single **Dynamic target** placeholder because the engine cannot know branches statically. Pass trailing labeled hints to document possible destinations:
 
 ```csharp
-.OnRoute(t => t.Target(
+.OnRoute(t => t.TransitionTo(
     (ctx, args) => args.Request.IsAdmin ? State.AdminDashboard : State.UserDashboard,
     (State.AdminDashboard, "Admin request"),
     (State.UserDashboard, "Standard request")))
@@ -521,7 +521,7 @@ door.StateChanged += (from, to, trigger, args) => { /* log, react, ... */ };
 It is **not** raised when:
 
 - The transition is internal (`.Stay()`).
-- A dynamic `Target(...)` resolves to the current leaf, so that fire collapses into internal behavior.
+- A dynamic `TransitionTo(...)` resolves to the current leaf, so that fire collapses into internal behavior.
 - The trigger was unhandled (`OnUnhandled` is raised instead).
 
 ## Guards and actions
@@ -535,7 +535,7 @@ Guards and actions receive the context and the generated trigger args struct. Ex
 private static IStateConfiguration Open { get; } = ConfigureState()
     .OnWithdraw(t => t
         .When((ctx, args) => args.Amount <= ctx.Balance)
-        .Target(State.Open)
+        .TransitionTo(State.Open)
         .Invoke<ILogger<AccountContext>>((ctx, args, logger) =>
         {
             logger.LogInformation("Withdrawing {Amount} ({Note})", args.Amount, args.Note);
@@ -561,7 +561,7 @@ Use `ReactAsync(...)` when the transition should commit immediately but you stil
 [StateDefinition]
 private static IStateConfiguration Pending { get; } = ConfigureState()
     .OnRequestApproval(t => t
-        .Target(State.Approving)
+        .TransitionTo(State.Approving)
         .ReactAsync<IApprovalService>(async (actor, ctx, args, approvals) =>
         {
             try {

@@ -295,7 +295,7 @@ public class DiagnosticTests
             private static IStateConfiguration A { get; } = ConfigureState()
                 .OnGo(t => t
                     .When((ctx, args) => args.Step >= 0)
-                    .Target((ctx, args) => ctx.UseB && args.Step == ctx.Counter ? State.B : State.C)
+                    .TransitionTo((ctx, args) => ctx.UseB && args.Step == ctx.Counter ? State.B : State.C)
                     .Invoke((ctx, args) => ctx.Counter += args.Step)
                     .ReactAsync((_, _, _) => default));
 
@@ -348,7 +348,7 @@ public class DiagnosticTests
 
             [StateDefinition(Initial = true)]
             private static IStateConfiguration A { get; } = ConfigureState()
-                .OnTooMany(t => t.Target(State.A).Invoke((_, _) => { }));
+                .OnTooMany(t => t.TransitionTo(State.A).Invoke((_, _) => { }));
         }
         """;
         GetDiagnostics(source).Should().BeEmpty();

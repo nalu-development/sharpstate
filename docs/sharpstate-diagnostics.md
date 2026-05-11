@@ -51,7 +51,7 @@ Trigger **overloads are not supported**: two `[StateTriggerDefinition]` methods 
 ```csharp
 [StateDefinition]
 private static IStateConfiguration Idle { get; } = ConfigureState()
-    .OnStart(t => t.Target(State.Running));
+    .OnStart(t => t.TransitionTo(State.Running));
 ```
 
 ### `NSS004` — Trigger method must be partial void

@@ -28,7 +28,7 @@ public static partial class DoorMachine
     private static IStateConfiguration Closed { get; } = ConfigureState()
         .OnOpen(t => t
                      .When((_, args) => args.Reason is not "spying", "Not spying")
-                     .Target(State.Opened)
+                     .TransitionTo(State.Opened)
                      .Invoke((ctx, args) =>
                          {
                              ctx.OpenCount++;
@@ -42,5 +42,5 @@ public static partial class DoorMachine
     /// </summary>
     [StateDefinition]
     private static IStateConfiguration Opened { get; } = ConfigureState()
-        .OnClose(t => t.Target(State.Closed));
+        .OnClose(t => t.TransitionTo(State.Closed));
 }

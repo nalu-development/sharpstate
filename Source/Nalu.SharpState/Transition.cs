@@ -57,7 +57,7 @@ public sealed class Transition<TContext, TArgs, TState, TActor>
 
     /// <summary>
     /// When this transition uses <see cref="TargetSelector"/>, optional labeled target hints from the dynamic
-    /// <c>Target(..., params (TState Target, string Label)[])</c> overloads—documentation only
+    /// <c>TransitionTo(..., params (TState Target, string Label)[])</c> overloads—documentation only
     /// (for example Graphviz or Mermaid export). Does not affect runtime resolution.
     /// </summary>
     public (TState Target, string Label)[]? DynamicTargetHints { get; }
