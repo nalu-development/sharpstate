@@ -318,18 +318,25 @@ internal static class StateMachineEmitter
     {
         foreach (var trigger in m.Triggers)
         {
-            EmitTriggerArgsPayload(w, trigger);
-            w.WriteBlankLine();
+            if (trigger.Parameters.Count > 0)
+            {
+                EmitTriggerArgsPayload(w, trigger);
+                w.WriteBlankLine();
+            }
         }
 
         w.WriteLine("public readonly struct TriggerArgs");
         using (w.Block())
         {
             w.WriteLine("private readonly int _kind;");
+
             for (var i = 0; i < m.Triggers.Count; i++)
             {
                 var trigger = m.Triggers[i];
-                w.WriteLine($"private readonly {ArgsTypeName(trigger)} _value{i + 1};");
+                if (trigger.Parameters.Count > 0)
+                {
+                    w.WriteLine($"private readonly {ArgsTypeName(trigger)} _value{i + 1};");
+                }
             }
 
             if (m.Triggers.Count > 0)
@@ -337,24 +344,49 @@ internal static class StateMachineEmitter
                 w.WriteBlankLine();
             }
 
+            w.WriteLine("private TriggerArgs(int kind)");
+            using (w.Block())
+            {
+                w.WriteLine("_kind = kind;");
+            }
+
             for (var i = 0; i < m.Triggers.Count; i++)
             {
                 var trigger = m.Triggers[i];
-                var argType = ArgsTypeName(trigger);
-                if (i > 0)
+                if (trigger.Parameters.Count == 0)
                 {
-                    w.WriteBlankLine();
+                    continue;
                 }
 
+                var argType = ArgsTypeName(trigger);
+                w.WriteBlankLine();
                 w.WriteLine($"public TriggerArgs({argType} value)");
                 using (w.Block())
                 {
                     w.WriteLine($"_kind = {i + 1};");
                     for (var j = 0; j < m.Triggers.Count; j++)
                     {
+                        var tj = m.Triggers[j];
+                        if (tj.Parameters.Count == 0)
+                        {
+                            continue;
+                        }
+
                         w.WriteLine($"_value{j + 1} = {(i == j ? "value" : "default")};");
                     }
                 }
+            }
+
+            for (var i = 0; i < m.Triggers.Count; i++)
+            {
+                var trigger = m.Triggers[i];
+                if (trigger.Parameters.Count > 0)
+                {
+                    continue;
+                }
+
+                w.WriteBlankLine();
+                w.WriteLine($"public static TriggerArgs For{trigger.Name}() => new TriggerArgs({i + 1});");
             }
 
             if (m.Triggers.Count > 0)
@@ -373,8 +405,11 @@ internal static class StateMachineEmitter
                 w.Indent++;
                 for (var i = 0; i < m.Triggers.Count; i++)
                 {
-                    w.WriteLine($"{i + 1} => _value{i + 1},");
+                    var trigger = m.Triggers[i];
+                    var arm = trigger.Parameters.Count > 0 ? $"_value{i + 1}" : "null";
+                    w.WriteLine($"{i + 1} => {arm},");
                 }
+
                 w.WriteLine("_ => null,");
                 w.Indent--;
                 w.WriteLine("};");
@@ -386,6 +421,11 @@ internal static class StateMachineEmitter
             for (var i = 0; i < m.Triggers.Count; i++)
             {
                 var trigger = m.Triggers[i];
+                if (trigger.Parameters.Count == 0)
+                {
+                    continue;
+                }
+
                 var argType = ArgsTypeName(trigger);
                 w.WriteBlankLine();
                 w.WriteLine($"public bool TryGetValue(out {argType} value)");
@@ -397,27 +437,35 @@ internal static class StateMachineEmitter
             }
 
             w.WriteBlankLine();
-            EmitTriggerArgsUnionToString(w, m.Triggers.Count);
+            EmitTriggerArgsUnionToString(w, m);
         }
     }
 
-    private static void EmitTriggerArgsUnionToString(SourceWriter w, int triggerCount)
+    private static void EmitTriggerArgsUnionToString(SourceWriter w, StateMachineModel m)
     {
-        if (triggerCount == 0)
+        if (m.Triggers.Count == 0)
         {
-            w.WriteLine("public override string ToString() => \"null\";");
+            w.WriteLine("public override string? ToString() => null;");
             return;
         }
 
-        w.WriteLine("public override string ToString() => _kind switch");
+        w.WriteLine("public override string? ToString() => _kind switch");
         w.WriteLine("{");
         w.Indent++;
-        for (var i = 0; i < triggerCount; i++)
+        for (var i = 0; i < m.Triggers.Count; i++)
         {
-            w.WriteLine($"{i + 1} => _value{i + 1}.ToString()!,");
+            var trigger = m.Triggers[i];
+            if (trigger.Parameters.Count > 0)
+            {
+                w.WriteLine($"{i + 1} => _value{i + 1}.ToString(),");
+            }
+            else
+            {
+                w.WriteLine($"{i + 1} => null,");
+            }
         }
 
-        w.WriteLine("_ => \"null\",");
+        w.WriteLine("_ => null,");
         w.Indent--;
         w.WriteLine("};");
     }
@@ -430,11 +478,6 @@ internal static class StateMachineEmitter
             foreach (var parameter in trigger.Parameters)
             {
                 w.WriteLine($"public readonly {parameter.TypeDisplay} {FieldName(parameter.Name)};");
-            }
-
-            if (trigger.Parameters.Count == 0)
-            {
-                return;
             }
 
             w.WriteBlankLine();
@@ -686,7 +729,15 @@ internal static class StateMachineEmitter
         w.WriteLine($"public IStateConfigurator On{t.Name}(Action<{builderType}> configure)");
         using (w.Block())
         {
-            w.WriteLine($"var builder = new {concreteBuilder}(static args => args.TryGetValue(out {ArgsTypeName(t)} value) ? value : throw new global::System.InvalidOperationException(\"Trigger argument payload does not match trigger '{t.Name}'.\"));");
+            if (t.Parameters.Count == 0)
+            {
+                w.WriteLine($"var builder = new {concreteBuilder}();");
+            }
+            else
+            {
+                w.WriteLine($"var builder = new {concreteBuilder}(static args => args.TryGetValue(out {ArgsTypeName(t)} value) ? value : throw new global::System.InvalidOperationException(\"Trigger argument payload does not match trigger '{t.Name}'.\"));");
+            }
+
             w.WriteLine("configure(builder);");
             w.WriteLine("builder.Validate();");
             w.WriteLine($"AddTransitions(Trigger.{t.Name}, builder.BuildTransitions());");
@@ -787,19 +838,19 @@ internal static class StateMachineEmitter
     }
 
     private static string BuilderInterfaceType(string context, TriggerModel t)
-        => $"global::Nalu.SharpState.ISyncStateTriggerBuilder<{context}, State, IActor, {ArgsTypeName(t)}>";
+        => t.Parameters.Count == 0
+            ? $"global::Nalu.SharpState.IStateTriggerBuilder<{context}, State, IActor>"
+            : $"global::Nalu.SharpState.IStateTriggerArgsBuilder<{context}, State, IActor, {ArgsTypeName(t)}>";
 
     private static string ConcreteBuilderType(string context, TriggerModel t)
-        => $"global::Nalu.SharpState.StateTriggerBuilder<{context}, TriggerArgs, State, IActor, {ArgsTypeName(t)}>";
+        => t.Parameters.Count == 0
+            ? $"global::Nalu.SharpState.StateTriggerBuilder<{context}, TriggerArgs, State, IActor>"
+            : $"global::Nalu.SharpState.StateTriggerBuilder<{context}, TriggerArgs, State, IActor, {ArgsTypeName(t)}>";
 
     private static string TriggerArgsFactory(TriggerModel t)
-    {
-        var args = string.Join(", ", t.Parameters.Select(p => p.Name));
-        var payload = t.Parameters.Count == 0
-            ? $"new {ArgsTypeName(t)}()"
-            : $"new {ArgsTypeName(t)}({args})";
-        return $"new TriggerArgs({payload})";
-    }
+        => t.Parameters.Count == 0
+            ? $"TriggerArgs.For{t.Name}()"
+            : $"new TriggerArgs(new {ArgsTypeName(t)}({string.Join(", ", t.Parameters.Select(p => p.Name))}))";
 
     private static string ArgsTypeName(TriggerModel t) => $"{t.Name}Args";
 

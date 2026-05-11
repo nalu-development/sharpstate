@@ -25,39 +25,29 @@ namespace Sample.Nested.Deep
                 Go,
             }
             
-            public readonly struct GoArgs
-            {
-            }
-            
             public readonly struct TriggerArgs
             {
                 private readonly int _kind;
-                private readonly GoArgs _value1;
                 
-                public TriggerArgs(GoArgs value)
+                private TriggerArgs(int kind)
                 {
-                    _kind = 1;
-                    _value1 = value;
+                    _kind = kind;
                 }
+                
+                public static TriggerArgs ForGo() => new TriggerArgs(1);
                 
                 public object? Value => _kind switch
                 {
-                    1 => _value1,
+                    1 => null,
                     _ => null,
                 };
                 
                 public bool HasValue => _kind != 0;
                 
-                public bool TryGetValue(out GoArgs value)
+                public override string? ToString() => _kind switch
                 {
-                    value = _kind == 1 ? _value1 : default;
-                    return _kind == 1;
-                }
-                
-                public override string ToString() => _kind switch
-                {
-                    1 => _value1.ToString()!,
-                    _ => "null",
+                    1 => null,
+                    _ => null,
                 };
             }
             
@@ -70,9 +60,9 @@ namespace Sample.Nested.Deep
                 /// <summary>
                 /// Configures what happens when <see cref="IActor.Go()"/> is invoked.
                 /// </summary>
-                /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Nested.Deep.Ctx, State, IActor, GoArgs}"/> used by <see cref="IActor.Go()"/>.</param>
+                /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.IStateTriggerBuilder{global::Sample.Nested.Deep.Ctx, State, IActor}"/> used by <see cref="IActor.Go()"/>.</param>
                 /// <returns>The same configurator for chaining.</returns>
-                IStateConfigurator OnGo(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Nested.Deep.Ctx, State, IActor, GoArgs>> configure);
+                IStateConfigurator OnGo(Action<global::Nalu.SharpState.IStateTriggerBuilder<global::Sample.Nested.Deep.Ctx, State, IActor>> configure);
             }
             
             /// <summary>
@@ -240,9 +230,9 @@ namespace Sample.Nested.Deep
                 
                 public bool IsIn(State state) => _engine.IsIn(state);
                 
-                public bool CanGo() => _engine.CanFire(Trigger.Go, new TriggerArgs(new GoArgs()));
+                public bool CanGo() => _engine.CanFire(Trigger.Go, TriggerArgs.ForGo());
                 
-                public void Go() => _engine.Fire(Trigger.Go, new TriggerArgs(new GoArgs()));
+                public void Go() => _engine.Fire(Trigger.Go, TriggerArgs.ForGo());
             }
             
             private sealed class GeneratedStateConfigurator : global::Nalu.SharpState.StateConfigurator<global::Sample.Nested.Deep.Ctx, TriggerArgs, State, Trigger, IActor>, IStateConfigurator
@@ -251,9 +241,9 @@ namespace Sample.Nested.Deep
                 
                 internal void ApplyInitialChild(State initial) => SetInitialChild(initial);
                 
-                public IStateConfigurator OnGo(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Nested.Deep.Ctx, State, IActor, GoArgs>> configure)
+                public IStateConfigurator OnGo(Action<global::Nalu.SharpState.IStateTriggerBuilder<global::Sample.Nested.Deep.Ctx, State, IActor>> configure)
                 {
-                    var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Nested.Deep.Ctx, TriggerArgs, State, IActor, GoArgs>(static args => args.TryGetValue(out GoArgs value) ? value : throw new global::System.InvalidOperationException("Trigger argument payload does not match trigger 'Go'."));
+                    var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Nested.Deep.Ctx, TriggerArgs, State, IActor>();
                     configure(builder);
                     builder.Validate();
                     AddTransitions(Trigger.Go, builder.BuildTransitions());

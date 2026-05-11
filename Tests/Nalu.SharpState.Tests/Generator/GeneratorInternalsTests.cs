@@ -53,7 +53,7 @@ public class GeneratorInternalsTests
         (a1 == a2).Should().BeTrue();
         (a1 != a3).Should().BeTrue();
         a1.Equals((object)a2).Should().BeTrue();
-        a1.Equals((object)1).Should().BeFalse();
+        a1.Equals(1).Should().BeFalse();
         a1.GetHashCode().Should().NotBe(0);
 
         empty1.Equals(empty2).Should().BeTrue();

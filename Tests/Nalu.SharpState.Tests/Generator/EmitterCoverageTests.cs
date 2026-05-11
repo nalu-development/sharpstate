@@ -85,4 +85,37 @@ public class EmitterCoverageTests
         text.Should().Contain("_ = b;");
         text.Should().Contain("Pair(default, default);");
     }
+
+    [Fact]
+    public void Parameterless_trigger_emits_StaticTriggerArgs_factory_and_parameterless_builder()
+    {
+        var source = """
+            using Nalu.SharpState;
+
+            namespace Sample;
+
+            public class Ctx { }
+
+            [StateMachineDefinition(typeof(Ctx))]
+            public static partial class M
+            {
+                [StateTriggerDefinition] public static partial void WithPair(int deviceId);
+
+                [StateTriggerDefinition] public static partial void NoArgs();
+
+                [StateDefinition(Initial = true)]
+                public static IStateConfiguration A { get; } = null!;
+            }
+            """;
+
+        var result = GeneratorDriverHelper.RunGenerator(source, out _);
+        var text = string.Join("\n", result.GeneratedTrees.Select(t => t.ToString()));
+        text.Should().Contain("public static TriggerArgs ForNoArgs()");
+        text.Should().Contain("IStateTriggerBuilder<");
+        text.Should().Contain("IStateTriggerArgsBuilder<");
+        text.Should().NotContain("struct NoArgsArgs");
+        text.Should().Contain("TriggerArgs.ForNoArgs()");
+        text.Should().Contain("public TriggerArgs(WithPairArgs value)");
+        text.Should().Contain("StateTriggerBuilder<");
+    }
 }

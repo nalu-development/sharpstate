@@ -38,7 +38,7 @@ public class StateLifecycleFluentTests
 
     private sealed class L16;
 
-    private static readonly Type[] MarkTypes =
+    private static readonly Type[] _markTypes =
     [
         typeof(L1),
         typeof(L2),
@@ -73,8 +73,8 @@ public class StateLifecycleFluentTests
         var dict = new Dictionary<Type, object?>();
         for (var i = 0; i < arity; i++)
         {
-            instances[i] = Activator.CreateInstance(MarkTypes[i])!;
-            dict[MarkTypes[i]] = instances[i];
+            instances[i] = Activator.CreateInstance(_markTypes[i])!;
+            dict[_markTypes[i]] = instances[i];
         }
 
         return (new DictionaryProvider(dict), instances);
@@ -318,7 +318,7 @@ public class StateLifecycleFluentTests
             map[FlatState.A]
                 .On(FlatTrigger.Go,
                     TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.B));
-            register((IStateLifecycleFluent<LifecycleFluentTestConfigurator, TestContext>)map[FlatState.B], instances);
+            register(map[FlatState.B], instances);
         });
 
         var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(
@@ -401,7 +401,7 @@ public class StateLifecycleFluentTests
             map[FlatState.B]
                 .On(FlatTrigger.Go,
                     TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.C));
-            register((IStateLifecycleFluent<LifecycleFluentTestConfigurator, TestContext>)map[FlatState.B], instances);
+            register(map[FlatState.B], instances);
         });
 
         var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(

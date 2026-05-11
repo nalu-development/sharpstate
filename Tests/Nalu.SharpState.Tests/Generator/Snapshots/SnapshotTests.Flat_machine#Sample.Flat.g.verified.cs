@@ -39,34 +39,28 @@ namespace Sample
             }
         }
         
-        public readonly struct DisconnectArgs
-        {
-        }
-        
         public readonly struct TriggerArgs
         {
             private readonly int _kind;
             private readonly ConnectArgs _value1;
-            private readonly DisconnectArgs _value2;
+            
+            private TriggerArgs(int kind)
+            {
+                _kind = kind;
+            }
             
             public TriggerArgs(ConnectArgs value)
             {
                 _kind = 1;
                 _value1 = value;
-                _value2 = default;
             }
             
-            public TriggerArgs(DisconnectArgs value)
-            {
-                _kind = 2;
-                _value1 = default;
-                _value2 = value;
-            }
+            public static TriggerArgs ForDisconnect() => new TriggerArgs(2);
             
             public object? Value => _kind switch
             {
                 1 => _value1,
-                2 => _value2,
+                2 => null,
                 _ => null,
             };
             
@@ -78,17 +72,11 @@ namespace Sample
                 return _kind == 1;
             }
             
-            public bool TryGetValue(out DisconnectArgs value)
+            public override string? ToString() => _kind switch
             {
-                value = _kind == 2 ? _value2 : default;
-                return _kind == 2;
-            }
-            
-            public override string ToString() => _kind switch
-            {
-                1 => _value1.ToString()!,
-                2 => _value2.ToString()!,
-                _ => "null",
+                1 => _value1.ToString(),
+                2 => null,
+                _ => null,
             };
         }
         
@@ -101,16 +89,16 @@ namespace Sample
             /// <summary>
             /// Configures what happens when <see cref="IActor.Connect(string)"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor, ConnectArgs}"/> used by <see cref="IActor.Connect(string)"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.IStateTriggerArgsBuilder{global::Sample.Ctx, State, IActor, ConnectArgs}"/> used by <see cref="IActor.Connect(string)"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator OnConnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, ConnectArgs>> configure);
+            IStateConfigurator OnConnect(Action<global::Nalu.SharpState.IStateTriggerArgsBuilder<global::Sample.Ctx, State, IActor, ConnectArgs>> configure);
             
             /// <summary>
             /// Configures what happens when <see cref="IActor.Disconnect()"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor, DisconnectArgs}"/> used by <see cref="IActor.Disconnect()"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.IStateTriggerBuilder{global::Sample.Ctx, State, IActor}"/> used by <see cref="IActor.Disconnect()"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator OnDisconnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, DisconnectArgs>> configure);
+            IStateConfigurator OnDisconnect(Action<global::Nalu.SharpState.IStateTriggerBuilder<global::Sample.Ctx, State, IActor>> configure);
         }
         
         /// <summary>
@@ -301,9 +289,9 @@ namespace Sample
             
             public void Connect(string deviceId) => _engine.Fire(Trigger.Connect, new TriggerArgs(new ConnectArgs(deviceId)));
             
-            public bool CanDisconnect() => _engine.CanFire(Trigger.Disconnect, new TriggerArgs(new DisconnectArgs()));
+            public bool CanDisconnect() => _engine.CanFire(Trigger.Disconnect, TriggerArgs.ForDisconnect());
             
-            public void Disconnect() => _engine.Fire(Trigger.Disconnect, new TriggerArgs(new DisconnectArgs()));
+            public void Disconnect() => _engine.Fire(Trigger.Disconnect, TriggerArgs.ForDisconnect());
         }
         
         private sealed class GeneratedStateConfigurator : global::Nalu.SharpState.StateConfigurator<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor>, IStateConfigurator
@@ -312,7 +300,7 @@ namespace Sample
             
             internal void ApplyInitialChild(State initial) => SetInitialChild(initial);
             
-            public IStateConfigurator OnConnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, ConnectArgs>> configure)
+            public IStateConfigurator OnConnect(Action<global::Nalu.SharpState.IStateTriggerArgsBuilder<global::Sample.Ctx, State, IActor, ConnectArgs>> configure)
             {
                 var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor, ConnectArgs>(static args => args.TryGetValue(out ConnectArgs value) ? value : throw new global::System.InvalidOperationException("Trigger argument payload does not match trigger 'Connect'."));
                 configure(builder);
@@ -321,9 +309,9 @@ namespace Sample
                 return this;
             }
             
-            public IStateConfigurator OnDisconnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, DisconnectArgs>> configure)
+            public IStateConfigurator OnDisconnect(Action<global::Nalu.SharpState.IStateTriggerBuilder<global::Sample.Ctx, State, IActor>> configure)
             {
-                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor, DisconnectArgs>(static args => args.TryGetValue(out DisconnectArgs value) ? value : throw new global::System.InvalidOperationException("Trigger argument payload does not match trigger 'Disconnect'."));
+                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor>();
                 configure(builder);
                 builder.Validate();
                 AddTransitions(Trigger.Disconnect, builder.BuildTransitions());

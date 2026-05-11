@@ -27,7 +27,7 @@ public static partial class ScopedDiProbeMachine
     private static IStateConfiguration Idle { get; } = ConfigureState()
         .OnGo(t => t
             .Target(State.Done)
-            .ReactAsync<ScopedResource>((_, ctx, _, scopedResource) =>
+            .ReactAsync<ScopedResource>((_, ctx, scopedResource) =>
             {
                 ctx.Captured = scopedResource;
                 return default;

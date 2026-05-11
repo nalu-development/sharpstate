@@ -54,7 +54,7 @@ public class EndToEndTests
         captured!.Value.from.Should().Be(DoorMachine.State.Opened);
         captured.Value.to.Should().Be(DoorMachine.State.Closed);
         captured.Value.trigger.Should().Be(DoorMachine.Trigger.Close);
-        captured.Value.args.TryGetValue(out DoorMachine.CloseArgs _).Should().BeTrue();
+        captured.Value.args.Should().Be(DoorMachine.TriggerArgs.ForClose());
     }
 
     [Fact]

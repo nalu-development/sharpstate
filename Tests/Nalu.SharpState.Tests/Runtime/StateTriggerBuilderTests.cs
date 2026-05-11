@@ -2,7 +2,7 @@ using FluentAssertions;
 
 namespace Nalu.SharpState.Tests.Runtime;
 
-public class StateTriggerBuilderTests
+public class StateTriggerArgsBuilderTests
 {
     [Fact]
     public void Validate_requires_Target_or_Stay()
@@ -116,7 +116,7 @@ public class StateTriggerBuilderTests
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
 
-        var act = () => builder.Target((StateTargetSelector<TestContext, TestTriggerArgs, FlatState>)null!);
+        var act = () => builder.Target(null!);
 
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("targetSelector");
@@ -127,7 +127,7 @@ public class StateTriggerBuilderTests
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
 
-        var act = () => builder.When((StateGuard<TestContext, TestTriggerArgs>)null!);
+        var act = () => builder.When(null!);
 
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("guard");
@@ -138,7 +138,7 @@ public class StateTriggerBuilderTests
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
 
-        var act = () => builder.Invoke((StateAction<TestContext, TestTriggerArgs>)null!);
+        var act = () => builder.Invoke(null!);
 
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("action");
@@ -149,7 +149,7 @@ public class StateTriggerBuilderTests
     {
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();
 
-        var act = () => builder.ReactAsync((StateReaction<TestActor, TestContext, TestTriggerArgs>)null!);
+        var act = () => builder.ReactAsync(null!);
 
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("action");
@@ -325,5 +325,49 @@ public class StateTriggerBuilderTests
         var transition = builder.BuildTransitions().Should().ContainSingle().Subject;
         transition.IsInternal.Should().BeFalse();
         transition.Target.Should().Be(default(FlatState));
+    }
+}
+
+public class StateTriggerBuilderTests
+{
+    [Fact]
+    public void When_Invoke_Target_work_without_trigger_payload_but_receive_context()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor>();
+        builder
+            .When(ctx => ctx.Counter > 1)
+            .Target(_ => FlatState.C)
+            .Invoke(ctx => ctx.Log.Add("x"));
+        builder.Validate();
+
+        var transition = builder.BuildTransitions()[0];
+
+        transition.Guard!(new TestContext { Counter = 0 }, EmptyServiceProvider.Instance, TestTriggerArgs.From(99)).Should().BeFalse();
+        transition.Guard!(new TestContext { Counter = 5 }, EmptyServiceProvider.Instance, TestTriggerArgs.From(99)).Should().BeTrue();
+
+        var ctx = new TestContext();
+        transition.SyncAction!(ctx, EmptyServiceProvider.Instance, TestTriggerArgs.From(123));
+        ctx.Log.Should().Equal("x");
+
+        transition.TargetSelector!.Should().NotBeNull();
+        transition.TargetSelector!(ctx, EmptyServiceProvider.Instance, TestTriggerArgs.Empty).Should().Be(FlatState.C);
+    }
+
+    [Fact]
+    public async Task ReactAsync_uses_actor_and_context_without_payload()
+    {
+        var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor>();
+        builder.Stay().ReactAsync(async (_, ctx) =>
+        {
+            await Task.Yield();
+            ctx.Counter *= 10;
+        });
+        builder.Validate();
+
+        var transition = builder.BuildTransitions()[0];
+        var ctx = new TestContext { Counter = 3 };
+        await transition.ReactionAsync!(new TestActor(), ctx, EmptyServiceProvider.Instance, TestTriggerArgs.Empty);
+
+        ctx.Counter.Should().Be(30);
     }
 }

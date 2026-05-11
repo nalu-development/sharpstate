@@ -41,34 +41,28 @@ namespace Sample
             }
         }
         
-        public readonly struct CloseArgs
-        {
-        }
-        
         public readonly struct TriggerArgs
         {
             private readonly int _kind;
             private readonly OpenArgs _value1;
-            private readonly CloseArgs _value2;
+            
+            private TriggerArgs(int kind)
+            {
+                _kind = kind;
+            }
             
             public TriggerArgs(OpenArgs value)
             {
                 _kind = 1;
                 _value1 = value;
-                _value2 = default;
             }
             
-            public TriggerArgs(CloseArgs value)
-            {
-                _kind = 2;
-                _value1 = default;
-                _value2 = value;
-            }
+            public static TriggerArgs ForClose() => new TriggerArgs(2);
             
             public object? Value => _kind switch
             {
                 1 => _value1,
-                2 => _value2,
+                2 => null,
                 _ => null,
             };
             
@@ -80,17 +74,11 @@ namespace Sample
                 return _kind == 1;
             }
             
-            public bool TryGetValue(out CloseArgs value)
+            public override string? ToString() => _kind switch
             {
-                value = _kind == 2 ? _value2 : default;
-                return _kind == 2;
-            }
-            
-            public override string ToString() => _kind switch
-            {
-                1 => _value1.ToString()!,
-                2 => _value2.ToString()!,
-                _ => "null",
+                1 => _value1.ToString(),
+                2 => null,
+                _ => null,
             };
         }
         
@@ -103,16 +91,16 @@ namespace Sample
             /// <summary>
             /// Configures what happens when <see cref="IActor.Open(string)"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor, OpenArgs}"/> used by <see cref="IActor.Open(string)"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.IStateTriggerArgsBuilder{global::Sample.Ctx, State, IActor, OpenArgs}"/> used by <see cref="IActor.Open(string)"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator OnOpen(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, OpenArgs>> configure);
+            IStateConfigurator OnOpen(Action<global::Nalu.SharpState.IStateTriggerArgsBuilder<global::Sample.Ctx, State, IActor, OpenArgs>> configure);
             
             /// <summary>
             /// Configures what happens when <see cref="IActor.Close()"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor, CloseArgs}"/> used by <see cref="IActor.Close()"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.IStateTriggerBuilder{global::Sample.Ctx, State, IActor}"/> used by <see cref="IActor.Close()"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator OnClose(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, CloseArgs>> configure);
+            IStateConfigurator OnClose(Action<global::Nalu.SharpState.IStateTriggerBuilder<global::Sample.Ctx, State, IActor>> configure);
         }
         
         /// <summary>
@@ -300,9 +288,9 @@ namespace Sample
             
             public void Open(string reason) => _engine.Fire(Trigger.Open, new TriggerArgs(new OpenArgs(reason)));
             
-            public bool CanClose() => _engine.CanFire(Trigger.Close, new TriggerArgs(new CloseArgs()));
+            public bool CanClose() => _engine.CanFire(Trigger.Close, TriggerArgs.ForClose());
             
-            public void Close() => _engine.Fire(Trigger.Close, new TriggerArgs(new CloseArgs()));
+            public void Close() => _engine.Fire(Trigger.Close, TriggerArgs.ForClose());
         }
         
         private sealed class GeneratedStateConfigurator : global::Nalu.SharpState.StateConfigurator<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor>, IStateConfigurator
@@ -311,7 +299,7 @@ namespace Sample
             
             internal void ApplyInitialChild(State initial) => SetInitialChild(initial);
             
-            public IStateConfigurator OnOpen(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, OpenArgs>> configure)
+            public IStateConfigurator OnOpen(Action<global::Nalu.SharpState.IStateTriggerArgsBuilder<global::Sample.Ctx, State, IActor, OpenArgs>> configure)
             {
                 var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor, OpenArgs>(static args => args.TryGetValue(out OpenArgs value) ? value : throw new global::System.InvalidOperationException("Trigger argument payload does not match trigger 'Open'."));
                 configure(builder);
@@ -320,9 +308,9 @@ namespace Sample
                 return this;
             }
             
-            public IStateConfigurator OnClose(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, CloseArgs>> configure)
+            public IStateConfigurator OnClose(Action<global::Nalu.SharpState.IStateTriggerBuilder<global::Sample.Ctx, State, IActor>> configure)
             {
-                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor, CloseArgs>(static args => args.TryGetValue(out CloseArgs value) ? value : throw new global::System.InvalidOperationException("Trigger argument payload does not match trigger 'Close'."));
+                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor>();
                 configure(builder);
                 builder.Validate();
                 AddTransitions(Trigger.Close, builder.BuildTransitions());

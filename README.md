@@ -22,7 +22,7 @@ For **`Microsoft.Extensions.DependencyInjection`** helpers (**`ServiceCollection
 
 Define a context, mark a `public static partial` class with `[StateMachineDefinition]`, add `[StateTriggerDefinition]` methods for inputs and `[StateDefinition]` properties for states, then wire transitions with `ConfigureState()` (see the full [door sample](Tests/Nalu.SharpState.Tests/EndToEnd/DoorMachine.cs) in the test suite). Actors take an **`IStateMachineServiceProviderResolver`** when created (see [Service provider](https://nalu-development.github.io/sharpstate/index.html#service-provider-and-actor-factories) in the guide).
 
-There is no analyzer-enforced ceiling on **`[StateTriggerDefinition]` parameter count**; the generator emits a per-trigger payload type regardless. Fluent **`When` / `Invoke` / `ReactAsync`** and lifecycle hooks optionally take up to sixteen **injected dependency** generic parameters (**`T1`…`T16`**), separate from trigger arguments.
+There is no analyzer-enforced ceiling on **`[StateTriggerDefinition]` parameter count**; for triggers **with** parameters, the generator emits a per-trigger payload type. **Zero-parameter** triggers use an args-less fluent builder (no empty `*Args` struct) and `TriggerArgs.For{Name}()` at the machine boundary. Fluent **`When` / `Invoke` / `ReactAsync`** and lifecycle hooks optionally take up to sixteen **injected dependency** generic parameters (**`T1`…`T16`**), separate from trigger arguments.
 
 ```csharp
 public class DoorContext

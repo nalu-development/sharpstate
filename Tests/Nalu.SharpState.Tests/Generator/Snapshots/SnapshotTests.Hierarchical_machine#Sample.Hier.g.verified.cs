@@ -28,18 +28,6 @@ namespace Sample
             Message,
         }
         
-        public readonly struct ConnectArgs
-        {
-        }
-        
-        public readonly struct DisconnectArgs
-        {
-        }
-        
-        public readonly struct AuthOkArgs
-        {
-        }
-        
         public readonly struct MessageArgs
         {
             public readonly string M;
@@ -58,75 +46,35 @@ namespace Sample
         public readonly struct TriggerArgs
         {
             private readonly int _kind;
-            private readonly ConnectArgs _value1;
-            private readonly DisconnectArgs _value2;
-            private readonly AuthOkArgs _value3;
             private readonly MessageArgs _value4;
             
-            public TriggerArgs(ConnectArgs value)
+            private TriggerArgs(int kind)
             {
-                _kind = 1;
-                _value1 = value;
-                _value2 = default;
-                _value3 = default;
-                _value4 = default;
-            }
-            
-            public TriggerArgs(DisconnectArgs value)
-            {
-                _kind = 2;
-                _value1 = default;
-                _value2 = value;
-                _value3 = default;
-                _value4 = default;
-            }
-            
-            public TriggerArgs(AuthOkArgs value)
-            {
-                _kind = 3;
-                _value1 = default;
-                _value2 = default;
-                _value3 = value;
-                _value4 = default;
+                _kind = kind;
             }
             
             public TriggerArgs(MessageArgs value)
             {
                 _kind = 4;
-                _value1 = default;
-                _value2 = default;
-                _value3 = default;
                 _value4 = value;
             }
             
+            public static TriggerArgs ForConnect() => new TriggerArgs(1);
+            
+            public static TriggerArgs ForDisconnect() => new TriggerArgs(2);
+            
+            public static TriggerArgs ForAuthOk() => new TriggerArgs(3);
+            
             public object? Value => _kind switch
             {
-                1 => _value1,
-                2 => _value2,
-                3 => _value3,
+                1 => null,
+                2 => null,
+                3 => null,
                 4 => _value4,
                 _ => null,
             };
             
             public bool HasValue => _kind != 0;
-            
-            public bool TryGetValue(out ConnectArgs value)
-            {
-                value = _kind == 1 ? _value1 : default;
-                return _kind == 1;
-            }
-            
-            public bool TryGetValue(out DisconnectArgs value)
-            {
-                value = _kind == 2 ? _value2 : default;
-                return _kind == 2;
-            }
-            
-            public bool TryGetValue(out AuthOkArgs value)
-            {
-                value = _kind == 3 ? _value3 : default;
-                return _kind == 3;
-            }
             
             public bool TryGetValue(out MessageArgs value)
             {
@@ -134,13 +82,13 @@ namespace Sample
                 return _kind == 4;
             }
             
-            public override string ToString() => _kind switch
+            public override string? ToString() => _kind switch
             {
-                1 => _value1.ToString()!,
-                2 => _value2.ToString()!,
-                3 => _value3.ToString()!,
-                4 => _value4.ToString()!,
-                _ => "null",
+                1 => null,
+                2 => null,
+                3 => null,
+                4 => _value4.ToString(),
+                _ => null,
             };
         }
         
@@ -153,30 +101,30 @@ namespace Sample
             /// <summary>
             /// Configures what happens when <see cref="IActor.Connect()"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor, ConnectArgs}"/> used by <see cref="IActor.Connect()"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.IStateTriggerBuilder{global::Sample.Ctx, State, IActor}"/> used by <see cref="IActor.Connect()"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator OnConnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, ConnectArgs>> configure);
+            IStateConfigurator OnConnect(Action<global::Nalu.SharpState.IStateTriggerBuilder<global::Sample.Ctx, State, IActor>> configure);
             
             /// <summary>
             /// Configures what happens when <see cref="IActor.Disconnect()"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor, DisconnectArgs}"/> used by <see cref="IActor.Disconnect()"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.IStateTriggerBuilder{global::Sample.Ctx, State, IActor}"/> used by <see cref="IActor.Disconnect()"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator OnDisconnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, DisconnectArgs>> configure);
+            IStateConfigurator OnDisconnect(Action<global::Nalu.SharpState.IStateTriggerBuilder<global::Sample.Ctx, State, IActor>> configure);
             
             /// <summary>
             /// Configures what happens when <see cref="IActor.AuthOk()"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor, AuthOkArgs}"/> used by <see cref="IActor.AuthOk()"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.IStateTriggerBuilder{global::Sample.Ctx, State, IActor}"/> used by <see cref="IActor.AuthOk()"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator OnAuthOk(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, AuthOkArgs>> configure);
+            IStateConfigurator OnAuthOk(Action<global::Nalu.SharpState.IStateTriggerBuilder<global::Sample.Ctx, State, IActor>> configure);
             
             /// <summary>
             /// Configures what happens when <see cref="IActor.Message(string)"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor, MessageArgs}"/> used by <see cref="IActor.Message(string)"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.IStateTriggerArgsBuilder{global::Sample.Ctx, State, IActor, MessageArgs}"/> used by <see cref="IActor.Message(string)"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator OnMessage(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, MessageArgs>> configure);
+            IStateConfigurator OnMessage(Action<global::Nalu.SharpState.IStateTriggerArgsBuilder<global::Sample.Ctx, State, IActor, MessageArgs>> configure);
         }
         
         /// <summary>
@@ -397,17 +345,17 @@ namespace Sample
             
             public bool IsIn(State state) => _engine.IsIn(state);
             
-            public bool CanConnect() => _engine.CanFire(Trigger.Connect, new TriggerArgs(new ConnectArgs()));
+            public bool CanConnect() => _engine.CanFire(Trigger.Connect, TriggerArgs.ForConnect());
             
-            public void Connect() => _engine.Fire(Trigger.Connect, new TriggerArgs(new ConnectArgs()));
+            public void Connect() => _engine.Fire(Trigger.Connect, TriggerArgs.ForConnect());
             
-            public bool CanDisconnect() => _engine.CanFire(Trigger.Disconnect, new TriggerArgs(new DisconnectArgs()));
+            public bool CanDisconnect() => _engine.CanFire(Trigger.Disconnect, TriggerArgs.ForDisconnect());
             
-            public void Disconnect() => _engine.Fire(Trigger.Disconnect, new TriggerArgs(new DisconnectArgs()));
+            public void Disconnect() => _engine.Fire(Trigger.Disconnect, TriggerArgs.ForDisconnect());
             
-            public bool CanAuthOk() => _engine.CanFire(Trigger.AuthOk, new TriggerArgs(new AuthOkArgs()));
+            public bool CanAuthOk() => _engine.CanFire(Trigger.AuthOk, TriggerArgs.ForAuthOk());
             
-            public void AuthOk() => _engine.Fire(Trigger.AuthOk, new TriggerArgs(new AuthOkArgs()));
+            public void AuthOk() => _engine.Fire(Trigger.AuthOk, TriggerArgs.ForAuthOk());
             
             public bool CanMessage(string m) => _engine.CanFire(Trigger.Message, new TriggerArgs(new MessageArgs(m)));
             
@@ -420,34 +368,34 @@ namespace Sample
             
             internal void ApplyInitialChild(State initial) => SetInitialChild(initial);
             
-            public IStateConfigurator OnConnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, ConnectArgs>> configure)
+            public IStateConfigurator OnConnect(Action<global::Nalu.SharpState.IStateTriggerBuilder<global::Sample.Ctx, State, IActor>> configure)
             {
-                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor, ConnectArgs>(static args => args.TryGetValue(out ConnectArgs value) ? value : throw new global::System.InvalidOperationException("Trigger argument payload does not match trigger 'Connect'."));
+                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor>();
                 configure(builder);
                 builder.Validate();
                 AddTransitions(Trigger.Connect, builder.BuildTransitions());
                 return this;
             }
             
-            public IStateConfigurator OnDisconnect(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, DisconnectArgs>> configure)
+            public IStateConfigurator OnDisconnect(Action<global::Nalu.SharpState.IStateTriggerBuilder<global::Sample.Ctx, State, IActor>> configure)
             {
-                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor, DisconnectArgs>(static args => args.TryGetValue(out DisconnectArgs value) ? value : throw new global::System.InvalidOperationException("Trigger argument payload does not match trigger 'Disconnect'."));
+                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor>();
                 configure(builder);
                 builder.Validate();
                 AddTransitions(Trigger.Disconnect, builder.BuildTransitions());
                 return this;
             }
             
-            public IStateConfigurator OnAuthOk(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, AuthOkArgs>> configure)
+            public IStateConfigurator OnAuthOk(Action<global::Nalu.SharpState.IStateTriggerBuilder<global::Sample.Ctx, State, IActor>> configure)
             {
-                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor, AuthOkArgs>(static args => args.TryGetValue(out AuthOkArgs value) ? value : throw new global::System.InvalidOperationException("Trigger argument payload does not match trigger 'AuthOk'."));
+                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor>();
                 configure(builder);
                 builder.Validate();
                 AddTransitions(Trigger.AuthOk, builder.BuildTransitions());
                 return this;
             }
             
-            public IStateConfigurator OnMessage(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, MessageArgs>> configure)
+            public IStateConfigurator OnMessage(Action<global::Nalu.SharpState.IStateTriggerArgsBuilder<global::Sample.Ctx, State, IActor, MessageArgs>> configure)
             {
                 var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor, MessageArgs>(static args => args.TryGetValue(out MessageArgs value) ? value : throw new global::System.InvalidOperationException("Trigger argument payload does not match trigger 'Message'."));
                 configure(builder);

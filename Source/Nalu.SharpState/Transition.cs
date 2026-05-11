@@ -1,7 +1,7 @@
 namespace Nalu.SharpState;
 
 /// <summary>
-/// A single resolved transition built by <see cref="ISyncStateTriggerBuilder{TContext, TState, TActor, TArgs}"/>.
+/// A single resolved transition built by the trigger fluent builders.
 /// Carries the optional guard, optional synchronous transition action, optional asynchronous reaction,
 /// and either a target state (external transition) or the <see cref="IsInternal"/> flag
 /// (internal transition that does not leave the current state).

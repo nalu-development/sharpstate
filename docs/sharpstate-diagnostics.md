@@ -38,6 +38,8 @@ Duplicate state name 'Opened' in state machine 'DoorMachine'
 
 Trigger names feed the `Trigger` enum, state property names feed the `State` enum. Each name must be unique **across** triggers and states of the same machine.
 
+Trigger **overloads are not supported**: two `[StateTriggerDefinition]` methods named `Connect` with different signatures (for example `Connect(string)` and `Connect(int)`) cannot map to distinct `Trigger` enum members, so the second declaration is diagnosed as NSS002 alongside plain duplicate identifiers.
+
 ### `NSS003` — Invalid state property return type
 
 ```

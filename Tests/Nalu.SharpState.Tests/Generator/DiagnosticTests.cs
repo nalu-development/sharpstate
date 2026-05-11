@@ -56,6 +56,29 @@ public class DiagnosticTests
     }
 
     [Fact]
+    public void NSS002_reported_when_duplicate_trigger_name_overloads_conflict_with_enum_generation()
+    {
+        var source = """
+        using Nalu.SharpState;
+
+        namespace Sample;
+
+        public class Ctx { }
+
+        [StateMachineDefinition(typeof(Ctx))]
+        public static partial class DupOverload
+        {
+            [StateTriggerDefinition] static partial void Connect(string reason);
+            [StateTriggerDefinition] static partial void Connect(int connectId);
+
+            [StateDefinition(Initial = true)] private static IStateConfiguration A { get; } = ConfigureState();
+        }
+        """;
+
+        GetDiagnostics(source).Should().Contain(d => d.Id == "NSS002");
+    }
+
+    [Fact]
     public void NSS003_reported_when_state_property_has_wrong_return_type()
     {
         var source = """

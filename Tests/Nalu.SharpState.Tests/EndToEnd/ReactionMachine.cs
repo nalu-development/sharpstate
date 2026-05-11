@@ -16,7 +16,7 @@ public static partial class ReactionMachine
     private static IStateConfiguration Idle { get; } = ConfigureState()
         .OnInspect(t => t
             .Stay()
-            .ReactAsync((actor, ctx, _) =>
+            .ReactAsync((actor, ctx) =>
             {
                 ctx.Inspections++;
                 actor.Finish();
@@ -24,7 +24,7 @@ public static partial class ReactionMachine
             }))
         .OnFinish(t => t
             .Target(State.Done)
-            .ReactAsync((_, ctx, _) =>
+            .ReactAsync((_, ctx) =>
             {
                 ctx.Inspections += 10;
                 return default;

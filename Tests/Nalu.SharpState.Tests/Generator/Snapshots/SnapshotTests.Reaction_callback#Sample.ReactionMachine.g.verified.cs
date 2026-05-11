@@ -24,10 +24,6 @@ namespace Sample
             Sync,
         }
         
-        public readonly struct StartArgs
-        {
-        }
-        
         public readonly struct SyncArgs
         {
             public readonly long Revision;
@@ -46,37 +42,29 @@ namespace Sample
         public readonly struct TriggerArgs
         {
             private readonly int _kind;
-            private readonly StartArgs _value1;
             private readonly SyncArgs _value2;
             
-            public TriggerArgs(StartArgs value)
+            private TriggerArgs(int kind)
             {
-                _kind = 1;
-                _value1 = value;
-                _value2 = default;
+                _kind = kind;
             }
             
             public TriggerArgs(SyncArgs value)
             {
                 _kind = 2;
-                _value1 = default;
                 _value2 = value;
             }
             
+            public static TriggerArgs ForStart() => new TriggerArgs(1);
+            
             public object? Value => _kind switch
             {
-                1 => _value1,
+                1 => null,
                 2 => _value2,
                 _ => null,
             };
             
             public bool HasValue => _kind != 0;
-            
-            public bool TryGetValue(out StartArgs value)
-            {
-                value = _kind == 1 ? _value1 : default;
-                return _kind == 1;
-            }
             
             public bool TryGetValue(out SyncArgs value)
             {
@@ -84,11 +72,11 @@ namespace Sample
                 return _kind == 2;
             }
             
-            public override string ToString() => _kind switch
+            public override string? ToString() => _kind switch
             {
-                1 => _value1.ToString()!,
-                2 => _value2.ToString()!,
-                _ => "null",
+                1 => null,
+                2 => _value2.ToString(),
+                _ => null,
             };
         }
         
@@ -101,16 +89,16 @@ namespace Sample
             /// <summary>
             /// Configures what happens when <see cref="IActor.Start()"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor, StartArgs}"/> used by <see cref="IActor.Start()"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.IStateTriggerBuilder{global::Sample.Ctx, State, IActor}"/> used by <see cref="IActor.Start()"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator OnStart(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, StartArgs>> configure);
+            IStateConfigurator OnStart(Action<global::Nalu.SharpState.IStateTriggerBuilder<global::Sample.Ctx, State, IActor>> configure);
             
             /// <summary>
             /// Configures what happens when <see cref="IActor.Sync(long)"/> is invoked.
             /// </summary>
-            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.ISyncStateTriggerBuilder{global::Sample.Ctx, State, IActor, SyncArgs}"/> used by <see cref="IActor.Sync(long)"/>.</param>
+            /// <param name="configure">Configures the <see cref="global::Nalu.SharpState.IStateTriggerArgsBuilder{global::Sample.Ctx, State, IActor, SyncArgs}"/> used by <see cref="IActor.Sync(long)"/>.</param>
             /// <returns>The same configurator for chaining.</returns>
-            IStateConfigurator OnSync(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, SyncArgs>> configure);
+            IStateConfigurator OnSync(Action<global::Nalu.SharpState.IStateTriggerArgsBuilder<global::Sample.Ctx, State, IActor, SyncArgs>> configure);
         }
         
         /// <summary>
@@ -297,9 +285,9 @@ namespace Sample
             
             public bool IsIn(State state) => _engine.IsIn(state);
             
-            public bool CanStart() => _engine.CanFire(Trigger.Start, new TriggerArgs(new StartArgs()));
+            public bool CanStart() => _engine.CanFire(Trigger.Start, TriggerArgs.ForStart());
             
-            public void Start() => _engine.Fire(Trigger.Start, new TriggerArgs(new StartArgs()));
+            public void Start() => _engine.Fire(Trigger.Start, TriggerArgs.ForStart());
             
             public bool CanSync(long revision) => _engine.CanFire(Trigger.Sync, new TriggerArgs(new SyncArgs(revision)));
             
@@ -312,16 +300,16 @@ namespace Sample
             
             internal void ApplyInitialChild(State initial) => SetInitialChild(initial);
             
-            public IStateConfigurator OnStart(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, StartArgs>> configure)
+            public IStateConfigurator OnStart(Action<global::Nalu.SharpState.IStateTriggerBuilder<global::Sample.Ctx, State, IActor>> configure)
             {
-                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor, StartArgs>(static args => args.TryGetValue(out StartArgs value) ? value : throw new global::System.InvalidOperationException("Trigger argument payload does not match trigger 'Start'."));
+                var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor>();
                 configure(builder);
                 builder.Validate();
                 AddTransitions(Trigger.Start, builder.BuildTransitions());
                 return this;
             }
             
-            public IStateConfigurator OnSync(Action<global::Nalu.SharpState.ISyncStateTriggerBuilder<global::Sample.Ctx, State, IActor, SyncArgs>> configure)
+            public IStateConfigurator OnSync(Action<global::Nalu.SharpState.IStateTriggerArgsBuilder<global::Sample.Ctx, State, IActor, SyncArgs>> configure)
             {
                 var builder = new global::Nalu.SharpState.StateTriggerBuilder<global::Sample.Ctx, TriggerArgs, State, IActor, SyncArgs>(static args => args.TryGetValue(out SyncArgs value) ? value : throw new global::System.InvalidOperationException("Trigger argument payload does not match trigger 'Sync'."));
                 configure(builder);
