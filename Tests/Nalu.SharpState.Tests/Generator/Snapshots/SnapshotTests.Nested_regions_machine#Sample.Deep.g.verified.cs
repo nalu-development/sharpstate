@@ -141,7 +141,7 @@ namespace Sample
             event global::Nalu.SharpState.StateChangedHandler<State, Trigger, TriggerArgs>? StateChanged;
             
             /// <summary>
-            /// Raised when a background reaction scheduled by <c>ReactAsync(...)</c> fails.
+            /// Raised when post-transition asynchronous work fails after the transition has committed.
             /// </summary>
             event global::Nalu.SharpState.ReactionFailedHandler<State, Trigger, TriggerArgs>? ReactionFailed;
             
@@ -164,6 +164,11 @@ namespace Sample
             void Connect();
             
             /// <summary>
+            /// Fires <see cref="Trigger.Connect"/> from the current state and awaits post-transition asynchronous work.
+            /// </summary>
+            global::System.Threading.Tasks.ValueTask ConnectAsync();
+            
+            /// <summary>
             /// Determines whether <see cref="IActor.Disconnect()"/> can be invoked from the current state.
             /// </summary>
             /// <returns><c>true</c> when a matching transition exists; otherwise <c>false</c>.</returns>
@@ -173,6 +178,11 @@ namespace Sample
             /// Fires <see cref="Trigger.Disconnect"/> from the current state.
             /// </summary>
             void Disconnect();
+            
+            /// <summary>
+            /// Fires <see cref="Trigger.Disconnect"/> from the current state and awaits post-transition asynchronous work.
+            /// </summary>
+            global::System.Threading.Tasks.ValueTask DisconnectAsync();
             
             /// <summary>
             /// Determines whether <see cref="IActor.AuthOk()"/> can be invoked from the current state.
@@ -186,6 +196,11 @@ namespace Sample
             void AuthOk();
             
             /// <summary>
+            /// Fires <see cref="Trigger.AuthOk"/> from the current state and awaits post-transition asynchronous work.
+            /// </summary>
+            global::System.Threading.Tasks.ValueTask AuthOkAsync();
+            
+            /// <summary>
             /// Determines whether <see cref="IActor.StartEdit()"/> can be invoked from the current state.
             /// </summary>
             /// <returns><c>true</c> when a matching transition exists; otherwise <c>false</c>.</returns>
@@ -197,6 +212,11 @@ namespace Sample
             void StartEdit();
             
             /// <summary>
+            /// Fires <see cref="Trigger.StartEdit"/> from the current state and awaits post-transition asynchronous work.
+            /// </summary>
+            global::System.Threading.Tasks.ValueTask StartEditAsync();
+            
+            /// <summary>
             /// Determines whether <see cref="IActor.Save()"/> can be invoked from the current state.
             /// </summary>
             /// <returns><c>true</c> when a matching transition exists; otherwise <c>false</c>.</returns>
@@ -206,6 +226,11 @@ namespace Sample
             /// Fires <see cref="Trigger.Save"/> from the current state.
             /// </summary>
             void Save();
+            
+            /// <summary>
+            /// Fires <see cref="Trigger.Save"/> from the current state and awaits post-transition asynchronous work.
+            /// </summary>
+            global::System.Threading.Tasks.ValueTask SaveAsync();
         }
         
         static partial void Connect()
@@ -350,21 +375,31 @@ namespace Sample
             
             public void Connect() => _engine.Fire(Trigger.Connect, TriggerArgs.ForConnect());
             
+            public global::System.Threading.Tasks.ValueTask ConnectAsync() => _engine.FireAsync(Trigger.Connect, TriggerArgs.ForConnect());
+            
             public bool CanDisconnect() => _engine.CanFire(Trigger.Disconnect, TriggerArgs.ForDisconnect());
             
             public void Disconnect() => _engine.Fire(Trigger.Disconnect, TriggerArgs.ForDisconnect());
+            
+            public global::System.Threading.Tasks.ValueTask DisconnectAsync() => _engine.FireAsync(Trigger.Disconnect, TriggerArgs.ForDisconnect());
             
             public bool CanAuthOk() => _engine.CanFire(Trigger.AuthOk, TriggerArgs.ForAuthOk());
             
             public void AuthOk() => _engine.Fire(Trigger.AuthOk, TriggerArgs.ForAuthOk());
             
+            public global::System.Threading.Tasks.ValueTask AuthOkAsync() => _engine.FireAsync(Trigger.AuthOk, TriggerArgs.ForAuthOk());
+            
             public bool CanStartEdit() => _engine.CanFire(Trigger.StartEdit, TriggerArgs.ForStartEdit());
             
             public void StartEdit() => _engine.Fire(Trigger.StartEdit, TriggerArgs.ForStartEdit());
             
+            public global::System.Threading.Tasks.ValueTask StartEditAsync() => _engine.FireAsync(Trigger.StartEdit, TriggerArgs.ForStartEdit());
+            
             public bool CanSave() => _engine.CanFire(Trigger.Save, TriggerArgs.ForSave());
             
             public void Save() => _engine.Fire(Trigger.Save, TriggerArgs.ForSave());
+            
+            public global::System.Threading.Tasks.ValueTask SaveAsync() => _engine.FireAsync(Trigger.Save, TriggerArgs.ForSave());
         }
         
         private sealed class GeneratedStateConfigurator : global::Nalu.SharpState.StateConfigurator<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor>, IStateConfigurator

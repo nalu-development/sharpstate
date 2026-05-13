@@ -101,7 +101,7 @@ namespace Sample
             event global::Nalu.SharpState.StateChangedHandler<State, Trigger, TriggerArgs>? StateChanged;
             
             /// <summary>
-            /// Raised when a background reaction scheduled by <c>ReactAsync(...)</c> fails.
+            /// Raised when post-transition asynchronous work fails after the transition has committed.
             /// </summary>
             event global::Nalu.SharpState.ReactionFailedHandler<State, Trigger, TriggerArgs>? ReactionFailed;
             
@@ -124,6 +124,11 @@ namespace Sample
             void Start();
             
             /// <summary>
+            /// Fires <see cref="Trigger.Start"/> from the current state and awaits post-transition asynchronous work.
+            /// </summary>
+            global::System.Threading.Tasks.ValueTask StartAsync();
+            
+            /// <summary>
             /// Determines whether <see cref="IActor.Ping()"/> can be invoked from the current state.
             /// </summary>
             /// <returns><c>true</c> when a matching transition exists; otherwise <c>false</c>.</returns>
@@ -133,6 +138,11 @@ namespace Sample
             /// Fires <see cref="Trigger.Ping"/> from the current state.
             /// </summary>
             void Ping();
+            
+            /// <summary>
+            /// Fires <see cref="Trigger.Ping"/> from the current state and awaits post-transition asynchronous work.
+            /// </summary>
+            global::System.Threading.Tasks.ValueTask PingAsync();
         }
         
         static partial void Start()
@@ -260,9 +270,13 @@ namespace Sample
             
             public void Start() => _engine.Fire(Trigger.Start, TriggerArgs.ForStart());
             
+            public global::System.Threading.Tasks.ValueTask StartAsync() => _engine.FireAsync(Trigger.Start, TriggerArgs.ForStart());
+            
             public bool CanPing() => _engine.CanFire(Trigger.Ping, TriggerArgs.ForPing());
             
             public void Ping() => _engine.Fire(Trigger.Ping, TriggerArgs.ForPing());
+            
+            public global::System.Threading.Tasks.ValueTask PingAsync() => _engine.FireAsync(Trigger.Ping, TriggerArgs.ForPing());
         }
         
         private sealed class GeneratedStateConfigurator : global::Nalu.SharpState.StateConfigurator<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor>, IStateConfigurator

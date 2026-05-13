@@ -129,7 +129,7 @@ namespace Sample
             event global::Nalu.SharpState.StateChangedHandler<State, Trigger, TriggerArgs>? StateChanged;
             
             /// <summary>
-            /// Raised when a background reaction scheduled by <c>ReactAsync(...)</c> fails.
+            /// Raised when post-transition asynchronous work fails after the transition has committed.
             /// </summary>
             event global::Nalu.SharpState.ReactionFailedHandler<State, Trigger, TriggerArgs>? ReactionFailed;
             
@@ -151,6 +151,12 @@ namespace Sample
             void Open(string reason);
             
             /// <summary>
+            /// Fires <see cref="Trigger.Open"/> from the current state and awaits post-transition asynchronous work.
+            /// </summary>
+            /// <param name="reason">The value to pass to the trigger.</param>
+            global::System.Threading.Tasks.ValueTask OpenAsync(string reason);
+            
+            /// <summary>
             /// Determines whether <see cref="IActor.Close()"/> can be invoked from the current state.
             /// </summary>
             /// <returns><c>true</c> when a matching transition exists; otherwise <c>false</c>.</returns>
@@ -160,6 +166,11 @@ namespace Sample
             /// Fires <see cref="Trigger.Close"/> from the current state.
             /// </summary>
             void Close();
+            
+            /// <summary>
+            /// Fires <see cref="Trigger.Close"/> from the current state and awaits post-transition asynchronous work.
+            /// </summary>
+            global::System.Threading.Tasks.ValueTask CloseAsync();
         }
         
         static partial void Open(string reason)
@@ -288,9 +299,13 @@ namespace Sample
             
             public void Open(string reason) => _engine.Fire(Trigger.Open, new TriggerArgs(new OpenArgs(reason)));
             
+            public global::System.Threading.Tasks.ValueTask OpenAsync(string reason) => _engine.FireAsync(Trigger.Open, new TriggerArgs(new OpenArgs(reason)));
+            
             public bool CanClose() => _engine.CanFire(Trigger.Close, TriggerArgs.ForClose());
             
             public void Close() => _engine.Fire(Trigger.Close, TriggerArgs.ForClose());
+            
+            public global::System.Threading.Tasks.ValueTask CloseAsync() => _engine.FireAsync(Trigger.Close, TriggerArgs.ForClose());
         }
         
         private sealed class GeneratedStateConfigurator : global::Nalu.SharpState.StateConfigurator<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor>, IStateConfigurator

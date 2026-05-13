@@ -153,7 +153,7 @@ namespace Sample
             event global::Nalu.SharpState.StateChangedHandler<State, Trigger, TriggerArgs>? StateChanged;
             
             /// <summary>
-            /// Raised when a background reaction scheduled by <c>ReactAsync(...)</c> fails.
+            /// Raised when post-transition asynchronous work fails after the transition has committed.
             /// </summary>
             event global::Nalu.SharpState.ReactionFailedHandler<State, Trigger, TriggerArgs>? ReactionFailed;
             
@@ -176,6 +176,11 @@ namespace Sample
             void Connect();
             
             /// <summary>
+            /// Fires <see cref="Trigger.Connect"/> from the current state and awaits post-transition asynchronous work.
+            /// </summary>
+            global::System.Threading.Tasks.ValueTask ConnectAsync();
+            
+            /// <summary>
             /// Determines whether <see cref="IActor.Disconnect()"/> can be invoked from the current state.
             /// </summary>
             /// <returns><c>true</c> when a matching transition exists; otherwise <c>false</c>.</returns>
@@ -185,6 +190,11 @@ namespace Sample
             /// Fires <see cref="Trigger.Disconnect"/> from the current state.
             /// </summary>
             void Disconnect();
+            
+            /// <summary>
+            /// Fires <see cref="Trigger.Disconnect"/> from the current state and awaits post-transition asynchronous work.
+            /// </summary>
+            global::System.Threading.Tasks.ValueTask DisconnectAsync();
             
             /// <summary>
             /// Determines whether <see cref="IActor.AuthOk()"/> can be invoked from the current state.
@@ -198,6 +208,11 @@ namespace Sample
             void AuthOk();
             
             /// <summary>
+            /// Fires <see cref="Trigger.AuthOk"/> from the current state and awaits post-transition asynchronous work.
+            /// </summary>
+            global::System.Threading.Tasks.ValueTask AuthOkAsync();
+            
+            /// <summary>
             /// Determines whether <see cref="IActor.Message(string)"/> can be invoked from the current state.
             /// </summary>
             /// <param name="m">The value to test with the trigger.</param>
@@ -209,6 +224,12 @@ namespace Sample
             /// </summary>
             /// <param name="m">The value to pass to the trigger.</param>
             void Message(string m);
+            
+            /// <summary>
+            /// Fires <see cref="Trigger.Message"/> from the current state and awaits post-transition asynchronous work.
+            /// </summary>
+            /// <param name="m">The value to pass to the trigger.</param>
+            global::System.Threading.Tasks.ValueTask MessageAsync(string m);
         }
         
         static partial void Connect()
@@ -349,17 +370,25 @@ namespace Sample
             
             public void Connect() => _engine.Fire(Trigger.Connect, TriggerArgs.ForConnect());
             
+            public global::System.Threading.Tasks.ValueTask ConnectAsync() => _engine.FireAsync(Trigger.Connect, TriggerArgs.ForConnect());
+            
             public bool CanDisconnect() => _engine.CanFire(Trigger.Disconnect, TriggerArgs.ForDisconnect());
             
             public void Disconnect() => _engine.Fire(Trigger.Disconnect, TriggerArgs.ForDisconnect());
+            
+            public global::System.Threading.Tasks.ValueTask DisconnectAsync() => _engine.FireAsync(Trigger.Disconnect, TriggerArgs.ForDisconnect());
             
             public bool CanAuthOk() => _engine.CanFire(Trigger.AuthOk, TriggerArgs.ForAuthOk());
             
             public void AuthOk() => _engine.Fire(Trigger.AuthOk, TriggerArgs.ForAuthOk());
             
+            public global::System.Threading.Tasks.ValueTask AuthOkAsync() => _engine.FireAsync(Trigger.AuthOk, TriggerArgs.ForAuthOk());
+            
             public bool CanMessage(string m) => _engine.CanFire(Trigger.Message, new TriggerArgs(new MessageArgs(m)));
             
             public void Message(string m) => _engine.Fire(Trigger.Message, new TriggerArgs(new MessageArgs(m)));
+            
+            public global::System.Threading.Tasks.ValueTask MessageAsync(string m) => _engine.FireAsync(Trigger.Message, new TriggerArgs(new MessageArgs(m)));
         }
         
         private sealed class GeneratedStateConfigurator : global::Nalu.SharpState.StateConfigurator<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor>, IStateConfigurator

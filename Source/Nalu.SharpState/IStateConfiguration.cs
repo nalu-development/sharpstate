@@ -2,13 +2,13 @@ namespace Nalu.SharpState;
 
 /// <summary>
 /// Read-only view of a single state's configuration: the set of transitions indexed by trigger,
-/// optional hierarchy metadata (parent state, initial child state), and optional entry/exit hooks.
+/// optional hierarchy metadata (parent state, initial child state), and optional lifecycle hooks.
 /// </summary>
 /// <typeparam name="TContext">Type of the user-supplied context carried by the machine.</typeparam>
 /// <typeparam name="TArgs">Machine-specific trigger argument union.</typeparam>
 /// <typeparam name="TState">Enum type listing all states of the machine.</typeparam>
 /// <typeparam name="TTrigger">Enum type listing all triggers of the machine.</typeparam>
-/// <typeparam name="TActor">Type of the actor passed into post-transition reactions.</typeparam>
+/// <typeparam name="TActor">Type of the actor passed into post-transition asynchronous work.</typeparam>
 public interface IStateConfiguration<TContext, TArgs, TState, TTrigger, TActor>
     where TState : struct, Enum
     where TTrigger : struct, Enum
@@ -27,16 +27,30 @@ public interface IStateConfiguration<TContext, TArgs, TState, TTrigger, TActor>
     /// <summary>
     /// Optional synchronous callback invoked when the machine enters this state during an external transition.
     /// When non-<c>null</c>, receives the context and the same <see cref="IServiceProvider"/> instance
-    /// used for synchronous guards and transition actions on that transition (not the scoped provider used only for <c>ReactAsync</c>).
+    /// used for synchronous guards and transition actions on that transition.
     /// </summary>
     Action<TContext, IServiceProvider>? EntryAction { get; }
 
     /// <summary>
     /// Optional synchronous callback invoked when the machine exits this state during an external transition.
     /// When non-<c>null</c>, receives the context and the same <see cref="IServiceProvider"/> instance
-    /// used for synchronous guards and transition actions on that transition (not the scoped provider used only for <c>ReactAsync</c>).
+    /// used for synchronous guards and transition actions on that transition.
     /// </summary>
     Action<TContext, IServiceProvider>? ExitAction { get; }
+
+    /// <summary>
+    /// Optional asynchronous callback invoked after the machine has entered this state and synchronous entry work has completed.
+    /// Runs in the post-transition pipeline (after the synchronous transition and <c>StateChanged</c> for external transitions).
+    /// When non-<c>null</c>, receives the context and the <see cref="IServiceProvider"/> supplied for that pipeline
+    /// (reaction-scoped for fire-and-forget scheduled work, or the actor's captured/root provider for awaited async triggers).
+    /// </summary>
+    Func<TContext, IServiceProvider, ValueTask>? EnteredAsyncAction { get; }
+
+    /// <summary>
+    /// Optional asynchronous callback invoked after the machine has exited this state and synchronous exit work has completed.
+    /// Runs first in the post-transition pipeline. Service provider semantics match <see cref="EnteredAsyncAction"/>.
+    /// </summary>
+    Func<TContext, IServiceProvider, ValueTask>? ExitedAsyncAction { get; }
 
     /// <summary>
     /// Attempts to look up all transitions declared on this state for the given trigger.

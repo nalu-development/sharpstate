@@ -10,7 +10,7 @@ namespace Nalu.SharpState;
 /// <typeparam name="TArgs">Machine-specific trigger argument union.</typeparam>
 /// <typeparam name="TState">Enum type listing all states of the machine.</typeparam>
 /// <typeparam name="TTrigger">Enum type listing all triggers of the machine.</typeparam>
-/// <typeparam name="TActor">Type of the actor passed into post-transition reactions.</typeparam>
+/// <typeparam name="TActor">Type of the actor passed into post-transition asynchronous work.</typeparam>
 public abstract class StateConfigurator<TContext, TArgs, TState, TTrigger, TActor>
     : IStateConfiguration<TContext, TArgs, TState, TTrigger, TActor>, IStateConfiguratorLifecycleBacking<TContext>
     where TState : struct, Enum
@@ -21,6 +21,8 @@ public abstract class StateConfigurator<TContext, TArgs, TState, TTrigger, TActo
     private TState? _initialChild;
     private Action<TContext, IServiceProvider>? _entryAction;
     private Action<TContext, IServiceProvider>? _exitAction;
+    private Func<TContext, IServiceProvider, ValueTask>? _enteredAsyncAction;
+    private Func<TContext, IServiceProvider, ValueTask>? _exitedAsyncAction;
 
     /// <inheritdoc />
     public TState? ParentState => _parent;
@@ -33,6 +35,12 @@ public abstract class StateConfigurator<TContext, TArgs, TState, TTrigger, TActo
 
     /// <inheritdoc />
     public Action<TContext, IServiceProvider>? ExitAction => _exitAction;
+
+    /// <inheritdoc />
+    public Func<TContext, IServiceProvider, ValueTask>? EnteredAsyncAction => _enteredAsyncAction;
+
+    /// <inheritdoc />
+    public Func<TContext, IServiceProvider, ValueTask>? ExitedAsyncAction => _exitedAsyncAction;
 
     /// <inheritdoc />
     public bool TryGetTransitions(TTrigger trigger, out IReadOnlyList<Transition<TContext, TArgs, TState, TActor>> transitions)
@@ -137,6 +145,39 @@ public abstract class StateConfigurator<TContext, TArgs, TState, TTrigger, TActo
         _exitAction = action;
     }
 
+    /// <summary>
+    /// Declares an asynchronous callback to run after the machine enters this state, in the post-transition pipeline
+    /// (after synchronous <c>WhenEntering</c> and <c>StateChanged</c> for external transitions).
+    /// May be called at most once per configurator.
+    /// </summary>
+    protected void SetEnteredAsyncAction(Func<TContext, IServiceProvider, ValueTask> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        if (_enteredAsyncAction is not null)
+        {
+            throw new InvalidOperationException("WhenEnteredAsync has already been set on this state configurator.");
+        }
+
+        _enteredAsyncAction = action;
+    }
+
+    /// <summary>
+    /// Declares an asynchronous callback to run first in the post-transition pipeline after the machine exits this state.
+    /// May be called at most once per configurator.
+    /// </summary>
+    protected void SetExitedAsyncAction(Func<TContext, IServiceProvider, ValueTask> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        if (_exitedAsyncAction is not null)
+        {
+            throw new InvalidOperationException("WhenExitedAsync has already been set on this state configurator.");
+        }
+
+        _exitedAsyncAction = action;
+    }
+
     /// <summary>Forwards to <see cref="SetEntryAction"/> (used by default <c>WhenEntering</c> implementations).</summary>
     void IStateConfiguratorLifecycleBacking<TContext>.LifecycleSetEntryAction(Action<TContext, IServiceProvider> action)
         => SetEntryAction(action);
@@ -144,4 +185,12 @@ public abstract class StateConfigurator<TContext, TArgs, TState, TTrigger, TActo
     /// <summary>Forwards to <see cref="SetExitAction"/> (used by default <c>WhenExiting</c> implementations).</summary>
     void IStateConfiguratorLifecycleBacking<TContext>.LifecycleSetExitAction(Action<TContext, IServiceProvider> action)
         => SetExitAction(action);
+
+    /// <inheritdoc />
+    void IStateConfiguratorLifecycleBacking<TContext>.LifecycleSetEnteredAsyncAction(Func<TContext, IServiceProvider, ValueTask> action)
+        => SetEnteredAsyncAction(action);
+
+    /// <inheritdoc />
+    void IStateConfiguratorLifecycleBacking<TContext>.LifecycleSetExitedAsyncAction(Func<TContext, IServiceProvider, ValueTask> action)
+        => SetExitedAsyncAction(action);
 }

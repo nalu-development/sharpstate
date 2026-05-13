@@ -15,8 +15,9 @@ Classic state machine libraries rely on reflection, dictionaries keyed by string
 - **Compile-time validated**: duplicate names, unreachable hierarchies, and misconfigured sub-machines become build errors via dedicated `NSS001`–`NSS010` diagnostics.
 - **AOT / trim friendly**: zero reflection at runtime. The generator emits the registration tables at compile time.
 - **Hierarchical**: composite states are modeled as nested `[SubStateMachine]` partial classes with strict scoping rules.
-- **Sync-first**: generated actors stay synchronous, with optional fire-and-forget `ReactAsync(...)` callbacks for post-transition work.
-- **Lightweight on CPU and memory**: tables are emitted at compile time and dispatch is direct, so transitions spend less time on the hot path and allocate far less than typical reflection- or dictionary-heavy approaches. The [Benchmarks](#benchmarks) section compares `Nalu.SharpState` to [Stateless](https://github.com/dotnet-state-machine/stateless) on the same scenarios.
+- **Sync transitions**: state changes always commit synchronously, so guards, target selection, `Invoke`, entry/exit hooks, context notification, and `StateChanged` complete before post-transition async work begins.
+- **Async-friendly follow-up**: generated actors expose both synchronous `void` trigger methods (`Open`, `Close`, …), which schedule post-transition async work fire-and-forget, and matching `ValueTask` `*Async` methods, which await `WhenExitedAsync`, `WhenEnteredAsync`, and `ReactAsync`; see [Post-Transition Async Work](sharpstate-async.md).
+- **Lightweight on CPU and memory**: tables are emitted at compile time and dispatch is direct, so transitions spend less time on the hot path and allocate far less than typical reflection or dictionary-heavy approaches. The [Benchmarks](#benchmarks) section compares `Nalu.SharpState` to [Stateless](https://github.com/dotnet-state-machine/stateless) on the same scenarios.
 
 ## Installation
 
@@ -36,7 +37,7 @@ A machine lives in a single `static partial class` (for example `public static p
 | Building block | Declared as | Role |
 |----------------|-------------|------|
 | **Context** | Any class you own | Holds **machine-facing state** (counters, domain fields, flags the guards and actions update). Passed as the first argument to `[StateMachineDefinition]`. Prefer requesting **services** (`ILogger`, repositories, `HttpClient`, …) as callback parameters in `When` / `Invoke` / `ReactAsync` overloads rather than storing them on the context. |
-| **Service provider** | `IServiceProvider` | Supplies injected callback services and, optionally scoped, `ReactAsync` services. See [Service provider and actor factories](#service-provider-and-actor-factories). |
+| **Service provider** | `IServiceProvider` | Supplies injected callback services and, for scheduled post-transition async work, optionally scoped services. See [Service provider and actor factories](#service-provider-and-actor-factories). |
 | **Triggers** | `[StateTriggerDefinition] static partial void` methods | Inputs to the machine. Their parameter list becomes the dispatch signature. The generator emits a per-trigger args type (`{Trigger}Args`) plus a machine-wide tagged **`TriggerArgs`** for dispatch into callbacks. Fluent `When` / `Invoke` / `ReactAsync` / lifecycle hooks optionally take **injectable services** as generic **`T1`…`T16`** overload parameters (distinct from trigger payload arity). |
 | **States** | `[StateDefinition] static IStateConfiguration` properties | Nodes of the machine. The property body configures outgoing transitions. |
 
@@ -77,7 +78,7 @@ The generator produces:
 
 - A `State` enum with the values `Closed, Opened`.
 - A `Trigger` enum with the values `Open, Close`.
-- A nested `public interface IActor` exposing `CanOpen(string)`, `Open(string)`, `CanClose()`, `Close()`, `CurrentState`, `Context`, `IsIn(...)`, `StateChanged`, `ReactionFailed`, and `OnUnhandled`.
+- A nested `public interface IActor` exposing `CanOpen(string)`, `Open(string)`, `OpenAsync(string)`, `CanClose()`, `Close()`, `CloseAsync()`, `CurrentState`, `Context`, `IsIn(...)`, `StateChanged`, `ReactionFailed`, and `OnUnhandled`.
 - Nested factory delegates for dependency injection:
   - `CreateActorFactory` / `CreateActorWithStateFactory` — match `CreateActor(context, IStateMachineServiceProviderResolver serviceProviderResolver)` and `CreateActorWithState(..., resolver, state)`.
 - A `public static State GetInitialState()` helper for the root machine.
@@ -89,8 +90,8 @@ Usage:
 
 ```csharp
 using System;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
-using Nalu.SharpState;
 using Nalu.SharpState;
 
 IServiceProvider root = ...; // e.g. Host.Services or another composition root
@@ -99,13 +100,15 @@ var scopeFactory = root.GetRequiredService<IServiceScopeFactory>();
 var resolver = new StateMachineServiceProviderResolver(root, scopeFactory);
 var door = DoorMachine.CreateActor(new DoorContext(), resolver);
 
-door.Open("delivery");
+door.Open("delivery");           // sync trigger; post-transition async is scheduled
+// or
+await door.OpenAsync("delivery");  // awaits WhenExitedAsync → WhenEnteredAsync → ReactAsync
 
 Console.WriteLine(door.CurrentState);     // Opened
 Console.WriteLine(door.Context.OpenCount); // 1
 ```
 
-Add the **`Nalu.SharpState.DependencyInjection`** package and use **`Nalu.SharpState.StateMachineServiceProviderResolver`**. The actor captures `GetServiceProvider()` for synchronous guards, target selectors, and actions. Each `ReactAsync` asks the resolver for a reaction-scoped provider and disposes the returned token when the reaction finishes. See [Service provider and actor factories](#service-provider-and-actor-factories).
+Add the **`Nalu.SharpState.DependencyInjection`** package and use **`Nalu.SharpState.StateMachineServiceProviderResolver`**. The actor captures `GetServiceProvider()` for synchronous guards, target selectors, actions, and for **`FireAsync`**. Scheduled post-transition work after **`Fire`** uses **one** reaction-scoped provider from `CreateScopedServiceProvider` per run. See [Service provider and actor factories](#service-provider-and-actor-factories) and [Post-Transition Async Work](sharpstate-async.md).
 
 ## Service provider and actor factories
 
@@ -118,8 +121,8 @@ public static partial class DoorMachine;
 
 **`IStateMachineServiceProviderResolver`** has two jobs:
 
-- `GetServiceProvider()` supplies the provider captured by the actor for synchronous `When`, `TransitionTo`, `Invoke`, `WhenEntering`, and `WhenExiting` clauses.
-- `CreateScopedServiceProvider(out IServiceProvider)` supplies the provider used by each `ReactAsync` and returns the token the engine disposes afterward.
+- `GetServiceProvider()` supplies the provider captured by the actor for synchronous `When`, `TransitionTo`, `Invoke`, `WhenEntering`, and `WhenExiting` clauses, and for **`FireAsync`** / generated **`{Trigger}Async`** post-transition work.
+- `CreateScopedServiceProvider(out IServiceProvider)` supplies a provider for **scheduled** post-transition work after synchronous **`Fire`** / `void` trigger methods. The engine calls it **once** per scheduled pipeline (async lifecycle hooks plus **`ReactAsync`**) and disposes the token when that pipeline completes. See [Post-Transition Async Work](sharpstate-async.md) for ordering and failure behavior.
 
 For machines that do not resolve services, pass **`StateMachineEmptyServiceProviderResolver.Instance`**:
 
@@ -127,11 +130,10 @@ For machines that do not resolve services, pass **`StateMachineEmptyServiceProvi
 var actor = MyMachine.CreateActor(context, StateMachineEmptyServiceProviderResolver.Instance);
 ```
 
-Use **`StateMachineStaticServiceProviderResolver`** (in **`Nalu.SharpState`**) when synchronous clauses and `ReactAsync` should reuse the same provider. Use **`StateMachineServiceProviderResolver`** (**`Nalu.SharpState`** namespace, **`Nalu.SharpState.DependencyInjection`** package) when each `ReactAsync` should create a child Microsoft DI scope via **`IServiceScopeFactory`**.
+Use **`StateMachineStaticServiceProviderResolver`** (in **`Nalu.SharpState`**) when synchronous clauses and post-transition async work should reuse the same provider. Use **`StateMachineServiceProviderResolver`** (**`Nalu.SharpState`** namespace, **`Nalu.SharpState.DependencyInjection`** package) when scheduled post-transition work from synchronous triggers should create a child Microsoft DI scope via **`IServiceScopeFactory`**.
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
-using Nalu.SharpState;
 using Nalu.SharpState;
 
 IServiceProvider root = ...; // e.g. Host.Services
@@ -164,9 +166,9 @@ sealed class SameInstanceResolver : IStateMachineServiceProviderResolver
 }
 ```
 
-#### Scoped services in `ReactAsync`
+#### Scoped Post-Transition Services
 
-With **`StateMachineServiceProviderResolver`**, **`CreateScopedServiceProvider`** always opens a new child scope via **`IServiceScopeFactory`**. Request services as callback parameters; SharpState resolves them with `IServiceProvider.GetService(typeof(T))` and throws if the result is `null`.
+With **`StateMachineServiceProviderResolver`**, **`CreateScopedServiceProvider`** opens a child scope via **`IServiceScopeFactory`** for scheduled post-transition work after synchronous triggers. Request services as callback parameters; SharpState resolves them with `IServiceProvider.GetService(typeof(T))` and throws if the result is `null`.
 
 ```csharp
 // Startup
@@ -182,7 +184,7 @@ services.AddScopedStateMachineServiceProviderResolver();
 })
 ```
 
-To change how the reaction scope is produced, subclass **`StateMachineServiceProviderResolver`** and override **`CreateScopedServiceProvider`**, or implement **`IStateMachineServiceProviderResolver`** directly.
+To change how the scheduled post-transition scope is produced, subclass **`StateMachineServiceProviderResolver`** and override **`CreateScopedServiceProvider`**, or implement **`IStateMachineServiceProviderResolver`** directly.
 
 ## Describing transitions
 
@@ -196,7 +198,7 @@ Inside each `[StateDefinition]` property body you call `ConfigureState()` and ch
 | `Ignore()` | Syntax sugar for `Stay()` with no action. |
 | `When(predicate, label = null)` | Guards the transition before `TransitionTo(...)` or `Stay()`. Overloads start with `(context, args)` and can request services as `T1..T16` callback parameters. |
 | `Invoke(action)` | Runs side effects before the state commits. Overloads start with `(context, args)` and can request services as callback parameters. |
-| `ReactAsync(action)` | Schedules fire-and-forget work after the transition commits and after `StateChanged` fires. Overloads start with `(actor, context, args)` and can request services as callback parameters from the reaction scope. |
+| `ReactAsync(action)` | Runs after async exit and entry hooks in the post-transition pipeline. Synchronous triggers schedule it fire-and-forget; async triggers await it. Overloads start with `(actor, context, args)` and can request services as callback parameters. |
 | `WhenEntering(action)` | Runs after the state commits on an external transition into this state. Overloads start with `(context)` and can request services as callback parameters; lifecycle hooks do not receive trigger args. |
 | `WhenExiting(action)` | Runs before the state is left on an external transition. Same shape as `WhenEntering`. |
 
@@ -242,7 +244,7 @@ Hooks run only for external transitions:
 - Entry hooks run from that ancestor's child down to the new leaf.
 - Internal transitions (`Stay()` / `Ignore()`) do not fire entry or exit hooks.
 
-When you need services after `StateChanged`, add a `ReactAsync((actor, ctx, args, service) => ...)` overload on the same transition chain. The service values come from `CreateScopedServiceProvider` on your resolver and are disposed when the reaction completes.
+When you need services after `StateChanged`, add async lifecycle hooks or a `ReactAsync((actor, ctx, args, service) => ...)` overload. Synchronous triggers use one scoped provider for the whole scheduled post-transition pipeline; `*Async` triggers use the actor's captured provider.
 
 ## Interacting with the actor
 
@@ -252,7 +254,6 @@ The generated `IActor` exposes everything you need at runtime:
 using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Nalu.SharpState;
 using Nalu.SharpState;
 
 IServiceProvider services = ...;
@@ -279,7 +280,7 @@ Console.WriteLine(door.IsIn(DoorMachine.State.Opened)); // true
 | `Context` | The context instance supplied to `CreateActor` / `CreateActorWithState` — use it for **state** the machine owns (balances, open counts, UI flags). **`IStateMachineServiceProviderResolver`** is separate; request services in fluent overloads or resolve them from your host when handling events. |
 | `IsIn(State s)` | `true` if `CurrentState` equals `s` **or** is a descendant of `s`. Use this to query composites. |
 | `StateChanged` | `StateChangedHandler<State, Trigger>` raised **after** a non-internal transition commits. |
-| `ReactionFailed` | Raised when a background `ReactAsync(...)` callback throws after the transition already completed. |
+| `ReactionFailed` | Raised when post-transition async work throws after the transition already completed. |
 | `OnUnhandled` | Invoked when a trigger has no matching transition on the leaf nor on any ancestor. |
 | `Can<Trigger>(...)` | Returns whether the corresponding trigger currently has a matching transition for the supplied arguments. |
 | `<Trigger>(...)` | One strongly-typed `void` method per trigger. |
@@ -297,18 +298,18 @@ public sealed class MyContext : IStateAwareContext<MyMachine.State>
 
 ### Benchmarks
 
-Outperform the industry standard ([Stateless](https://github.com/dotnet-state-machine/stateless)) with **4x to 8x faster execution** and **7x to 12x** lower memory overhead depending on the usage.
+Outperform the industry standard ([Stateless](https://github.com/dotnet-state-machine/stateless)) with **7x to 13x faster execution** and **25x to 30x** lower memory overhead depending on the usage.
 
 | Method             | StateChanges | Mean         | Error      | StdDev     | Gen0      | Gen1     | Allocated   |
 |------------------- |------------- |-------------:|-----------:|-----------:|----------:|---------:|------------:|
-| SingletonActor     | 100          |     8.623 us |  0.0326 us |  0.0305 us |    4.3945 |        - |    35.94 KB |                                                                                                                                                                                                                                                                                                                        
-| SingletonStateless | 100          |    38.696 us |  0.1156 us |  0.1081 us |   30.0293 |        - |   245.31 KB |
-| TransientActor     | 100          |    10.327 us |  0.0399 us |  0.0373 us |    6.1188 |        - |       50 KB |
-| TransientStateless | 100          |    85.534 us |  0.3368 us |  0.3150 us |   74.5850 |   1.4648 |   610.17 KB |
-| SingletonActor     | 10000        |   881.644 us |  1.7978 us |  1.5012 us |  439.4531 |        - |  3593.75 KB |
-| SingletonStateless | 10000        | 3,949.194 us |  9.3175 us |  8.7156 us | 2953.1250 |        - | 24140.63 KB |
-| TransientActor     | 10000        | 1,068.211 us | 15.9207 us | 14.8922 us |  611.3281 |        - |     5000 KB |
-| TransientStateless | 10000        | 8,699.315 us | 54.7741 us | 51.2358 us | 7468.7500 | 140.6250 | 61016.85 KB |
+| SingletonActor     | 100          |     5.509 us |  0.0196 us |  0.0183 us |    0.9537 |        - |     7.81 KB |
+| SingletonStateless | 100          |    39.544 us |  0.1018 us |  0.0902 us |   30.0293 |        - |   245.31 KB |
+| TransientActor     | 100          |     6.559 us |  0.0236 us |  0.0220 us |    2.6779 |        - |    21.88 KB |
+| TransientStateless | 100          |    87.597 us |  0.3544 us |  0.3315 us |   74.5850 |   1.4648 |   610.17 KB |
+| SingletonActor     | 10000        |   563.429 us |  1.6667 us |  1.3918 us |   94.7266 |        - |   781.25 KB |
+| SingletonStateless | 10000        | 4,003.178 us | 15.1618 us | 14.1824 us | 3000.0000 |        - | 24531.25 KB |
+| TransientActor     | 10000        |   671.978 us |  2.1106 us |  1.8710 us |  267.5781 |        - |   2187.5 KB |
+| TransientStateless | 10000        | 8,793.037 us | 50.5944 us | 47.3260 us | 7468.7500 | 140.6250 | 61016.85 KB |
 
 See the [benchmarks](https://github.com/nalu-development/sharpstate/tree/main/Tests/Nalu.SharpState.Benchmarks) for more details.
 
@@ -553,9 +554,9 @@ private static IStateConfiguration Open { get; } = ConfigureState()
 
 Guards are pure predicates; keep them free of side effects. `Invoke(...)` runs inline during dispatch and any exception it throws propagates out of the trigger before the new state is committed.
 
-### ReactAsync
+### Post-Transition Async Work
 
-Use `ReactAsync(...)` when the transition should commit immediately but you still want to kick off asynchronous follow-up work. The callback starts with `(actor, context, args)` and can request services after that.
+Use `WhenExitedAsync(...)`, `WhenEnteredAsync(...)`, and `ReactAsync(...)` when the transition should commit before asynchronous follow-up work runs. `ReactAsync` callbacks start with `(actor, context, args)` and can request services after that.
 
 ```csharp
 [StateDefinition]
@@ -566,9 +567,9 @@ private static IStateConfiguration Pending { get; } = ConfigureState()
         {
             try {
                 await approvals.ApproveAsync(args.Id);
-                actor.Approve();
+                await actor.ApproveAsync();
             } catch {
-                actor.Reject();
+                await actor.RejectAsync();
             }
         }));
 ```
@@ -580,12 +581,14 @@ For external transitions, the order is:
 3. state commit
 4. `WhenEntering(...)`
 5. `StateChanged`
-6. `ReactAsync(...)`
+6. `WhenExitedAsync(...)`
+7. `WhenEnteredAsync(...)`
+8. `ReactAsync(...)`
 
-`ReactAsync(...)` captures the current `SynchronizationContext` when the trigger is fired. The callback receives the generated actor instance first, so it can trigger additional transitions after awaited work completes. If the background reaction throws, the exception is surfaced through `ReactionFailed`.
+Synchronous triggers capture the current `SynchronizationContext` and schedule that pipeline. Generated `*Async` triggers await it inline and allow reactions to fire more async triggers after the first transition has committed. If post-transition async work throws, the exception is surfaced through `ReactionFailed`; awaited triggers also throw `ReactionFailedException`.
 
 ## What next?
 
 - [Hierarchical State Machines](sharpstate-hierarchy.md) — nested composite states via `[SubStateMachine]`.
-- [Post-Transition Reactions](sharpstate-async.md) — background `ReactAsync(...)` work and `ReactionFailed`.
+- [Post-Transition Async Work](sharpstate-async.md) — async lifecycle hooks, `ReactAsync(...)`, `*Async` triggers, and `ReactionFailed`.
 - [Diagnostics & Troubleshooting](sharpstate-diagnostics.md) — generator errors (`NSS001`–`NSS010`) and common pitfalls.

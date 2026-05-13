@@ -91,7 +91,7 @@ namespace Sample.Nested.Deep
                 event global::Nalu.SharpState.StateChangedHandler<State, Trigger, TriggerArgs>? StateChanged;
                 
                 /// <summary>
-                /// Raised when a background reaction scheduled by <c>ReactAsync(...)</c> fails.
+                /// Raised when post-transition asynchronous work fails after the transition has committed.
                 /// </summary>
                 event global::Nalu.SharpState.ReactionFailedHandler<State, Trigger, TriggerArgs>? ReactionFailed;
                 
@@ -112,6 +112,11 @@ namespace Sample.Nested.Deep
                 /// Fires <see cref="Trigger.Go"/> from the current state.
                 /// </summary>
                 void Go();
+                
+                /// <summary>
+                /// Fires <see cref="Trigger.Go"/> from the current state and awaits post-transition asynchronous work.
+                /// </summary>
+                global::System.Threading.Tasks.ValueTask GoAsync();
             }
             
             static partial void Go()
@@ -233,6 +238,8 @@ namespace Sample.Nested.Deep
                 public bool CanGo() => _engine.CanFire(Trigger.Go, TriggerArgs.ForGo());
                 
                 public void Go() => _engine.Fire(Trigger.Go, TriggerArgs.ForGo());
+                
+                public global::System.Threading.Tasks.ValueTask GoAsync() => _engine.FireAsync(Trigger.Go, TriggerArgs.ForGo());
             }
             
             private sealed class GeneratedStateConfigurator : global::Nalu.SharpState.StateConfigurator<global::Sample.Nested.Deep.Ctx, TriggerArgs, State, Trigger, IActor>, IStateConfigurator

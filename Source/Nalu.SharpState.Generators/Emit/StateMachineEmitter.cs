@@ -559,7 +559,7 @@ internal static class StateMachineEmitter
             w.WriteLine("event global::Nalu.SharpState.StateChangedHandler<State, Trigger, TriggerArgs>? StateChanged;");
             w.WriteBlankLine();
             w.WriteLine("/// <summary>");
-            w.WriteLine("/// Raised when a background reaction scheduled by <c>ReactAsync(...)</c> fails.");
+            w.WriteLine("/// Raised when post-transition asynchronous work fails after the transition has committed.");
             w.WriteLine("/// </summary>");
             w.WriteLine("event global::Nalu.SharpState.ReactionFailedHandler<State, Trigger, TriggerArgs>? ReactionFailed;");
             w.WriteBlankLine();
@@ -576,6 +576,8 @@ internal static class StateMachineEmitter
                 EmitActorInterfaceCanTriggerMethod(w, t);
                 w.WriteBlankLine();
                 EmitActorInterfaceTriggerMethod(w, t);
+                w.WriteBlankLine();
+                EmitActorInterfaceAsyncTriggerMethod(w, t);
             }
         }
     }
@@ -686,6 +688,8 @@ internal static class StateMachineEmitter
                 EmitActorCanTriggerMethod(w, t);
                 w.WriteBlankLine();
                 EmitActorTriggerMethod(w, t);
+                w.WriteBlankLine();
+                EmitActorAsyncTriggerMethod(w, t);
             }
         }
     }
@@ -702,6 +706,13 @@ internal static class StateMachineEmitter
         var paramList = string.Join(", ", t.Parameters.Select(p => $"{p.TypeDisplay} {p.Name}"));
         var triggerArgs = TriggerArgsFactory(t);
         w.WriteLine($"public void {t.Name}({paramList}) => _engine.Fire(Trigger.{t.Name}, {triggerArgs});");
+    }
+
+    private static void EmitActorAsyncTriggerMethod(SourceWriter w, TriggerModel t)
+    {
+        var paramList = string.Join(", ", t.Parameters.Select(p => $"{p.TypeDisplay} {p.Name}"));
+        var triggerArgs = TriggerArgsFactory(t);
+        w.WriteLine($"public global::System.Threading.Tasks.ValueTask {t.Name}Async({paramList}) => _engine.FireAsync(Trigger.{t.Name}, {triggerArgs});");
     }
 
     private static void EmitGeneratedConfigurator(SourceWriter w, string context, StateMachineModel m)
@@ -764,6 +775,20 @@ internal static class StateMachineEmitter
         }
 
         w.WriteLine($"void {t.Name}({paramList});");
+    }
+
+    private static void EmitActorInterfaceAsyncTriggerMethod(SourceWriter w, TriggerModel t)
+    {
+        var paramList = string.Join(", ", t.Parameters.Select(p => $"{p.TypeDisplay} {p.Name}"));
+        w.WriteLine("/// <summary>");
+        w.WriteLine($"/// Fires <see cref=\"Trigger.{t.Name}\"/> from the current state and awaits post-transition asynchronous work.");
+        w.WriteLine("/// </summary>");
+        foreach (var parameter in t.Parameters)
+        {
+            w.WriteLine($"/// <param name=\"{parameter.Name}\">The value to pass to the trigger.</param>");
+        }
+
+        w.WriteLine($"global::System.Threading.Tasks.ValueTask {t.Name}Async({paramList});");
     }
 
     private static void EmitActorInterfaceCanTriggerMethod(SourceWriter w, TriggerModel t)

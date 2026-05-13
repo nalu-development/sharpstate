@@ -3,7 +3,7 @@ using TriggerArgs = Nalu.SharpState.Tests.Runtime.TestTriggerArgs;
 
 namespace Nalu.SharpState.Tests.Runtime;
 
-public class StateLifecycleFluentTests
+public partial class StateLifecycleFluentTests
 {
     /// <summary>Distinct service types for DI arity tests (L1 alone … L1…L16).</summary>
     private sealed class L1;
@@ -127,7 +127,7 @@ public class StateLifecycleFluentTests
         var cfg = new LifecycleFluentTestConfigurator();
         IStateLifecycleFluent<LifecycleFluentTestConfigurator, TestContext> fluent = cfg;
 
-        var act = () => fluent.WhenExiting(null!);
+        Action act = () => fluent.WhenExiting(null!);
 
         act.Should().Throw<ArgumentNullException>()
             .WithParameterName("action");

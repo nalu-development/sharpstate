@@ -127,7 +127,7 @@ namespace Sample
             event global::Nalu.SharpState.StateChangedHandler<State, Trigger, TriggerArgs>? StateChanged;
             
             /// <summary>
-            /// Raised when a background reaction scheduled by <c>ReactAsync(...)</c> fails.
+            /// Raised when post-transition asynchronous work fails after the transition has committed.
             /// </summary>
             event global::Nalu.SharpState.ReactionFailedHandler<State, Trigger, TriggerArgs>? ReactionFailed;
             
@@ -150,6 +150,11 @@ namespace Sample
             void Start();
             
             /// <summary>
+            /// Fires <see cref="Trigger.Start"/> from the current state and awaits post-transition asynchronous work.
+            /// </summary>
+            global::System.Threading.Tasks.ValueTask StartAsync();
+            
+            /// <summary>
             /// Determines whether <see cref="IActor.Sync(long)"/> can be invoked from the current state.
             /// </summary>
             /// <param name="revision">The value to test with the trigger.</param>
@@ -161,6 +166,12 @@ namespace Sample
             /// </summary>
             /// <param name="revision">The value to pass to the trigger.</param>
             void Sync(long revision);
+            
+            /// <summary>
+            /// Fires <see cref="Trigger.Sync"/> from the current state and awaits post-transition asynchronous work.
+            /// </summary>
+            /// <param name="revision">The value to pass to the trigger.</param>
+            global::System.Threading.Tasks.ValueTask SyncAsync(long revision);
         }
         
         static partial void Start()
@@ -289,9 +300,13 @@ namespace Sample
             
             public void Start() => _engine.Fire(Trigger.Start, TriggerArgs.ForStart());
             
+            public global::System.Threading.Tasks.ValueTask StartAsync() => _engine.FireAsync(Trigger.Start, TriggerArgs.ForStart());
+            
             public bool CanSync(long revision) => _engine.CanFire(Trigger.Sync, new TriggerArgs(new SyncArgs(revision)));
             
             public void Sync(long revision) => _engine.Fire(Trigger.Sync, new TriggerArgs(new SyncArgs(revision)));
+            
+            public global::System.Threading.Tasks.ValueTask SyncAsync(long revision) => _engine.FireAsync(Trigger.Sync, new TriggerArgs(new SyncArgs(revision)));
         }
         
         private sealed class GeneratedStateConfigurator : global::Nalu.SharpState.StateConfigurator<global::Sample.Ctx, TriggerArgs, State, Trigger, IActor>, IStateConfigurator

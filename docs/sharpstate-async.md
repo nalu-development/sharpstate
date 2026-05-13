@@ -1,10 +1,25 @@
-# Post-Transition Reactions
+# Post-Transition Async Work
 
-`Nalu.SharpState` now keeps the generated actor surface synchronous: every trigger method returns `void` and dispatch happens through `Fire(...)`. When you need asynchronous follow-up work, use `ReactAsync(...)` on the trigger builder.
+`Nalu.SharpState` keeps the primary generated actor surface synchronous: each trigger has a `void` method that dispatches through `Fire(...)`. For asynchronous follow-up, you can:
 
-## What `ReactAsync(...)` does
+1. Register **`WhenExitedAsync(...)`**, **`WhenEnteredAsync(...)`**, and **`ReactAsync(...)`** on the fluent configuration.
+2. Call the generated **`{Trigger}Async(...)`** methods on **`IActor`** when callers need to **await** that post-transition work (they use `FireAsync(...)` internally).
 
-`ReactAsync(...)` schedules fire-and-forget work **after** the transition is already finished:
+Sync trigger methods still **schedule** post-transition async work (fire-and-forget, subject to the captured synchronization context). Async trigger methods **await** the same pipeline inline.
+
+## What post-transition async does
+
+For **external** transitions, synchronous work runs first (guards, exit, invoke, commit, entry, notifications, `StateChanged`). Then a single post-transition pipeline may run:
+
+1. **`WhenExitedAsync(...)`** for each state on the **exit path** from the source up to the lowest common ancestor (in order).
+2. **`WhenEnteredAsync(...)`** for each state on the **entry path** from the lowest common ancestor to the destination (in order).
+3. **`ReactAsync(...)`** for the transition, if any.
+
+For **internal** transitions (`Stay()` / `Ignore()`) and for **dynamic** `TransitionTo(...)` when the resolved **leaf** equals the current leaf, **only** **`ReactAsync`** runs in the post-transition phase (no async entered/exited hooks).
+
+Lifecycle hooks and ordering mirror the synchronous paths used for `WhenEntering` / `WhenExiting` (`EnumerateEntryPath` / `EnumerateExitPath`).
+
+## Example: `ReactAsync` with DI
 
 ```csharp
 using System.Threading.Tasks;
@@ -32,9 +47,9 @@ public static partial class ReviewMachine
             {
                 try {
                     await approvals.ApproveAsync(args.Id);
-                    actor.Approve();
+                    await actor.ApproveAsync();
                 } catch {
-                    actor.Reject();
+                    await actor.RejectAsync();
                 }
             }));
 
@@ -53,57 +68,77 @@ public static partial class ReviewMachine
 
 Register **`IApprovalService`** (and logging types such as **`ILogger<T>`** where you use them) in your DI container. SharpState resolves requested service parameters with `IServiceProvider.GetService(typeof(T))` and throws if the result is `null`.
 
-For external transitions, the execution order is:
+## Full ordering (external transition)
 
-1. `WhenExiting(...)`
-2. `Invoke(...)`
-3. state commit
-4. `WhenEntering(...)`
-5. `StateChanged`
-6. `ReactAsync(...)`
+1. **`WhenExiting(...)`** (synchronous)
+2. **`Invoke(...)`** (synchronous transition action)
+3. State commit
+4. **`WhenEntering(...)`** (synchronous)
+5. **`StateChanged`**
+6. **`WhenExitedAsync(...)`** (post-transition, along exit path)
+7. **`WhenEnteredAsync(...)`** (post-transition, along entry path)
+8. **`ReactAsync(...)`** (if registered)
 
-For internal transitions (`Stay()` / `Ignore()`), only the inline `Invoke(...)` runs before the background reaction is scheduled.
+For internal transitions, only synchronous **`Invoke`** runs before the post-transition phase; then only **`ReactAsync`** may run.
 
-If you use a dynamic `TransitionTo((ctx, args...) => ...)` and it resolves to the current leaf for a specific fire, that fire also behaves like an internal transition.
+## Service provider behavior
 
-## Synchronization context behavior
+- **Synchronous** **`Fire(...)`** (and generated `void` trigger methods): if there is post-transition async work, the engine captures **`SynchronizationContext.Current`** and schedules the pipeline. It calls **`CreateScopedServiceProvider(out IServiceProvider)`** exactly **once** per scheduled run; that provider is passed to **all** async lifecycle hooks and **`ReactAsync`** for that transition, then disposed when the pipeline completes.
+- **`FireAsync(...)`** (and generated **`ValueTask {Trigger}Async(...)`** methods): the pipeline runs inline and receives the actor’s **captured root** provider from **`GetServiceProvider()`**. It does **not** open a reaction scope.
 
-`ReactAsync(...)` captures the current `SynchronizationContext` when the trigger is fired.
+With **`Microsoft.Extensions.DependencyInjection`**, use **`StateMachineServiceProviderResolver`** when scheduled work should use a child DI scope. Use **`StateMachineStaticServiceProviderResolver`** when the same instance should be used everywhere. See [Service provider and actor factories](index.html#service-provider-and-actor-factories).
 
-- If a context exists (for example a UI thread), the reaction starts there.
-- If no context exists, the reaction is queued on the thread pool.
+In ASP.NET Core, do not rely on live `HttpContext` or request-scoped services inside fire-and-forget scheduled work. Copy request data into the machine context or arguments before firing.
 
-This keeps the main trigger path synchronous while still giving UI applications predictable follow-up scheduling. The callback receives the generated `IActor` first, so it can fire more triggers after awaited work completes. Overloads start with `(actor, context, args)` and may request service parameters after that. Those services come from `CreateScopedServiceProvider(out IServiceProvider)`, and the engine disposes the returned token after the reaction.
+If **`ReactAsync`** is registered multiple times on the same transition, the callbacks are awaited sequentially in declaration order.
 
-With **`Microsoft.Extensions.DependencyInjection`**, add the **`Nalu.SharpState.DependencyInjection`** package and use **`StateMachineServiceProviderResolver`** from **`Nalu.SharpState`** (or **`AddScopedStateMachineServiceProviderResolver`**) when each `ReactAsync` should receive its own child DI scope. Use **`StateMachineStaticServiceProviderResolver`** from **`Nalu.SharpState`** (optionally **`AddSingletonStateMachineServiceProviderResolver`**) when synchronous clauses and reactions should share the same provider. For custom rules, implement **`IStateMachineServiceProviderResolver`** yourself. See [Service provider and actor factories](index.html#service-provider-and-actor-factories).
+If **`ReactAsync`** is not registered but async lifecycle hooks are, the pipeline still runs for external transitions.
 
-In ASP.NET Core, do not rely on live `HttpContext` or request-scoped services inside `ReactAsync`. `AsyncLocal` values such as `IHttpContextAccessor.HttpContext` may flow to the scheduled reaction, but the request can finish before the reaction runs. Copy request data you need, such as correlation IDs or `HttpContext.Items`, into the machine context, trigger arguments, or an immutable snapshot service before firing the trigger.
+## Awaiting post-transition work from callers
 
-If `ReactAsync(...)` is registered multiple times on the same transition, the callbacks are awaited sequentially in declaration order.
+For each trigger, the generator emits:
 
-If a caller or test needs to await a specific reaction, keep that coordination explicit. For example, store a `TaskCompletionSource` on the machine context, complete it from the relevant `ReactAsync` callback, and await it from the caller. This waits for the reaction you care about without making every actor expose reaction-draining APIs.
+- `void {Name}(...)` → **`Fire`**
+- `ValueTask {Name}Async(...)` → **`FireAsync`** (awaits exited async, entered async, reaction as applicable)
+
+Use **`OpenAsync`** (etc.) when the caller must observe completion or failure of that async pipeline.
+
+## Synchronization context behavior (scheduled `Fire`)
+
+The scheduled path captures **`SynchronizationContext.Current`** when **`Fire`** runs.
+
+- If a context exists (for example a UI thread), the pipeline starts there.
+- If no context exists, the work is queued on the thread pool.
 
 ## Failure reporting
 
-Because the reaction is fire-and-forget, exceptions do **not** flow back out of the trigger method. Instead, subscribe to `ReactionFailed`:
+### After commit: scheduled `Fire` (fire-and-forget)
+
+Exceptions from **`WhenExitedAsync`**, **`WhenEnteredAsync`**, or **`ReactAsync`** do **not** propagate from **`Fire`**. Subscribe to **`ReactionFailed`**:
 
 ```csharp
 actor.ReactionFailed += (from, to, trigger, args, exception) =>
-    logger.LogError(exception, "Reaction failed for {Trigger}", trigger);
+    logger.LogError(exception, "Post-transition async work failed for {Trigger}", trigger);
 ```
 
-Use an **`ILogger`** (or **`ILoggerFactory`**) you resolve from your host or **`IServiceProvider`**, not the state machine **`Context`**, unless you intentionally cache a logger reference there when constructing the context.
+Subscriber exceptions are swallowed so a buggy logger does not fault the process.
 
-The event is raised with:
+### After commit: `FireAsync` / `{Trigger}Async`
 
-- the committed source leaf state
-- the committed destination leaf state
-- the trigger
-- the machine-specific trigger args union
-- the thrown exception
+Failures in the post-transition pipeline still raise **`ReactionFailed`**, then throw **`ReactionFailedException`** with the original exception as **`InnerException`**. The exception message states that the transition **already committed**.
 
-## When to use `Invoke(...)` vs `ReactAsync(...)`
+If a **`ReactionFailed`** subscriber throws while handling such a failure, that subscriber exception is ignored; callers still receive **`ReactionFailedException`** for the underlying pipeline failure.
 
-Use `Invoke(...)` when the side effect is part of the transition itself and must complete before the new state becomes visible.
+### Before / during commit
 
-Use `ReactAsync(...)` when the transition should commit immediately and the asynchronous work is a follow-up concern such as telemetry, notifications, cache refreshes, or best-effort synchronization.
+Exceptions from guard evaluation, target selection, synchronous **`WhenExiting` / `WhenEntering`**, **`Invoke`**, context notification, or **`StateChanged`** are **not** wrapped in **`ReactionFailedException`** and do **not** raise **`ReactionFailed`**.
+
+## When to use `Invoke` vs `ReactAsync` vs async lifecycle hooks
+
+Use **`Invoke(...)`** when the effect must complete before the new state is visible.
+
+Use **`ReactAsync(...)`** when the state should commit immediately and follow-up work is a separate concern.
+
+Use **`WhenExitedAsync` / `WhenEnteredAsync`** when the concern is tied to **hierarchical** exit or entry paths rather than a single transition’s reaction.
+
+Use **`{Trigger}Async`** from application code when you need to **await** any of that post-transition work reliably.

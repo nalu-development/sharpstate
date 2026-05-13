@@ -51,6 +51,20 @@ internal sealed class TestStateConfigurator<TContext, TArgs, TState, TTrigger, T
         SetExitAction(action);
         return this;
     }
+
+    public TestStateConfigurator<TContext, TArgs, TState, TTrigger, TActor> WhenEnteredAsync(
+        Func<TContext, IServiceProvider, ValueTask> action)
+    {
+        SetEnteredAsyncAction(action);
+        return this;
+    }
+
+    public TestStateConfigurator<TContext, TArgs, TState, TTrigger, TActor> WhenExitedAsync(
+        Func<TContext, IServiceProvider, ValueTask> action)
+    {
+        SetExitedAsyncAction(action);
+        return this;
+    }
 }
 
 internal static class TestTransition

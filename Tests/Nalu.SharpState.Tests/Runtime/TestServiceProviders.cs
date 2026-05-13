@@ -22,3 +22,36 @@ internal static class TestServiceProviders
     public static readonly IStateMachineServiceProviderResolver EmptyResolver =
         StateMachineEmptyServiceProviderResolver.Instance;
 }
+
+/// <summary>
+/// Counts how often <see cref="IStateMachineServiceProviderResolver.CreateScopedServiceProvider"/> is invoked.
+/// </summary>
+internal sealed class CountingScopeServiceProviderResolver : IStateMachineServiceProviderResolver
+{
+    private static readonly IDisposable _emptyDisposable = new EmptyDisposable();
+
+    private readonly IServiceProvider _root;
+
+    public CountingScopeServiceProviderResolver(IServiceProvider root)
+    {
+        _root = root;
+    }
+
+    public int ScopeCreateCount { get; private set; }
+
+    public IServiceProvider GetServiceProvider() => _root;
+
+    public IDisposable CreateScopedServiceProvider(out IServiceProvider serviceProvider)
+    {
+        ScopeCreateCount++;
+        serviceProvider = _root;
+        return _emptyDisposable;
+    }
+
+    private sealed class EmptyDisposable : IDisposable
+    {
+        public void Dispose()
+        {
+        }
+    }
+}

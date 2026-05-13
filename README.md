@@ -4,7 +4,7 @@
 
 **Nalu.SharpState** is a Roslyn source generator for **declarative, strongly typed, hierarchical** state machines in .NET: you declare states and triggers on a `public static partial` class, configure transitions with a **fluent API**, and the generator emits compile-time registration tables and an `IActor` with typed trigger methods.
 
-Optional **`ReactAsync(...)`** callbacks run *after* a transition commits; they receive the generated actor so you can **await I/O and then fire more triggers** transitioning to new states.
+Optional **`WhenExitedAsync(...)`**, **`WhenEnteredAsync(...)`**, and **`ReactAsync(...)`** run *after* a transition commits. The generated **`IActor`** also exposes matching **`{Trigger}Async`** methods that **await** that post-transition work via **`FireAsync`**; synchronous trigger methods still schedule it fire-and-forget.
 
 Dispatch does not use string dictionaries or runtime reflection, so the machine stays **AOT and trim-friendly** with a **small CPU and memory footprint** on the hot path.
 
@@ -65,9 +65,9 @@ Console.WriteLine(door.CurrentState); // Opened
 
 Per-state **`WhenEntering`** and **`WhenExiting`** run around **external** transitions (not **`Stay()`** / **`Ignore()`**). See [Entry and exit hooks](https://nalu-development.github.io/sharpstate/index.html#entry-and-exit-hooks) in the guide.
 
-### Asynchronous reactions
+### Asynchronous reactions and lifecycle
 
-The synchronous trigger API can still schedule async follow-up work after a transition commits; the callback gets the `IActor` and can fire more triggers (for example after `await`ing a service on the context):
+Use **`WhenExitedAsync`**, **`WhenEnteredAsync`**, and **`ReactAsync`** for work after the state change is visible. Sync **`void`** trigger methods **schedule** that pipeline; generated **`ValueTask`** **`*Async`** trigger methods **await** it and use the engine’s root/captured service provider (no reaction scope). Failures after commit are reported on **`ReactionFailed`**; awaited triggers also throw **`ReactionFailedException`** (see the guide). Scheduled work from sync triggers uses **one** **`CreateScopedServiceProvider`** call per run when using a scoped resolver.
 
 ```csharp
 [StateDefinition]
@@ -78,29 +78,29 @@ private static IStateConfiguration Pending { get; } = ConfigureState()
         {
             try {
                 await ctx.ApproveService.ApproveAsync(args.Id);
-                actor.Approve();
+                await actor.ApproveAsync();
             } catch {
-                actor.Reject();
+                await actor.RejectAsync();
             }
         }));
 ```
 
-Details and ordering: [Post-Transition Reactions](https://nalu-development.github.io/sharpstate/sharpstate-async.html).
+Details and ordering: [Post-Transition Async Work](https://nalu-development.github.io/sharpstate/sharpstate-async.html).
 
 ### Benchmarks
 
-Outperform the industry standard ([Stateless](https://github.com/dotnet-state-machine/stateless)) with **4x to 8x faster execution** and **7x to 12x** lower memory overhead depending on the usage.
+Outperform the industry standard ([Stateless](https://github.com/dotnet-state-machine/stateless)) with **7x to 13x faster execution** and **25x to 30x** lower memory overhead depending on the usage.
 
-| Method             | StateChanges |         Mean |      Error |     StdDev |      Gen0 |     Gen1 |   Allocated |
-|--------------------|--------------|-------------:|-----------:|-----------:|----------:|---------:|------------:|
-| SingletonActor     | 100          |     8.623 us |  0.0326 us |  0.0305 us |    4.3945 |        - |    35.94 KB |                                                                                                                                                                                                                                                                                                                        
-| SingletonStateless | 100          |    38.696 us |  0.1156 us |  0.1081 us |   30.0293 |        - |   245.31 KB |
-| TransientActor     | 100          |    10.327 us |  0.0399 us |  0.0373 us |    6.1188 |        - |       50 KB |
-| TransientStateless | 100          |    85.534 us |  0.3368 us |  0.3150 us |   74.5850 |   1.4648 |   610.17 KB |
-| SingletonActor     | 10000        |   881.644 us |  1.7978 us |  1.5012 us |  439.4531 |        - |  3593.75 KB |
-| SingletonStateless | 10000        | 3,949.194 us |  9.3175 us |  8.7156 us | 2953.1250 |        - | 24140.63 KB |
-| TransientActor     | 10000        | 1,068.211 us | 15.9207 us | 14.8922 us |  611.3281 |        - |     5000 KB |
-| TransientStateless | 10000        | 8,699.315 us | 54.7741 us | 51.2358 us | 7468.7500 | 140.6250 | 61016.85 KB |
+| Method             | StateChanges | Mean         | Error      | StdDev     | Gen0      | Gen1     | Allocated   |
+|------------------- |------------- |-------------:|-----------:|-----------:|----------:|---------:|------------:|
+| SingletonActor     | 100          |     5.509 us |  0.0196 us |  0.0183 us |    0.9537 |        - |     7.81 KB |
+| SingletonStateless | 100          |    39.544 us |  0.1018 us |  0.0902 us |   30.0293 |        - |   245.31 KB |
+| TransientActor     | 100          |     6.559 us |  0.0236 us |  0.0220 us |    2.6779 |        - |    21.88 KB |
+| TransientStateless | 100          |    87.597 us |  0.3544 us |  0.3315 us |   74.5850 |   1.4648 |   610.17 KB |
+| SingletonActor     | 10000        |   563.429 us |  1.6667 us |  1.3918 us |   94.7266 |        - |   781.25 KB |
+| SingletonStateless | 10000        | 4,003.178 us | 15.1618 us | 14.1824 us | 3000.0000 |        - | 24531.25 KB |
+| TransientActor     | 10000        |   671.978 us |  2.1106 us |  1.8710 us |  267.5781 |        - |   2187.5 KB |
+| TransientStateless | 10000        | 8,793.037 us | 50.5944 us | 47.3260 us | 7468.7500 | 140.6250 | 61016.85 KB |
 
 See the [benchmarks](https://github.com/nalu-development/sharpstate/tree/main/Tests/Nalu.SharpState.Benchmarks) for more details.
 

@@ -19,4 +19,14 @@ public interface IStateConfiguratorLifecycleBacking<TContext>
     /// </summary>
     /// <param name="action">Context and synchronous transition services.</param>
     void LifecycleSetExitAction(Action<TContext, IServiceProvider> action);
+
+    /// <summary>
+    /// Registers the post-commit entered async callback (at most once per configurator).
+    /// </summary>
+    void LifecycleSetEnteredAsyncAction(Func<TContext, IServiceProvider, ValueTask> action);
+
+    /// <summary>
+    /// Registers the post-commit exited async callback (at most once per configurator).
+    /// </summary>
+    void LifecycleSetExitedAsyncAction(Func<TContext, IServiceProvider, ValueTask> action);
 }
