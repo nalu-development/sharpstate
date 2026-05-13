@@ -1,4 +1,5 @@
 using FluentAssertions;
+using System.Reflection;
 using TriggerArgs = Nalu.SharpState.Tests.Runtime.TestTriggerArgs;
 
 namespace Nalu.SharpState.Tests.Runtime;
@@ -215,6 +216,35 @@ public class StateMachineEngineTests
     }
 
     [Fact]
+    public void Fire_dynamic_external_transition_invokes_sync_action_and_StateChanged()
+    {
+        var definition = BuildFlat(map =>
+        {
+            map[FlatState.A].On(
+                FlatTrigger.Go,
+                TestTransition.ToDynamicTarget<TestContext, IServiceProvider, FlatState, TestActor>(
+                    (_, _, args) => args.Get<bool>(0) ? FlatState.B : FlatState.C,
+                    syncAction: (ctx, _, _) => ctx.Log.Add("dyn-sync")));
+            map[FlatState.B].WhenEntering((ctx, _) => ctx.Log.Add("enter:B"));
+            map[FlatState.C].WhenEntering((ctx, _) => ctx.Log.Add("enter:C"));
+        });
+
+        var ctx = new TestContext();
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(
+            definition,
+            FlatState.A,
+            ctx,
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
+        engine.StateChanged += (_, _, _, _) => ctx.Log.Add("changed");
+
+        engine.Fire(FlatTrigger.Go, TriggerArgs.From(true));
+
+        engine.CurrentState.Should().Be(FlatState.B);
+        ctx.Log.Should().Equal("dyn-sync", "enter:B", "changed");
+    }
+
+    [Fact]
     public void Fire_dynamic_target_to_current_state_behaves_like_internal_transition()
     {
         var definition = BuildFlat(map =>
@@ -276,6 +306,38 @@ public class StateMachineEngineTests
     }
 
     [Fact]
+    public void Fire_walks_to_parent_when_leaf_state_has_no_entry_for_trigger()
+    {
+        var definition = HierarchyTests.BuildHier(map =>
+        {
+            map[HierState.Idle].On(
+                HierTrigger.Connect,
+                TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Connected));
+            map[HierState.Connected]
+                .AsStateMachine(HierState.Authenticating)
+                .On(HierTrigger.Disconnect, TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Idle));
+            map[HierState.Authenticating].Parent(HierState.Connected);
+            map[HierState.Authenticated]
+                .Parent(HierState.Connected)
+                .On(HierTrigger.Message, TestTransition.Stay<TestContext, IServiceProvider, HierState, TestActor>());
+            map[HierState.Outside].On(
+                HierTrigger.GoOutside,
+                TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Outside));
+        });
+
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>(
+            definition,
+            HierState.Authenticated,
+            new TestContext(),
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
+
+        engine.Fire(HierTrigger.Disconnect, TriggerArgs.Empty);
+
+        engine.CurrentState.Should().Be(HierState.Idle);
+    }
+
+    [Fact]
     public void Fire_runs_exit_then_entry_actions_around_external_transition()
     {
         var definition = BuildFlat(map =>
@@ -296,6 +358,48 @@ public class StateMachineEngineTests
     }
 
     [Fact]
+    public void CanFire_returns_false_when_current_leaf_has_no_definition_entry()
+    {
+        var map = new InternalEnumMap<FlatState, TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
+            .On(FlatTrigger.Go, TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.B));
+        map[FlatState.B] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+
+        var forDef = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
+        foreach (var kvp in map)
+        {
+            forDef[kvp.Key] = kvp.Value;
+        }
+
+        var definition = new StateMachineDefinition<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(forDef);
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(
+            definition,
+            FlatState.A,
+            new TestContext(),
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
+
+        var currentField = typeof(StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>).GetField(
+            "_currentState",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        currentField.Should().NotBeNull();
+        currentField!.SetValue(engine, FlatState.C);
+
+        engine.CanFire(FlatTrigger.Go, TriggerArgs.Empty).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IndexOf_returns_negative_when_state_not_in_ancestor_chain()
+    {
+        var indexOf = typeof(StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>).GetMethod(
+            "IndexOf",
+            BindingFlags.NonPublic | BindingFlags.Static);
+        indexOf.Should().NotBeNull();
+        var chain = new[] { FlatState.A, FlatState.B };
+        ((int)indexOf!.Invoke(null, [chain, FlatState.C])!).Should().Be(-1);
+    }
+
+    [Fact]
     public void Constructor_throws_when_definition_is_null()
     {
         var act = () => new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(
@@ -305,6 +409,23 @@ public class StateMachineEngineTests
             new TestActor(),
             TestServiceProviders.EmptyResolver);
         act.Should().ThrowExactly<ArgumentNullException>().WithParameterName("definition");
+    }
+
+    [Fact]
+    public void Constructor_throws_when_service_provider_resolver_is_null()
+    {
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.B] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.C] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+        var def = new StateMachineDefinition<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(map);
+        var act = () => new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(
+            def,
+            FlatState.A,
+            new TestContext(),
+            new TestActor(),
+            null!);
+        act.Should().ThrowExactly<ArgumentNullException>().WithParameterName("serviceProviderResolver");
     }
 
     [Fact]

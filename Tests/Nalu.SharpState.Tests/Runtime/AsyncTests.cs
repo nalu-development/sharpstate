@@ -346,6 +346,10 @@ public class AsyncTests
             .Should().ThrowAsync<ReactionFailedException>();
         reactionFailed.Should().BeTrue();
         ex.Which.InnerException.Should().BeOfType<FormatException>().Which.Message.Should().Be("entered");
+        ex.Which.SourceState.Should().Be(FlatState.A);
+        ex.Which.DestinationState.Should().Be(FlatState.B);
+        ex.Which.Trigger.Should().Be(FlatTrigger.Go);
+        ex.Which.TriggerArgs.Should().BeSameAs(TriggerArgs.Empty);
     }
 
     [Fact]
@@ -368,6 +372,10 @@ public class AsyncTests
         var ex = await FluentActions.Awaiting(async () => await engine.FireAsync(FlatTrigger.Go, TriggerArgs.Empty))
             .Should().ThrowAsync<ReactionFailedException>();
         ex.Which.InnerException.Should().BeOfType<FormatException>().Which.Message.Should().Be("exited");
+        ex.Which.SourceState.Should().Be(FlatState.A);
+        ex.Which.DestinationState.Should().Be(FlatState.B);
+        ex.Which.Trigger.Should().Be(FlatTrigger.Go);
+        ex.Which.TriggerArgs.Should().BeSameAs(TriggerArgs.Empty);
     }
 
     [Fact]
@@ -387,9 +395,13 @@ public class AsyncTests
             new TestContext(),
             new TestActor(),
             TestServiceProviders.EmptyResolver);
-        var ex = await FluentActions.Awaiting(async () => await engine.FireAsync(FlatTrigger.Go, TriggerArgs.Empty))
+        var ex = await FluentActions.Awaiting(async () => await engine.FireAsync(FlatTrigger.Go, TriggerArgs.From(9)))
             .Should().ThrowAsync<ReactionFailedException>();
         ex.Which.InnerException.Should().BeOfType<FormatException>().Which.Message.Should().Be("react");
+        ex.Which.SourceState.Should().Be(FlatState.A);
+        ex.Which.DestinationState.Should().Be(FlatState.B);
+        ex.Which.Trigger.Should().Be(FlatTrigger.Go);
+        ((TestTriggerArgs)ex.Which.TriggerArgs!).Get<int>(0).Should().Be(9);
     }
 
     [Fact]
@@ -461,6 +473,152 @@ public class AsyncTests
         var ex = await FluentActions.Awaiting(async () => await engine.FireAsync(FlatTrigger.Go, TriggerArgs.Empty))
             .Should().ThrowAsync<ReactionFailedException>();
         ex.Which.InnerException.Should().BeOfType<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task FireAsync_throws_when_reentered_from_StateChanged_handler()
+    {
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
+            .On(FlatTrigger.Go, TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.B));
+        map[FlatState.B] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
+            .On(FlatTrigger.Alt, TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.C));
+        map[FlatState.C] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(
+            new StateMachineDefinition<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(map),
+            FlatState.A,
+            new TestContext(),
+            new TestActor(),
+            TestServiceProviders.EmptyResolver)
+        {
+            OnUnhandled = null,
+        };
+
+        engine.StateChanged += (_, _, _, _) =>
+        {
+            FluentActions
+                .Invoking(() => engine.FireAsync(FlatTrigger.Alt, TriggerArgs.Empty).AsTask().GetAwaiter().GetResult())
+                .Should()
+                .Throw<InvalidOperationException>()
+                .WithMessage("*cannot be fired while another trigger is still being processed*");
+        };
+
+        await engine.FireAsync(FlatTrigger.Go, TriggerArgs.Empty);
+
+        engine.CurrentState.Should().Be(FlatState.B);
+    }
+
+    [Fact]
+    public async Task FireAsync_unhandled_trigger_invokes_OnUnhandled()
+    {
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.B] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.C] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(
+            new StateMachineDefinition<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(map),
+            FlatState.A,
+            new TestContext(),
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
+        (FlatState state, FlatTrigger trigger, IServiceProvider args)? captured = null;
+        engine.OnUnhandled = (s, t, a) => captured = (s, t, a);
+
+        await engine.FireAsync(FlatTrigger.NoMatch, TriggerArgs.From(11));
+
+        captured.Should().NotBeNull();
+        captured!.Value.state.Should().Be(FlatState.A);
+        captured.Value.trigger.Should().Be(FlatTrigger.NoMatch);
+        captured.Value.args.Get<int>(0).Should().Be(11);
+    }
+
+    [Fact]
+    public async Task FireAsync_unhandled_trigger_with_null_OnUnhandled_is_silent()
+    {
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.B] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.C] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(
+            new StateMachineDefinition<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(map),
+            FlatState.A,
+            new TestContext(),
+            new TestActor(),
+            TestServiceProviders.EmptyResolver)
+        {
+            OnUnhandled = null,
+        };
+
+        await engine.FireAsync(FlatTrigger.NoMatch, TriggerArgs.Empty);
+
+        engine.CurrentState.Should().Be(FlatState.A);
+    }
+
+    [Fact]
+    public async Task FireAsync_returns_when_transition_has_no_post_transition_async_work()
+    {
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
+            .On(FlatTrigger.Go, TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.B));
+        map[FlatState.B] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.C] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+
+        var countingResolver = new CountingScopeServiceProviderResolver(EmptyServiceProvider.Instance);
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(
+            new StateMachineDefinition<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(map),
+            FlatState.A,
+            new TestContext(),
+            new TestActor(),
+            countingResolver);
+
+        await engine.FireAsync(FlatTrigger.Go, TriggerArgs.Empty);
+
+        engine.CurrentState.Should().Be(FlatState.B);
+        countingResolver.ScopeCreateCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task FireAsync_external_transition_to_same_leaf_runs_async_lifecycle_and_reaction()
+    {
+        var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
+        map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
+            .WhenExitedAsync((ctx, _) =>
+            {
+                ctx.Log.Add("exitedAsync:A");
+                return ValueTask.CompletedTask;
+            })
+            .WhenEnteredAsync((ctx, _) =>
+            {
+                ctx.Log.Add("enteredAsync:A");
+                return ValueTask.CompletedTask;
+            })
+            .On(
+                FlatTrigger.Go,
+                TestTransition.ToTarget<TestContext, IServiceProvider, FlatState, TestActor>(
+                    FlatState.A,
+                    reactionAsync: (_, ctx, _, _) =>
+                    {
+                        ctx.Log.Add("react");
+                        return ValueTask.CompletedTask;
+                    }));
+        map[FlatState.B] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+        map[FlatState.C] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
+
+        var ctx = new TestContext();
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(
+            new StateMachineDefinition<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>(map),
+            FlatState.A,
+            ctx,
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
+
+        await engine.FireAsync(FlatTrigger.Go, TriggerArgs.Empty);
+
+        ctx.Log.Should().Equal("exitedAsync:A", "enteredAsync:A", "react");
+        engine.CurrentState.Should().Be(FlatState.A);
     }
 
     [Fact]

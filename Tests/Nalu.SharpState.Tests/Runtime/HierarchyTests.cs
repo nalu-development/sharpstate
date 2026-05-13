@@ -5,7 +5,7 @@ namespace Nalu.SharpState.Tests.Runtime;
 
 public class HierarchyTests
 {
-    private static StateMachineDefinition<TestContext, IServiceProvider, HierState, HierTrigger, TestActor> BuildHier(
+    internal static StateMachineDefinition<TestContext, IServiceProvider, HierState, HierTrigger, TestActor> BuildHier(
         Action<InternalEnumMap<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>> setup)
     {
         var map = new InternalEnumMap<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>();
@@ -223,5 +223,97 @@ public class HierarchyTests
         engine.Fire(HierTrigger.AuthOk, TriggerArgs.Empty);
 
         ctx.Log.Should().Equal("exit:Authenticating", "enter:Authenticated");
+    }
+
+    [Fact]
+    public async Task FireAsync_runs_WhenExitedAsync_for_leaf_and_ancestor_when_leaving_nested_composite()
+    {
+        var definition = BuildHier(map =>
+        {
+            map[HierState.Idle].On(
+                HierTrigger.Connect,
+                TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Connected));
+            map[HierState.Connected]
+                .AsStateMachine(HierState.Authenticating)
+                .WhenExitedAsync((ctx, _) =>
+                {
+                    ctx.Log.Add("exitedAsync:Connected");
+                    return ValueTask.CompletedTask;
+                })
+                .On(HierTrigger.Disconnect, TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Idle));
+            map[HierState.Authenticating]
+                .Parent(HierState.Connected)
+                .On(HierTrigger.AuthOk, TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Authenticated));
+            map[HierState.Authenticated]
+                .Parent(HierState.Connected)
+                .WhenExitedAsync((ctx, _) =>
+                {
+                    ctx.Log.Add("exitedAsync:Authenticated");
+                    return ValueTask.CompletedTask;
+                })
+                .On(HierTrigger.Disconnect, TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Idle));
+            map[HierState.Outside].On(
+                HierTrigger.GoOutside,
+                TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Outside));
+        });
+
+        var ctx = new TestContext();
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>(
+            definition,
+            HierState.Authenticated,
+            ctx,
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
+
+        await engine.FireAsync(HierTrigger.Disconnect, TriggerArgs.Empty);
+
+        ctx.Log.Should().Equal("exitedAsync:Authenticated", "exitedAsync:Connected");
+        engine.CurrentState.Should().Be(HierState.Idle);
+    }
+
+    [Fact]
+    public async Task FireAsync_runs_WhenEnteredAsync_for_ancestor_when_entering_nested_composite()
+    {
+        var definition = BuildHier(map =>
+        {
+            map[HierState.Idle].On(
+                HierTrigger.Connect,
+                TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Connected));
+            map[HierState.Connected]
+                .AsStateMachine(HierState.Authenticating)
+                .WhenEnteredAsync((ctx, _) =>
+                {
+                    ctx.Log.Add("enteredAsync:Connected");
+                    return ValueTask.CompletedTask;
+                })
+                .On(HierTrigger.Disconnect, TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Idle));
+            map[HierState.Authenticating]
+                .Parent(HierState.Connected)
+                .WhenEnteredAsync((ctx, _) =>
+                {
+                    ctx.Log.Add("enteredAsync:Authenticating");
+                    return ValueTask.CompletedTask;
+                })
+                .On(HierTrigger.AuthOk, TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Authenticated));
+            map[HierState.Authenticated]
+                .Parent(HierState.Connected)
+                .On(HierTrigger.Message, TestTransition.Stay<TestContext, IServiceProvider, HierState, TestActor>());
+            map[HierState.Outside].On(
+                HierTrigger.GoOutside,
+                TestTransition.ToTarget<TestContext, IServiceProvider, HierState, TestActor>(HierState.Outside));
+        });
+
+        var ctx = new TestContext();
+        var engine = new StateMachineEngine<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>(
+            definition,
+            HierState.Idle,
+            ctx,
+            new TestActor(),
+            TestServiceProviders.EmptyResolver);
+
+        await engine.FireAsync(HierTrigger.Connect, TriggerArgs.Empty);
+
+        ctx.Log.Should().Equal("enteredAsync:Connected", "enteredAsync:Authenticating");
+        engine.CurrentState.Should().Be(HierState.Authenticating);
     }
 }
