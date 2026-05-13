@@ -45,7 +45,7 @@ public class HierarchyTests
         });
 
     [Fact]
-    public void Targeting_composite_drills_to_initial_child()
+    public void TargetingCompositeDrillsToInitialChild()
     {
         var definition = CreateStandardHierarchy();
         var engine = new StateMachineEngine<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>(definition, HierState.Idle, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver);
@@ -56,7 +56,7 @@ public class HierarchyTests
     }
 
     [Fact]
-    public void Composite_is_entered_as_initial_child_when_used_as_starting_state()
+    public void CompositeIsEnteredAsInitialChildWhenUsedAsStartingState()
     {
         var definition = CreateStandardHierarchy();
         var engine = new StateMachineEngine<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>(definition, HierState.Connected, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver);
@@ -64,7 +64,7 @@ public class HierarchyTests
     }
 
     [Fact]
-    public void Child_inherits_parent_transition_when_not_overridden()
+    public void ChildInheritsParentTransitionWhenNotOverridden()
     {
         var definition = CreateStandardHierarchy();
         var engine = new StateMachineEngine<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>(definition, HierState.Authenticated, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver);
@@ -75,7 +75,7 @@ public class HierarchyTests
     }
 
     [Fact]
-    public void Child_overrides_parent_transition()
+    public void ChildOverridesParentTransition()
     {
         var definition = BuildHier(map =>
         {
@@ -96,7 +96,7 @@ public class HierarchyTests
     }
 
     [Fact]
-    public void IsIn_true_for_composite_ancestor_and_leaf()
+    public void IsInTrueForCompositeAncestorAndLeaf()
     {
         var definition = CreateStandardHierarchy();
         var engine = new StateMachineEngine<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>(definition, HierState.Authenticated, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver);
@@ -107,7 +107,7 @@ public class HierarchyTests
     }
 
     [Fact]
-    public void Stay_inside_composite_does_not_change_state()
+    public void StayInsideCompositeDoesNotChangeState()
     {
         var definition = CreateStandardHierarchy();
         var ctx = new TestContext();
@@ -120,7 +120,7 @@ public class HierarchyTests
     }
 
     [Fact]
-    public void Cross_hierarchy_transition_resets_to_leaf()
+    public void CrossHierarchyTransitionResetsToLeaf()
     {
         var definition = CreateStandardHierarchy();
         var engine = new StateMachineEngine<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>(definition, HierState.Authenticated, new TestContext(), new TestActor(), TestServiceProviders.EmptyResolver);
@@ -132,7 +132,7 @@ public class HierarchyTests
     }
 
     [Fact]
-    public void Entering_composite_from_outside_runs_parent_then_initial_child()
+    public void EnteringCompositeFromOutsideRunsParentThenInitialChild()
     {
         var definition = BuildHier(map =>
         {
@@ -164,7 +164,7 @@ public class HierarchyTests
     }
 
     [Fact]
-    public void Leaving_composite_to_external_state_runs_exits_up_chain_then_target_entry()
+    public void LeavingCompositeToExternalStateRunsExitsUpChainThenTargetEntry()
     {
         var definition = BuildHier(map =>
         {
@@ -196,7 +196,7 @@ public class HierarchyTests
     }
 
     [Fact]
-    public void Exit_and_entry_actions_follow_hierarchy_path()
+    public void ExitAndEntryActionsFollowHierarchyPath()
     {
         var definition = BuildHier(map =>
         {
@@ -226,7 +226,7 @@ public class HierarchyTests
     }
 
     [Fact]
-    public async Task FireAsync_runs_WhenExitedAsync_for_leaf_and_ancestor_when_leaving_nested_composite()
+    public async Task FireAsyncRunsWhenExitedAsyncForLeafAndAncestorWhenLeavingNestedComposite()
     {
         var definition = BuildHier(map =>
         {
@@ -272,7 +272,7 @@ public class HierarchyTests
     }
 
     [Fact]
-    public async Task FireAsync_runs_WhenEnteredAsync_for_ancestor_when_entering_nested_composite()
+    public async Task FireAsyncRunsWhenEnteredAsyncForAncestorWhenEnteringNestedComposite()
     {
         var definition = BuildHier(map =>
         {

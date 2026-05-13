@@ -6,7 +6,7 @@ namespace Nalu.SharpState.Tests.Generator;
 public class SubStateMachineCastAttributeTests
 {
     [Fact]
-    public void SubStateMachine_cast_enum_in_argument_uses_ExtractEnumName_when_syntax_tail_missing()
+    public void SubStateMachineCastEnumInArgumentUsesExtractEnumNameWhenSyntaxTailMissing()
     {
         var source = """
         using Nalu.SharpState;
@@ -41,7 +41,7 @@ public class SubStateMachineCastAttributeTests
     }
 
     [Fact]
-    public void SubStateMachine_positional_enum_member_uses_ExtractEnumName()
+    public void SubStateMachinePositionalEnumMemberUsesExtractEnumName()
     {
         var source = """
         using Nalu.SharpState;

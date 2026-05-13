@@ -7,7 +7,7 @@ namespace Nalu.SharpState.Tests.EndToEnd;
 public class EndToEndTests
 {
     [Fact]
-    public void Trigger_advances_state_and_runs_action_with_args()
+    public void TriggerAdvancesStateAndRunsActionWithArgs()
     {
         var ctx = new DoorContext();
         var door = DoorMachine.CreateActor(ctx, TestServiceProviders.EmptyResolver);
@@ -20,14 +20,14 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void GetInitialState_returns_generated_root_initial_state()
+    public void GetInitialStateReturnsGeneratedRootInitialState()
     {
         DoorMachine.GetInitialState().Should().Be(DoorMachine.State.Closed);
         NetworkMachine.GetInitialState().Should().Be(NetworkMachine.State.Idle);
     }
 
     [Fact]
-    public void CanTrigger_methods_reflect_current_generated_actor_state()
+    public void CanTriggerMethodsReflectCurrentGeneratedActorState()
     {
         var door = DoorMachine.CreateActorWithState(new DoorContext(), TestServiceProviders.EmptyResolver, DoorMachine.State.Closed);
 
@@ -41,7 +41,7 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void Close_transitions_back_and_StateChanged_fires()
+    public void CloseTransitionsBackAndStateChangedFires()
     {
         var door = DoorMachine.CreateActorWithState(new DoorContext(), TestServiceProviders.EmptyResolver, DoorMachine.State.Opened);
         (DoorMachine.State from, DoorMachine.State to, DoorMachine.Trigger trigger, DoorMachine.TriggerArgs args)? captured = null;
@@ -58,7 +58,7 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void CreateActor_with_microsoft_di_scope_disposes_scoped_services_after_ReactAsync()
+    public void CreateActorWithMicrosoftDiScopeDisposesScopedServicesAfterReactAsync()
     {
         var serviceCollection = new ServiceCollection();
         serviceCollection.AddScoped<ScopedResource>();
@@ -81,7 +81,7 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void ReactAsync_runs_after_trigger_returns()
+    public void ReactAsyncRunsAfterTriggerReturns()
     {
         var ctx = new InspectContext();
         var machine = ReactionMachine.CreateActorWithState(ctx, TestServiceProviders.EmptyResolver, ReactionMachine.State.Idle);
@@ -97,7 +97,7 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void ReactAsync_target_transition_commits_before_reaction()
+    public void ReactAsyncTargetTransitionCommitsBeforeReaction()
     {
         var ctx = new InspectContext();
         var machine = ReactionMachine.CreateActorWithState(ctx, TestServiceProviders.EmptyResolver, ReactionMachine.State.Idle);
@@ -112,7 +112,7 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void OnUnhandled_override_captures_unhandled_triggers()
+    public void OnUnhandledOverrideCapturesUnhandledTriggers()
     {
         var door = DoorMachine.CreateActorWithState(new DoorContext(), TestServiceProviders.EmptyResolver, DoorMachine.State.Opened);
         (DoorMachine.State state, DoorMachine.Trigger trigger, DoorMachine.TriggerArgs args)? captured = null;
@@ -129,7 +129,7 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void Hierarchical_targeting_composite_resolves_initial_child()
+    public void HierarchicalTargetingCompositeResolvesInitialChild()
     {
         var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), TestServiceProviders.EmptyResolver, NetworkMachine.State.Idle);
 
@@ -140,7 +140,7 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void Hierarchical_child_inherits_parent_transitions()
+    public void HierarchicalChildInheritsParentTransitions()
     {
         var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), TestServiceProviders.EmptyResolver, NetworkMachine.State.Authenticated);
 
@@ -151,7 +151,7 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void IsIn_returns_true_for_ancestor_states()
+    public void IsInReturnsTrueForAncestorStates()
     {
         var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), TestServiceProviders.EmptyResolver, NetworkMachine.State.Authenticated);
 
@@ -161,7 +161,7 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void Internal_transition_runs_action_without_changing_state()
+    public void InternalTransitionRunsActionWithoutChangingState()
     {
         var ctx = new NetworkContext();
         // Entering Authenticated resolves to its initial leaf (Browsing).
@@ -175,7 +175,7 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void Targeting_outer_composite_lands_on_deepest_initial_leaf()
+    public void TargetingOuterCompositeLandsOnDeepestInitialLeaf()
     {
         var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), TestServiceProviders.EmptyResolver, NetworkMachine.State.Idle);
 
@@ -187,7 +187,7 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void Targeting_composite_with_nested_initial_resolves_to_deepest_leaf()
+    public void TargetingCompositeWithNestedInitialResolvesToDeepestLeaf()
     {
         var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), TestServiceProviders.EmptyResolver, NetworkMachine.State.Authenticating);
 
@@ -200,7 +200,7 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void Deep_leaf_inherits_outermost_ancestor_transitions()
+    public void DeepLeafInheritsOutermostAncestorTransitions()
     {
         var machine = NetworkMachine.CreateActorWithState(new NetworkContext(), TestServiceProviders.EmptyResolver, NetworkMachine.State.Editing);
 
@@ -211,7 +211,7 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void Entry_and_exit_hooks_run_for_generated_machine()
+    public void EntryAndExitHooksRunForGeneratedMachine()
     {
         var ctx = new HookContext();
         var machine = HookMachine.CreateActorWithState(ctx, TestServiceProviders.EmptyResolver, HookMachine.State.Idle);
@@ -223,7 +223,7 @@ public class EndToEndTests
     }
 
     [Fact]
-    public void Ignore_syntax_sugar_keeps_current_state_without_unhandled()
+    public void IgnoreSyntaxSugarKeepsCurrentStateWithoutUnhandled()
     {
         var ctx = new HookContext();
         var machine = HookMachine.CreateActorWithState(ctx, TestServiceProviders.EmptyResolver, HookMachine.State.Running);

@@ -5,7 +5,7 @@ namespace Nalu.SharpState.Tests.Generator;
 public class EmitterCoverageTests
 {
     [Fact]
-    public void Non_static_machine_emits_implementing_partials_and_private_constructor_that_calls_triggers()
+    public void NonStaticMachineEmitsImplementingPartialsAndPrivateConstructorThatCallsTriggers()
     {
         var source = """
             using Nalu.SharpState;
@@ -34,7 +34,7 @@ public class EmitterCoverageTests
     }
 
     [Fact]
-    public void Machine_without_triggers_does_not_emit_trigger_partial_stubs_or_reference_constructor()
+    public void MachineWithoutTriggersDoesNotEmitTriggerPartialStubsOrReferenceConstructor()
     {
         var source = """
             using Nalu.SharpState;
@@ -58,7 +58,7 @@ public class EmitterCoverageTests
     }
 
     [Fact]
-    public void Static_machine_emits_static_constructor_that_calls_triggers_after_implementing_partials()
+    public void StaticMachineEmitsStaticConstructorThatCallsTriggersAfterImplementingPartials()
     {
         var source = """
             using Nalu.SharpState;
@@ -87,7 +87,7 @@ public class EmitterCoverageTests
     }
 
     [Fact]
-    public void Parameterless_trigger_emits_StaticTriggerArgs_factory_and_parameterless_builder()
+    public void ParameterlessTriggerEmitsStaticTriggerArgsFactoryAndParameterlessBuilder()
     {
         var source = """
             using Nalu.SharpState;

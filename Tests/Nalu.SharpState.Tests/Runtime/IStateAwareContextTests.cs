@@ -66,7 +66,7 @@ public class StateAwareContextTests
     }
 
     [Fact]
-    public void OnStateChanged_receives_leaf_state_after_external_transition()
+    public void OnStateChangedReceivesLeafStateAfterExternalTransition()
     {
         var definition = BuildFlat(map =>
         {
@@ -90,7 +90,7 @@ public class StateAwareContextTests
     }
 
     [Fact]
-    public void OnStateChanged_runs_after_entry_actions_and_before_StateChanged_event()
+    public void OnStateChangedRunsAfterEntryActionsAndBeforeStateChangedEvent()
     {
         var definition = BuildFlat(map =>
         {
@@ -116,7 +116,7 @@ public class StateAwareContextTests
     }
 
     [Fact]
-    public void OnStateChanged_is_not_invoked_for_internal_Stay_transition()
+    public void OnStateChangedIsNotInvokedForInternalStayTransition()
     {
         var definition = BuildFlat(map =>
         {
@@ -139,7 +139,7 @@ public class StateAwareContextTests
     }
 
     [Fact]
-    public void OnStateChanged_is_not_invoked_when_dynamic_target_resolves_to_current_leaf()
+    public void OnStateChangedIsNotInvokedWhenDynamicTargetResolvesToCurrentLeaf()
     {
         var definition = BuildFlat(map =>
         {
@@ -165,7 +165,7 @@ public class StateAwareContextTests
     }
 
     [Fact]
-    public void OnStateChanged_is_not_invoked_by_constructor()
+    public void OnStateChangedIsNotInvokedByConstructor()
     {
         var definition = BuildFlat();
         var ctx = new StateAwareTestContext<FlatState>();
@@ -180,7 +180,7 @@ public class StateAwareContextTests
     }
 
     [Fact]
-    public void OnStateChanged_receives_resolved_leaf_in_hierarchical_machine()
+    public void OnStateChangedReceivesResolvedLeafInHierarchicalMachine()
     {
         var definition = BuildStandardHierarchyStateAware();
         var ctx = new StateAwareTestContext<HierState>();

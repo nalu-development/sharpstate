@@ -378,7 +378,7 @@ public class StateTriggerBuilderSixteenServiceOverloadTests
     [InlineData(14)]
     [InlineData(15)]
     [InlineData(16)]
-    public async Task Parameterless_builder_di_overloads(int n)
+    public async Task ParameterlessBuilderDiOverloads(int n)
     {
         var diTypes = _diTypes.Take(n).ToArray();
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor>();
@@ -414,7 +414,7 @@ public class StateTriggerBuilderSixteenServiceOverloadTests
     [InlineData(14)]
     [InlineData(15)]
     [InlineData(16)]
-    public async Task Args_builder_di_overloads(int n)
+    public async Task ArgsBuilderDiOverloads(int n)
     {
         var diTypes = _diTypes.Take(n).ToArray();
         var builder = new StateTriggerBuilder<TestContext, TestTriggerArgs, FlatState, TestActor, TestTriggerArgs>();

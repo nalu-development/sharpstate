@@ -4,18 +4,18 @@ namespace Nalu.SharpState.Tests.EndToEnd;
 public class EndToEndExporterSnapshotTests
 {
     [Fact]
-    public Task Dot_DoorMachine_guard_labels()
+    public Task DotDoorMachineGuardLabels()
         => Verify(DoorMachine.ToDot(), ExporterSnapshotTestSettings.Create());
 
     [Fact]
-    public Task Dot_ReactionMachine_terminal_states()
+    public Task DotReactionMachineTerminalStates()
         => Verify(ReactionMachine.ToDot(), ExporterSnapshotTestSettings.Create());
 
     [Fact]
-    public Task Dot_NetworkMachine_hierarchy()
+    public Task DotNetworkMachineHierarchy()
         => Verify(NetworkMachine.ToDot(), ExporterSnapshotTestSettings.Create());
 
     [Fact]
-    public Task Mermaid_NetworkMachine()
+    public Task MermaidNetworkMachine()
         => Verify(NetworkMachine.ToMermaid(), ExporterSnapshotTestSettings.Create());
 }

@@ -17,7 +17,7 @@ public class DefinitionValidationTests
     }
 
     [Fact]
-    public void Parent_without_matching_AsStateMachine_throws()
+    public void ParentWithoutMatchingAsStateMachineThrows()
     {
         var map = new Dictionary<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>
         {
@@ -35,7 +35,7 @@ public class DefinitionValidationTests
     }
 
     [Fact]
-    public void AsStateMachine_whose_initial_child_does_not_claim_parent_throws()
+    public void AsStateMachineWhoseInitialChildDoesNotClaimParentThrows()
     {
         var map = new Dictionary<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>
         {
@@ -53,7 +53,7 @@ public class DefinitionValidationTests
     }
 
     [Fact]
-    public void Multi_parent_single_configurator_throws_on_second_Parent_call()
+    public void MultiParentSingleConfiguratorThrowsOnSecondParentCall()
     {
         var act = () => new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>()
             .Parent(HierState.Connected)
@@ -62,7 +62,7 @@ public class DefinitionValidationTests
     }
 
     [Fact]
-    public void Double_AsStateMachine_throws()
+    public void DoubleAsStateMachineThrows()
     {
         var act = () => new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>()
             .AsStateMachine(HierState.Authenticating)
@@ -71,7 +71,7 @@ public class DefinitionValidationTests
     }
 
     [Fact]
-    public void Parent_referring_to_unknown_state_throws()
+    public void ParentReferringToUnknownStateThrows()
     {
         var map = new Dictionary<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>
         {
@@ -84,7 +84,7 @@ public class DefinitionValidationTests
     }
 
     [Fact]
-    public void Cycle_in_state_hierarchy_throws()
+    public void CycleInStateHierarchyThrows()
     {
         var map = new Dictionary<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>
         {
@@ -110,7 +110,7 @@ public class DefinitionValidationTests
     }
 
     [Fact]
-    public void AncestorsOf_returns_immediate_parent_first()
+    public void AncestorsOfReturnsImmediateParentFirst()
     {
         var definition = HierarchyTests.CreateStandardHierarchy();
 
@@ -120,7 +120,7 @@ public class DefinitionValidationTests
     }
 
     [Fact]
-    public void LowestCommonAncestor_returns_nearest_common_composite()
+    public void LowestCommonAncestorReturnsNearestCommonComposite()
     {
         var definition = HierarchyTests.CreateStandardHierarchy();
 
@@ -130,7 +130,7 @@ public class DefinitionValidationTests
     }
 
     [Fact]
-    public void LowestCommonAncestor_of_identical_child_states_returns_that_state()
+    public void LowestCommonAncestorOfIdenticalChildStatesReturnsThatState()
     {
         var definition = HierarchyTests.CreateStandardHierarchy();
 
@@ -140,7 +140,7 @@ public class DefinitionValidationTests
     }
 
     [Fact]
-    public void Initial_child_not_in_definition_throws()
+    public void InitialChildNotInDefinitionThrows()
     {
         var map = new Dictionary<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>
         {
@@ -158,7 +158,7 @@ public class DefinitionValidationTests
     }
 
     [Fact]
-    public void Second_WhenEntering_throws()
+    public void SecondWhenEnteringThrows()
     {
         var act = () => new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>()
             .WhenEntering((_, _) => { })
@@ -167,7 +167,7 @@ public class DefinitionValidationTests
     }
 
     [Fact]
-    public void Second_WhenExiting_throws()
+    public void SecondWhenExitingThrows()
     {
         var act = () => new TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>()
             .WhenExiting((_, _) => { })

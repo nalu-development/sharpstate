@@ -30,7 +30,7 @@ public class StateMachineExporterTests
     }
 
     [Fact]
-    public Task Dot_flat_dynamic_hints()
+    public Task DotFlatDynamicHints()
     {
         var definition = BuildFlatWithDynamicHints();
         var dot = StateMachineExporter.ToDot(definition, FlatState.A, "Flat");
@@ -38,7 +38,7 @@ public class StateMachineExporterTests
     }
 
     [Fact]
-    public Task Dot_flat_dynamic_without_hints()
+    public Task DotFlatDynamicWithoutHints()
     {
         var map = new InternalEnumMap<FlatState, TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new();
@@ -60,7 +60,7 @@ public class StateMachineExporterTests
     }
 
     [Fact]
-    public Task Mermaid_flat_dynamic_hints()
+    public Task MermaidFlatDynamicHints()
     {
         var definition = BuildFlatWithDynamicHints();
         var mermaid = StateMachineExporter.ToMermaid(definition, FlatState.A, "Flat");
@@ -68,7 +68,7 @@ public class StateMachineExporterTests
     }
 
     [Fact]
-    public Task Mermaid_flat_dynamic_without_hints()
+    public Task MermaidFlatDynamicWithoutHints()
     {
         var map = new InternalEnumMap<FlatState, TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new();
@@ -90,7 +90,7 @@ public class StateMachineExporterTests
     }
 
     [Fact]
-    public Task Mermaid_guards_and_fallbacks()
+    public Task MermaidGuardsAndFallbacks()
     {
         var map = new InternalEnumMap<FlatState, TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new();
@@ -124,7 +124,7 @@ public class StateMachineExporterTests
     }
 
     [Fact]
-    public Task Mermaid_composite_region_stay()
+    public Task MermaidCompositeRegionStay()
     {
         var map = new InternalEnumMap<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>();
         map[HierState.Idle] = new();
@@ -152,7 +152,7 @@ public class StateMachineExporterTests
     }
 
     [Fact]
-    public Task Mermaid_coalesces_multiple_region_stay_triggers()
+    public Task MermaidCoalescesMultipleRegionStayTriggers()
     {
         var map = new InternalEnumMap<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>();
         map[HierState.Idle] = new();
@@ -183,7 +183,7 @@ public class StateMachineExporterTests
     }
 
     [Fact]
-    public Task Mermaid_renders_guarded_and_unguarded_region_stays()
+    public Task MermaidRendersGuardedAndUnguardedRegionStays()
     {
         var map = new InternalEnumMap<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>();
         map[HierState.Idle] = new();
@@ -216,7 +216,7 @@ public class StateMachineExporterTests
     }
 
     [Fact]
-    public void Mermaid_labels_unguarded_composite_choice_fallback_as_else()
+    public void MermaidLabelsUnguardedCompositeChoiceFallbackAsElse()
     {
         var map = new InternalEnumMap<HierState, TestStateConfigurator<TestContext, IServiceProvider, HierState, HierTrigger, TestActor>>();
         map[HierState.Idle] = new();

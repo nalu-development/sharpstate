@@ -12,14 +12,14 @@ public class StateConfiguratorCoverageTests
     }
 
     [Fact]
-    public void AddTransitions_with_empty_list_returns_immediately()
+    public void AddTransitionsWithEmptyListReturnsImmediately()
     {
         var c = new ExposedConfigurator();
         c.Add(FlatTrigger.Go, Array.Empty<Transition<TestContext, IServiceProvider, FlatState, TestActor>>());
     }
 
     [Fact]
-    public void AddTransitions_appends_to_same_trigger_bucket()
+    public void AddTransitionsAppendsToSameTriggerBucket()
     {
         var c = new ExposedConfigurator();
         var t1 = new Transition<TestContext, IServiceProvider, FlatState, TestActor>(FlatState.B, null, false, null, null, null, null);

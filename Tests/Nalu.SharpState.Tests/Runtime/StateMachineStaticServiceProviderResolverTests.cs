@@ -5,7 +5,7 @@ namespace Nalu.SharpState.Tests.Runtime;
 public class StateMachineStaticServiceProviderResolverTests
 {
     [Fact]
-    public void Static_resolver_reuses_same_provider_for_sync_and_reaction()
+    public void StaticResolverReusesSameProviderForSyncAndReaction()
     {
         var services = EmptyServiceProvider.Instance;
         var resolver = new StateMachineStaticServiceProviderResolver(services);

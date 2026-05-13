@@ -6,7 +6,7 @@ namespace Nalu.SharpState.Tests.Runtime;
 public class InternalEnumMapTests
 {
     [Fact]
-    public void Get_throws_for_unset_key()
+    public void GetThrowsForUnsetKey()
     {
         var map = new InternalEnumMap<FlatState, string>();
         map[FlatState.A] = "a";
@@ -15,14 +15,14 @@ public class InternalEnumMapTests
     }
 
     [Fact]
-    public void Copy_constructor_throws_when_source_is_null()
+    public void CopyConstructorThrowsWhenSourceIsNull()
     {
         var act = () => new InternalEnumMap<FlatState, int>(null!);
         act.Should().ThrowExactly<ArgumentNullException>();
     }
 
     [Fact]
-    public void Non_generic_IEnumerable_GetEnumerator_enumerates_pairs()
+    public void NonGenericIEnumerableGetEnumeratorEnumeratesPairs()
     {
         var map = new InternalEnumMap<FlatState, string>();
         map[FlatState.A] = "x";

@@ -16,7 +16,7 @@ public class StateMachineServiceResolverTests
     }
 
     [Fact]
-    public void Resolve_throws_argument_null_exception_when_provider_is_null()
+    public void ResolveThrowsArgumentNullExceptionWhenProviderIsNull()
     {
         var act = () => StateMachineServiceResolver.Resolve<int>(null!);
 
@@ -25,7 +25,7 @@ public class StateMachineServiceResolverTests
     }
 
     [Fact]
-    public void Resolve_throws_invalid_operation_exception_when_service_missing()
+    public void ResolveThrowsInvalidOperationExceptionWhenServiceMissing()
     {
         var provider = EmptyServiceProvider.Instance;
 
@@ -36,7 +36,7 @@ public class StateMachineServiceResolverTests
     }
 
     [Fact]
-    public void Resolve_returns_service_when_present_and_assignable()
+    public void ResolveReturnsServiceWhenPresentAndAssignable()
     {
         var expected = new object();
         var provider = new DictionaryProvider(new Dictionary<Type, object?> { [typeof(object)] = expected });
@@ -47,7 +47,7 @@ public class StateMachineServiceResolverTests
     }
 
     [Fact]
-    public void Resolve_throws_invalid_cast_exception_when_service_has_wrong_type()
+    public void ResolveThrowsInvalidCastExceptionWhenServiceHasWrongType()
     {
         var provider = new WrongTypeProvider();
 

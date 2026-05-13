@@ -21,7 +21,7 @@ public class MicrosoftDiIStateMachineServiceProviderResolverTests
     }
 
     [Fact]
-    public void Microsoft_dependency_injection_resolves_scoped_resolver_implementation()
+    public void MicrosoftDependencyInjectionResolvesScopedResolverImplementation()
     {
         var services = new ServiceCollection();
         services.AddScoped<IStateMachineServiceProviderResolver, TestResolver>();
@@ -41,7 +41,7 @@ public class MicrosoftDiIStateMachineServiceProviderResolverTests
     }
 
     [Fact]
-    public void StateMachineStaticServiceProviderResolver_reuses_provider()
+    public void StateMachineStaticServiceProviderResolverReusesProvider()
     {
         var marker = new object();
         var services = new ServiceCollection();
@@ -61,7 +61,7 @@ public class MicrosoftDiIStateMachineServiceProviderResolverTests
     }
 
     [Fact]
-    public void StateMachineServiceProviderResolver_creates_reaction_scope_when_scope_factory_is_available()
+    public void StateMachineServiceProviderResolverCreatesReactionScopeWhenScopeFactoryIsAvailable()
     {
         var services = new ServiceCollection();
         services.AddScoped<IStateMachineServiceProviderResolver, StateMachineServiceProviderResolver>();
@@ -82,7 +82,7 @@ public class MicrosoftDiIStateMachineServiceProviderResolverTests
     }
 
     [Fact]
-    public void AddScopedStateMachineServiceProviderResolver_registers_scoped_resolver_that_creates_child_scopes()
+    public void AddScopedStateMachineServiceProviderResolverRegistersScopedResolverThatCreatesChildScopes()
     {
         var services = new ServiceCollection();
         services.AddScopedStateMachineServiceProviderResolver();
@@ -102,7 +102,7 @@ public class MicrosoftDiIStateMachineServiceProviderResolverTests
     }
 
     [Fact]
-    public void AddSingletonStateMachineServiceProviderResolver_registers_static_resolver()
+    public void AddSingletonStateMachineServiceProviderResolverRegistersStaticResolver()
     {
         var services = new ServiceCollection();
         services.AddSingletonStateMachineServiceProviderResolver();

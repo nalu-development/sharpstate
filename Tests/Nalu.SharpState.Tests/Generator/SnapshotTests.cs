@@ -7,7 +7,7 @@ namespace Nalu.SharpState.Tests.Generator;
 public class SnapshotTests
 {
     [Fact]
-    public Task Flat_machine()
+    public Task FlatMachine()
     {
         var source = """
         using Nalu.SharpState;
@@ -39,7 +39,7 @@ public class SnapshotTests
     }
 
     [Fact]
-    public Task Reaction_callback()
+    public Task ReactionCallback()
     {
         var source = """
         using Nalu.SharpState;
@@ -68,7 +68,7 @@ public class SnapshotTests
     }
 
     [Fact]
-    public Task Hierarchical_machine()
+    public Task HierarchicalMachine()
     {
         var source = """
         using Nalu.SharpState;
@@ -115,7 +115,7 @@ public class SnapshotTests
     }
 
     [Fact]
-    public Task Nested_regions_machine()
+    public Task NestedRegionsMachine()
     {
         var source = """
         using Nalu.SharpState;
@@ -174,7 +174,7 @@ public class SnapshotTests
     }
 
     [Fact]
-    public Task Nested_namespaced_machine()
+    public Task NestedNamespacedMachine()
     {
         var source = """
         using Nalu.SharpState;
@@ -204,7 +204,7 @@ public class SnapshotTests
     }
 
     [Fact]
-    public Task Lifecycle_hooks_and_ignore()
+    public Task LifecycleHooksAndIgnore()
     {
         var source = """
         using Nalu.SharpState;
@@ -239,7 +239,7 @@ public class SnapshotTests
     }
 
     [Fact]
-    public Task Documentation_inheritdoc()
+    public Task DocumentationInheritdoc()
     {
         var source = """
         using Nalu.SharpState;
@@ -276,7 +276,7 @@ public class SnapshotTests
     }
 
     [Fact]
-    public void Incrementality_second_run_is_cached()
+    public void IncrementalitySecondRunIsCached()
     {
         var source = """
         using Nalu.SharpState;

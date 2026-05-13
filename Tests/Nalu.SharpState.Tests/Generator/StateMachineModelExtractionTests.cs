@@ -6,7 +6,7 @@ namespace Nalu.SharpState.Tests.Generator;
 public class StateMachineModelExtractionTests
 {
     [Fact]
-    public void StateModel_IsInitial_is_true_when_Initial_is_set()
+    public void StateModelIsInitialIsTrueWhenInitialIsSet()
     {
         var model = GeneratorDriverHelper.GetStateMachineModel(
             """
@@ -34,7 +34,7 @@ public class StateMachineModelExtractionTests
     }
 
     [Fact]
-    public void Multiple_initial_states_in_one_region_produces_MultipleInitialStates_diagnostic()
+    public void MultipleInitialStatesInOneRegionProducesMultipleInitialStatesDiagnostic()
     {
         var model = GeneratorDriverHelper.GetStateMachineModel(
             """
@@ -67,7 +67,7 @@ public class StateMachineModelExtractionTests
     }
 
     [Fact]
-    public void Containing_type_struct_uses_struct_keyword_in_ContainingTypeModel()
+    public void ContainingTypeStructUsesStructKeywordInContainingTypeModel()
     {
         var model = GeneratorDriverHelper.GetStateMachineModel(
             """
@@ -95,7 +95,7 @@ public class StateMachineModelExtractionTests
     }
 
     [Fact]
-    public void Containing_type_interface_uses_interface_keyword_in_ContainingTypeModel()
+    public void ContainingTypeInterfaceUsesInterfaceKeywordInContainingTypeModel()
     {
         var model = GeneratorDriverHelper.GetStateMachineModel(
             """
@@ -123,7 +123,7 @@ public class StateMachineModelExtractionTests
     }
 
     [Fact]
-    public void Containing_record_struct_uses_record_struct_keyword()
+    public void ContainingRecordStructUsesRecordStructKeyword()
     {
         var model = GeneratorDriverHelper.GetStateMachineModel(
             """
@@ -151,7 +151,7 @@ public class StateMachineModelExtractionTests
     }
 
     [Fact]
-    public void Containing_type_private_protected_uses_AccessibilityString_branch()
+    public void ContainingTypePrivateProtectedUsesAccessibilityStringBranch()
     {
         var model = GeneratorDriverHelper.GetStateMachineModel(
             """
@@ -185,7 +185,7 @@ public class StateMachineModelExtractionTests
     }
 
     [Fact]
-    public void Containing_type_protected_internal_uses_AccessibilityString_branch()
+    public void ContainingTypeProtectedInternalUsesAccessibilityStringBranch()
     {
         var model = GeneratorDriverHelper.GetStateMachineModel(
             """
@@ -219,7 +219,7 @@ public class StateMachineModelExtractionTests
     }
 
     [Fact]
-    public void Containing_record_reference_type_uses_record_keyword()
+    public void ContainingRecordReferenceTypeUsesRecordKeyword()
     {
         var model = GeneratorDriverHelper.GetStateMachineModel(
             """
@@ -247,7 +247,7 @@ public class StateMachineModelExtractionTests
     }
 
     [Fact]
-    public void State_machine_type_parameters_appear_in_TypeParameterList()
+    public void StateMachineTypeParametersAppearInTypeParameterList()
     {
         var model = GeneratorDriverHelper.GetStateMachineModel(
             """
@@ -271,7 +271,7 @@ public class StateMachineModelExtractionTests
     }
 
     [Fact]
-    public void Same_state_property_name_in_two_sub_regions_fires_DuplicateName()
+    public void SameStatePropertyNameInTwoSubRegionsFiresDuplicateName()
     {
         var model = GeneratorDriverHelper.GetStateMachineModel(
             """
@@ -315,7 +315,7 @@ public class StateMachineModelExtractionTests
     }
 
     [Fact]
-    public void Record_state_machine_uses_classKeyword_record()
+    public void RecordStateMachineUsesClassKeywordRecord()
     {
         var model = GeneratorDriverHelper.GetStateMachineModel(
             """
@@ -339,7 +339,7 @@ public class StateMachineModelExtractionTests
     }
 
     [Fact]
-    public void SubStateMachine_resolves_default_enum_to_first_member_name()
+    public void SubStateMachineResolvesDefaultEnumToFirstMemberName()
     {
         var model = GeneratorDriverHelper.GetStateMachineModel(
             """

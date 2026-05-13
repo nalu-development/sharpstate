@@ -13,7 +13,7 @@ namespace Nalu.SharpState.Tests.Generator;
 public class GeneratorInternalsTests
 {
     [Fact]
-    public void SourceWriter_Block_with_header_writes_line_before_open_brace()
+    public void SourceWriterBlockWithHeaderWritesLineBeforeOpenBrace()
     {
         var w = new SourceWriter();
         using (w.Block("class X"))
@@ -26,7 +26,7 @@ public class GeneratorInternalsTests
     }
 
     [Fact]
-    public void SourceWriter_Indent_get_set()
+    public void SourceWriterIndentGetSet()
     {
         var w = new SourceWriter();
         w.Indent = 1;
@@ -34,13 +34,13 @@ public class GeneratorInternalsTests
     }
 
     [Fact]
-    public void LocationInfo_FromLocation_null_returns_null()
+    public void LocationInfoFromLocationNullReturnsNull()
     {
         LocationInfo.FromLocation(null).Should().BeNull();
     }
 
     [Fact]
-    public void EquatableArray_T_covers_Equals_GetHashCode_and_operators()
+    public void EquatableArrayTCoversEqualsGetHashCodeAndOperators()
     {
         var a1 = new EquatableArray<int>(new[] { 1, 2, 3 });
         var a2 = new EquatableArray<int>(new[] { 1, 2, 3 });
@@ -117,7 +117,7 @@ public class GeneratorInternalsTests
     }
 
     [Fact]
-    public void ExtractEnumName_returns_null_when_enum_value_matches_no_field()
+    public void ExtractEnumNameReturnsNullWhenEnumValueMatchesNoField()
     {
         var exEnum = (Func<TypedConstant, string?>)Delegate.CreateDelegate(
             typeof(Func<TypedConstant, string?>),
@@ -156,7 +156,7 @@ public class GeneratorInternalsTests
     }
 
     [Fact]
-    public void ExtractEnumName_returns_field_name_for_enum_positional()
+    public void ExtractEnumNameReturnsFieldNameForEnumPositional()
     {
         var exEnum = (Func<TypedConstant, string?>)Delegate.CreateDelegate(
             typeof(Func<TypedConstant, string?>),

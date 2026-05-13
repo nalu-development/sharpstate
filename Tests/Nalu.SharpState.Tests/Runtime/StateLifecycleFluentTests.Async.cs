@@ -8,103 +8,103 @@ public partial class StateLifecycleFluentTests
 {
 
     [Fact]
-    public async Task WhenEnteredAsync_T1_resolves_services() => await RunWhenEnteredAsyncArity(1);
+    public async Task WhenEnteredAsyncT1ResolvesServices() => await RunWhenEnteredAsyncArity(1);
 
     [Fact]
-    public async Task WhenEnteredAsync_T2_resolves_services() => await RunWhenEnteredAsyncArity(2);
+    public async Task WhenEnteredAsyncT2ResolvesServices() => await RunWhenEnteredAsyncArity(2);
 
     [Fact]
-    public async Task WhenEnteredAsync_T3_resolves_services() => await RunWhenEnteredAsyncArity(3);
+    public async Task WhenEnteredAsyncT3ResolvesServices() => await RunWhenEnteredAsyncArity(3);
 
     [Fact]
-    public async Task WhenEnteredAsync_T4_resolves_services() => await RunWhenEnteredAsyncArity(4);
+    public async Task WhenEnteredAsyncT4ResolvesServices() => await RunWhenEnteredAsyncArity(4);
 
     [Fact]
-    public async Task WhenEnteredAsync_T5_resolves_services() => await RunWhenEnteredAsyncArity(5);
+    public async Task WhenEnteredAsyncT5ResolvesServices() => await RunWhenEnteredAsyncArity(5);
 
     [Fact]
-    public async Task WhenEnteredAsync_T6_resolves_services() => await RunWhenEnteredAsyncArity(6);
+    public async Task WhenEnteredAsyncT6ResolvesServices() => await RunWhenEnteredAsyncArity(6);
 
     [Fact]
-    public async Task WhenEnteredAsync_T7_resolves_services() => await RunWhenEnteredAsyncArity(7);
+    public async Task WhenEnteredAsyncT7ResolvesServices() => await RunWhenEnteredAsyncArity(7);
 
     [Fact]
-    public async Task WhenEnteredAsync_T8_resolves_services() => await RunWhenEnteredAsyncArity(8);
+    public async Task WhenEnteredAsyncT8ResolvesServices() => await RunWhenEnteredAsyncArity(8);
 
     [Fact]
-    public async Task WhenEnteredAsync_T9_resolves_services() => await RunWhenEnteredAsyncArity(9);
+    public async Task WhenEnteredAsyncT9ResolvesServices() => await RunWhenEnteredAsyncArity(9);
 
     [Fact]
-    public async Task WhenEnteredAsync_T10_resolves_services() => await RunWhenEnteredAsyncArity(10);
+    public async Task WhenEnteredAsyncT10ResolvesServices() => await RunWhenEnteredAsyncArity(10);
 
     [Fact]
-    public async Task WhenEnteredAsync_T11_resolves_services() => await RunWhenEnteredAsyncArity(11);
+    public async Task WhenEnteredAsyncT11ResolvesServices() => await RunWhenEnteredAsyncArity(11);
 
     [Fact]
-    public async Task WhenEnteredAsync_T12_resolves_services() => await RunWhenEnteredAsyncArity(12);
+    public async Task WhenEnteredAsyncT12ResolvesServices() => await RunWhenEnteredAsyncArity(12);
 
     [Fact]
-    public async Task WhenEnteredAsync_T13_resolves_services() => await RunWhenEnteredAsyncArity(13);
+    public async Task WhenEnteredAsyncT13ResolvesServices() => await RunWhenEnteredAsyncArity(13);
 
     [Fact]
-    public async Task WhenEnteredAsync_T14_resolves_services() => await RunWhenEnteredAsyncArity(14);
+    public async Task WhenEnteredAsyncT14ResolvesServices() => await RunWhenEnteredAsyncArity(14);
 
     [Fact]
-    public async Task WhenEnteredAsync_T15_resolves_services() => await RunWhenEnteredAsyncArity(15);
+    public async Task WhenEnteredAsyncT15ResolvesServices() => await RunWhenEnteredAsyncArity(15);
 
     [Fact]
-    public async Task WhenEnteredAsync_T16_resolves_services() => await RunWhenEnteredAsyncArity(16);
+    public async Task WhenEnteredAsyncT16ResolvesServices() => await RunWhenEnteredAsyncArity(16);
 
     [Fact]
-    public async Task WhenExitedAsync_T1_resolves_services() => await RunWhenExitedAsyncArity(1);
+    public async Task WhenExitedAsyncT1ResolvesServices() => await RunWhenExitedAsyncArity(1);
 
     [Fact]
-    public async Task WhenExitedAsync_T2_resolves_services() => await RunWhenExitedAsyncArity(2);
+    public async Task WhenExitedAsyncT2ResolvesServices() => await RunWhenExitedAsyncArity(2);
 
     [Fact]
-    public async Task WhenExitedAsync_T3_resolves_services() => await RunWhenExitedAsyncArity(3);
+    public async Task WhenExitedAsyncT3ResolvesServices() => await RunWhenExitedAsyncArity(3);
 
     [Fact]
-    public async Task WhenExitedAsync_T4_resolves_services() => await RunWhenExitedAsyncArity(4);
+    public async Task WhenExitedAsyncT4ResolvesServices() => await RunWhenExitedAsyncArity(4);
 
     [Fact]
-    public async Task WhenExitedAsync_T5_resolves_services() => await RunWhenExitedAsyncArity(5);
+    public async Task WhenExitedAsyncT5ResolvesServices() => await RunWhenExitedAsyncArity(5);
 
     [Fact]
-    public async Task WhenExitedAsync_T6_resolves_services() => await RunWhenExitedAsyncArity(6);
+    public async Task WhenExitedAsyncT6ResolvesServices() => await RunWhenExitedAsyncArity(6);
 
     [Fact]
-    public async Task WhenExitedAsync_T7_resolves_services() => await RunWhenExitedAsyncArity(7);
+    public async Task WhenExitedAsyncT7ResolvesServices() => await RunWhenExitedAsyncArity(7);
 
     [Fact]
-    public async Task WhenExitedAsync_T8_resolves_services() => await RunWhenExitedAsyncArity(8);
+    public async Task WhenExitedAsyncT8ResolvesServices() => await RunWhenExitedAsyncArity(8);
 
     [Fact]
-    public async Task WhenExitedAsync_T9_resolves_services() => await RunWhenExitedAsyncArity(9);
+    public async Task WhenExitedAsyncT9ResolvesServices() => await RunWhenExitedAsyncArity(9);
 
     [Fact]
-    public async Task WhenExitedAsync_T10_resolves_services() => await RunWhenExitedAsyncArity(10);
+    public async Task WhenExitedAsyncT10ResolvesServices() => await RunWhenExitedAsyncArity(10);
 
     [Fact]
-    public async Task WhenExitedAsync_T11_resolves_services() => await RunWhenExitedAsyncArity(11);
+    public async Task WhenExitedAsyncT11ResolvesServices() => await RunWhenExitedAsyncArity(11);
 
     [Fact]
-    public async Task WhenExitedAsync_T12_resolves_services() => await RunWhenExitedAsyncArity(12);
+    public async Task WhenExitedAsyncT12ResolvesServices() => await RunWhenExitedAsyncArity(12);
 
     [Fact]
-    public async Task WhenExitedAsync_T13_resolves_services() => await RunWhenExitedAsyncArity(13);
+    public async Task WhenExitedAsyncT13ResolvesServices() => await RunWhenExitedAsyncArity(13);
 
     [Fact]
-    public async Task WhenExitedAsync_T14_resolves_services() => await RunWhenExitedAsyncArity(14);
+    public async Task WhenExitedAsyncT14ResolvesServices() => await RunWhenExitedAsyncArity(14);
 
     [Fact]
-    public async Task WhenExitedAsync_T15_resolves_services() => await RunWhenExitedAsyncArity(15);
+    public async Task WhenExitedAsyncT15ResolvesServices() => await RunWhenExitedAsyncArity(15);
 
     [Fact]
-    public async Task WhenExitedAsync_T16_resolves_services() => await RunWhenExitedAsyncArity(16);
+    public async Task WhenExitedAsyncT16ResolvesServices() => await RunWhenExitedAsyncArity(16);
 
     [Fact]
-    public void WhenEnteredAsync_context_only_throws_on_null_action()
+    public void WhenEnteredAsyncContextOnlyThrowsOnNullAction()
     {
         var cfg = new LifecycleFluentTestConfigurator();
         IStateLifecycleFluent<LifecycleFluentTestConfigurator, TestContext> fluent = cfg;
@@ -116,7 +116,7 @@ public partial class StateLifecycleFluentTests
     }
 
     [Fact]
-    public void WhenExitedAsync_context_only_throws_on_null_action()
+    public void WhenExitedAsyncContextOnlyThrowsOnNullAction()
     {
         var cfg = new LifecycleFluentTestConfigurator();
         IStateLifecycleFluent<LifecycleFluentTestConfigurator, TestContext> fluent = cfg;
@@ -128,7 +128,7 @@ public partial class StateLifecycleFluentTests
     }
 
     [Fact]
-    public void WhenEnteredAsync_returns_same_fluent_instance()
+    public void WhenEnteredAsyncReturnsSameFluentInstance()
     {
         var cfg = new LifecycleFluentTestConfigurator();
         IStateLifecycleFluent<LifecycleFluentTestConfigurator, TestContext> fluent = cfg;
@@ -139,7 +139,7 @@ public partial class StateLifecycleFluentTests
     }
 
     [Fact]
-    public void WhenExitedAsync_returns_same_fluent_instance()
+    public void WhenExitedAsyncReturnsSameFluentInstance()
     {
         var cfg = new LifecycleFluentTestConfigurator();
         IStateLifecycleFluent<LifecycleFluentTestConfigurator, TestContext> fluent = cfg;
@@ -150,7 +150,7 @@ public partial class StateLifecycleFluentTests
     }
 
     [Fact]
-    public void WhenEnteredAsync_second_call_throws_invalid_operation_exception()
+    public void WhenEnteredAsyncSecondCallThrowsInvalidOperationException()
     {
         var cfg = new LifecycleFluentTestConfigurator();
         IStateLifecycleFluent<LifecycleFluentTestConfigurator, TestContext> fluent = cfg;
@@ -163,7 +163,7 @@ public partial class StateLifecycleFluentTests
     }
 
     [Fact]
-    public void WhenExitedAsync_second_call_throws_invalid_operation_exception()
+    public void WhenExitedAsyncSecondCallThrowsInvalidOperationException()
     {
         var cfg = new LifecycleFluentTestConfigurator();
         IStateLifecycleFluent<LifecycleFluentTestConfigurator, TestContext> fluent = cfg;
@@ -176,7 +176,7 @@ public partial class StateLifecycleFluentTests
     }
 
     [Fact]
-    public async Task WhenEnteredAsync_service_missing_wraps_in_ReactionFailedException_on_FireAsync()
+    public async Task WhenEnteredAsyncServiceMissingWrapsInReactionFailedExceptionOnFireAsync()
     {
         var definition = BuildDefinition(map =>
         {
@@ -201,7 +201,7 @@ public partial class StateLifecycleFluentTests
     }
 
     [Fact]
-    public async Task WhenExitedAsync_service_missing_wraps_in_ReactionFailedException_on_FireAsync()
+    public async Task WhenExitedAsyncServiceMissingWrapsInReactionFailedExceptionOnFireAsync()
     {
         var definition = BuildDefinition(map =>
         {

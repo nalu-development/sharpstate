@@ -5,7 +5,7 @@ namespace Nalu.SharpState.Tests.Runtime;
 public class StateMachineEmptyServiceProviderResolverTests
 {
     [Fact]
-    public void Instance_reuses_empty_provider_for_sync_and_reaction()
+    public void InstanceReusesEmptyProviderForSyncAndReaction()
     {
         var resolver = StateMachineEmptyServiceProviderResolver.Instance;
 
@@ -18,7 +18,7 @@ public class StateMachineEmptyServiceProviderResolverTests
     }
 
     [Fact]
-    public void Public_constructor_creates_empty_resolver()
+    public void PublicConstructorCreatesEmptyResolver()
     {
         var resolver = new StateMachineEmptyServiceProviderResolver();
 

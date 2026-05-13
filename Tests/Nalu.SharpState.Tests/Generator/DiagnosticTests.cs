@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.CodeAnalysis;
+// ReSharper disable InconsistentNaming
 
 namespace Nalu.SharpState.Tests.Generator;
 
@@ -14,7 +15,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void NSS001_reported_when_class_is_not_partial()
+    public void NSS001ReportedWhenClassIsNotPartial()
     {
         var source = """
         using Nalu.SharpState;
@@ -34,7 +35,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void NSS002_reported_on_duplicate_trigger()
+    public void NSS002ReportedOnDuplicateTrigger()
     {
         var source = """
         using Nalu.SharpState;
@@ -56,7 +57,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void NSS002_reported_when_duplicate_trigger_name_overloads_conflict_with_enum_generation()
+    public void NSS002ReportedWhenDuplicateTriggerNameOverloadsConflictWithEnumGeneration()
     {
         var source = """
         using Nalu.SharpState;
@@ -79,7 +80,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void NSS003_reported_when_state_property_has_wrong_return_type()
+    public void NSS003ReportedWhenStatePropertyHasWrongReturnType()
     {
         var source = """
         using Nalu.SharpState;
@@ -100,7 +101,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void NSS003_not_reported_for_generic_runtime_interface_return_type()
+    public void NSS003NotReportedForGenericRuntimeInterfaceReturnType()
     {
         var source = """
         using Nalu.SharpState;
@@ -123,7 +124,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void NSS004_reported_when_trigger_is_not_partial_void()
+    public void NSS004ReportedWhenTriggerIsNotPartialVoid()
     {
         var source = """
         using Nalu.SharpState;
@@ -143,7 +144,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void NSS005_reported_when_substatemachine_is_not_partial()
+    public void NSS005ReportedWhenSubstatemachineIsNotPartial()
     {
         var source = """
         using Nalu.SharpState;
@@ -168,7 +169,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void NSS006_reported_when_containing_type_is_not_partial()
+    public void NSS006ReportedWhenContainingTypeIsNotPartial()
     {
         var source = """
         using Nalu.SharpState;
@@ -191,7 +192,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void NSS007_reported_when_parent_is_not_in_enclosing_region()
+    public void NSS007ReportedWhenParentIsNotInEnclosingRegion()
     {
         var source = """
         using Nalu.SharpState;
@@ -218,7 +219,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void NSS008_reported_when_region_has_no_initial_state()
+    public void NSS008ReportedWhenRegionHasNoInitialState()
     {
         var source = """
         using Nalu.SharpState;
@@ -245,7 +246,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void NSS009_reported_when_trigger_is_declared_inside_substatemachine()
+    public void NSS009ReportedWhenTriggerIsDeclaredInsideSubstatemachine()
     {
         var source = """
         using Nalu.SharpState;
@@ -273,7 +274,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void Generated_surface_supports_dynamic_targets_and_two_phase_builder()
+    public void GeneratedSurfaceSupportsDynamicTargetsAndTwoPhaseBuilder()
     {
         var source = """
         using Nalu.SharpState;
@@ -309,7 +310,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void NSS010_reported_when_region_has_multiple_initial_states()
+    public void NSS010ReportedWhenRegionHasMultipleInitialStates()
     {
         var source = """
         using Nalu.SharpState;
@@ -332,7 +333,7 @@ public class DiagnosticTests
     }
 
     [Fact]
-    public void Trigger_with_seventeen_parameters_does_not_report_generator_diagnostic()
+    public void TriggerWithSeventeenParametersDoesNotReportGeneratorDiagnostic()
     {
         var source = """
         using Nalu.SharpState;

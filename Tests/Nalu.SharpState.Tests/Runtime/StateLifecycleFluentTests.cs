@@ -110,7 +110,7 @@ public partial class StateLifecycleFluentTests
     }
 
     [Fact]
-    public void WhenEntering_context_only_throws_on_null_action()
+    public void WhenEnteringContextOnlyThrowsOnNullAction()
     {
         var cfg = new LifecycleFluentTestConfigurator();
         IStateLifecycleFluent<LifecycleFluentTestConfigurator, TestContext> fluent = cfg;
@@ -122,7 +122,7 @@ public partial class StateLifecycleFluentTests
     }
 
     [Fact]
-    public void WhenExiting_context_only_throws_on_null_action()
+    public void WhenExitingContextOnlyThrowsOnNullAction()
     {
         var cfg = new LifecycleFluentTestConfigurator();
         IStateLifecycleFluent<LifecycleFluentTestConfigurator, TestContext> fluent = cfg;
@@ -134,7 +134,7 @@ public partial class StateLifecycleFluentTests
     }
 
     [Fact]
-    public void WhenEntering_returns_same_fluent_instance()
+    public void WhenEnteringReturnsSameFluentInstance()
     {
         var cfg = new LifecycleFluentTestConfigurator();
         IStateLifecycleFluent<LifecycleFluentTestConfigurator, TestContext> fluent = cfg;
@@ -145,7 +145,7 @@ public partial class StateLifecycleFluentTests
     }
 
     [Fact]
-    public void WhenExiting_returns_same_fluent_instance()
+    public void WhenExitingReturnsSameFluentInstance()
     {
         var cfg = new LifecycleFluentTestConfigurator();
         IStateLifecycleFluent<LifecycleFluentTestConfigurator, TestContext> fluent = cfg;
@@ -156,100 +156,100 @@ public partial class StateLifecycleFluentTests
     }
 
     [Fact]
-    public void WhenEntering_T1_resolves_services() => RunWhenEnteringArity(1);
+    public void WhenEnteringT1ResolvesServices() => RunWhenEnteringArity(1);
 
     [Fact]
-    public void WhenEntering_T2_resolves_services() => RunWhenEnteringArity(2);
+    public void WhenEnteringT2ResolvesServices() => RunWhenEnteringArity(2);
 
     [Fact]
-    public void WhenEntering_T3_resolves_services() => RunWhenEnteringArity(3);
+    public void WhenEnteringT3ResolvesServices() => RunWhenEnteringArity(3);
 
     [Fact]
-    public void WhenEntering_T4_resolves_services() => RunWhenEnteringArity(4);
+    public void WhenEnteringT4ResolvesServices() => RunWhenEnteringArity(4);
 
     [Fact]
-    public void WhenEntering_T5_resolves_services() => RunWhenEnteringArity(5);
+    public void WhenEnteringT5ResolvesServices() => RunWhenEnteringArity(5);
 
     [Fact]
-    public void WhenEntering_T6_resolves_services() => RunWhenEnteringArity(6);
+    public void WhenEnteringT6ResolvesServices() => RunWhenEnteringArity(6);
 
     [Fact]
-    public void WhenEntering_T7_resolves_services() => RunWhenEnteringArity(7);
+    public void WhenEnteringT7ResolvesServices() => RunWhenEnteringArity(7);
 
     [Fact]
-    public void WhenEntering_T8_resolves_services() => RunWhenEnteringArity(8);
+    public void WhenEnteringT8ResolvesServices() => RunWhenEnteringArity(8);
 
     [Fact]
-    public void WhenEntering_T9_resolves_services() => RunWhenEnteringArity(9);
+    public void WhenEnteringT9ResolvesServices() => RunWhenEnteringArity(9);
 
     [Fact]
-    public void WhenEntering_T10_resolves_services() => RunWhenEnteringArity(10);
+    public void WhenEnteringT10ResolvesServices() => RunWhenEnteringArity(10);
 
     [Fact]
-    public void WhenEntering_T11_resolves_services() => RunWhenEnteringArity(11);
+    public void WhenEnteringT11ResolvesServices() => RunWhenEnteringArity(11);
 
     [Fact]
-    public void WhenEntering_T12_resolves_services() => RunWhenEnteringArity(12);
+    public void WhenEnteringT12ResolvesServices() => RunWhenEnteringArity(12);
 
     [Fact]
-    public void WhenEntering_T13_resolves_services() => RunWhenEnteringArity(13);
+    public void WhenEnteringT13ResolvesServices() => RunWhenEnteringArity(13);
 
     [Fact]
-    public void WhenEntering_T14_resolves_services() => RunWhenEnteringArity(14);
+    public void WhenEnteringT14ResolvesServices() => RunWhenEnteringArity(14);
 
     [Fact]
-    public void WhenEntering_T15_resolves_services() => RunWhenEnteringArity(15);
+    public void WhenEnteringT15ResolvesServices() => RunWhenEnteringArity(15);
 
     [Fact]
-    public void WhenEntering_T16_resolves_services() => RunWhenEnteringArity(16);
+    public void WhenEnteringT16ResolvesServices() => RunWhenEnteringArity(16);
 
     [Fact]
-    public void WhenExiting_T1_resolves_services() => RunWhenExitingArity(1);
+    public void WhenExitingT1ResolvesServices() => RunWhenExitingArity(1);
 
     [Fact]
-    public void WhenExiting_T2_resolves_services() => RunWhenExitingArity(2);
+    public void WhenExitingT2ResolvesServices() => RunWhenExitingArity(2);
 
     [Fact]
-    public void WhenExiting_T3_resolves_services() => RunWhenExitingArity(3);
+    public void WhenExitingT3ResolvesServices() => RunWhenExitingArity(3);
 
     [Fact]
-    public void WhenExiting_T4_resolves_services() => RunWhenExitingArity(4);
+    public void WhenExitingT4ResolvesServices() => RunWhenExitingArity(4);
 
     [Fact]
-    public void WhenExiting_T5_resolves_services() => RunWhenExitingArity(5);
+    public void WhenExitingT5ResolvesServices() => RunWhenExitingArity(5);
 
     [Fact]
-    public void WhenExiting_T6_resolves_services() => RunWhenExitingArity(6);
+    public void WhenExitingT6ResolvesServices() => RunWhenExitingArity(6);
 
     [Fact]
-    public void WhenExiting_T7_resolves_services() => RunWhenExitingArity(7);
+    public void WhenExitingT7ResolvesServices() => RunWhenExitingArity(7);
 
     [Fact]
-    public void WhenExiting_T8_resolves_services() => RunWhenExitingArity(8);
+    public void WhenExitingT8ResolvesServices() => RunWhenExitingArity(8);
 
     [Fact]
-    public void WhenExiting_T9_resolves_services() => RunWhenExitingArity(9);
+    public void WhenExitingT9ResolvesServices() => RunWhenExitingArity(9);
 
     [Fact]
-    public void WhenExiting_T10_resolves_services() => RunWhenExitingArity(10);
+    public void WhenExitingT10ResolvesServices() => RunWhenExitingArity(10);
 
     [Fact]
-    public void WhenExiting_T11_resolves_services() => RunWhenExitingArity(11);
+    public void WhenExitingT11ResolvesServices() => RunWhenExitingArity(11);
 
     [Fact]
-    public void WhenExiting_T12_resolves_services() => RunWhenExitingArity(12);
+    public void WhenExitingT12ResolvesServices() => RunWhenExitingArity(12);
 
     [Fact]
-    public void WhenExiting_T13_resolves_services() => RunWhenExitingArity(13);
+    public void WhenExitingT13ResolvesServices() => RunWhenExitingArity(13);
 
     [Fact]
-    public void WhenExiting_T14_resolves_services() => RunWhenExitingArity(14);
+    public void WhenExitingT14ResolvesServices() => RunWhenExitingArity(14);
 
     [Fact]
-    public void WhenExiting_T15_resolves_services() => RunWhenExitingArity(15);
+    public void WhenExitingT15ResolvesServices() => RunWhenExitingArity(15);
 
     [Fact]
-    public void WhenExiting_T16_resolves_services() => RunWhenExitingArity(16);
+    public void WhenExitingT16ResolvesServices() => RunWhenExitingArity(16);
 
     private static void RunWhenEnteringArity(int arity)
     {
@@ -418,7 +418,7 @@ public partial class StateLifecycleFluentTests
     }
 
     [Fact]
-    public void WhenEntering_service_missing_throws_invalid_operation_exception()
+    public void WhenEnteringServiceMissingThrowsInvalidOperationException()
     {
         var definition = BuildDefinition(map =>
         {
@@ -443,7 +443,7 @@ public partial class StateLifecycleFluentTests
     }
 
     [Fact]
-    public void WhenExiting_service_missing_throws_invalid_operation_exception()
+    public void WhenExitingServiceMissingThrowsInvalidOperationException()
     {
         var definition = BuildDefinition(map =>
         {

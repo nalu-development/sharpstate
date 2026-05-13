@@ -8,7 +8,7 @@ public class AsyncTests
     private static readonly AsyncLocal<string?> _ambientValue = new();
 
     [Fact]
-    public void Fire_schedules_reaction_after_transition_finishes()
+    public void FireSchedulesReactionAfterTransitionFinishes()
     {
         var syncContext = new RecordingSynchronizationContext();
         var actor = new TestActor();
@@ -47,7 +47,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public void Engine_Context_exposes_same_instance()
+    public void EngineContextExposesSameInstance()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
@@ -65,7 +65,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task Reaction_flows_AsyncLocal_from_fire_call_when_queued_to_thread_pool()
+    public async Task ReactionFlowsAsyncLocalFromFireCallWhenQueuedToThreadPool()
     {
         var previous = SynchronizationContext.Current;
         SynchronizationContext.SetSynchronizationContext(null);
@@ -116,7 +116,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task Reaction_runs_on_thread_pool_when_no_synchronization_context()
+    public async Task ReactionRunsOnThreadPoolWhenNoSynchronizationContext()
     {
         var previous = SynchronizationContext.Current;
         SynchronizationContext.SetSynchronizationContext(null);
@@ -154,7 +154,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public void ReactionFailed_subscriber_throw_is_ignored()
+    public void ReactionFailedSubscriberThrowIsIgnored()
     {
         var syncContext = new RecordingSynchronizationContext();
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
@@ -183,7 +183,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public void ReactionFailed_is_raised_when_background_reaction_throws()
+    public void ReactionFailedIsRaisedWhenBackgroundReactionThrows()
     {
         var syncContext = new RecordingSynchronizationContext();
         var cfg = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
@@ -219,7 +219,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public void Fire_schedules_post_transition_async_in_order_exitedAsync_enteredAsync_react()
+    public void FireSchedulesPostTransitionAsyncInOrderExitedAsyncEnteredAsyncReact()
     {
         var syncContext = new RecordingSynchronizationContext();
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
@@ -264,7 +264,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public void Fire_scheduled_async_uses_single_scoped_service_provider_for_full_pipeline()
+    public void FireScheduledAsyncUsesSingleScopedServiceProviderForFullPipeline()
     {
         var syncContext = new RecordingSynchronizationContext();
         var rootProvider = EmptyServiceProvider.Instance;
@@ -294,7 +294,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task FireAsync_awaits_post_transition_async_before_returning()
+    public async Task FireAsyncAwaitsPostTransitionAsyncBeforeReturning()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
@@ -324,7 +324,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task FireAsync_wraps_WhenEnteredAsync_failure_in_ReactionFailedException()
+    public async Task FireAsyncWrapsWhenEnteredAsyncFailureInReactionFailedException()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
@@ -353,7 +353,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task FireAsync_wraps_WhenExitedAsync_failure_in_ReactionFailedException()
+    public async Task FireAsyncWrapsWhenExitedAsyncFailureInReactionFailedException()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
@@ -379,7 +379,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task FireAsync_wraps_ReactAsync_failure_in_ReactionFailedException()
+    public async Task FireAsyncWrapsReactAsyncFailureInReactionFailedException()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
@@ -405,7 +405,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task FireAsync_guard_evaluation_exception_is_not_wrapped_in_ReactionFailedException()
+    public async Task FireAsyncGuardEvaluationExceptionIsNotWrappedInReactionFailedException()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
@@ -427,7 +427,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task FireAsync_sync_WhenExiting_exception_is_not_wrapped_in_ReactionFailedException()
+    public async Task FireAsyncSyncWhenExitingExceptionIsNotWrappedInReactionFailedException()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
@@ -448,7 +448,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task FireAsync_ReactionFailed_subscriber_exception_is_ignored()
+    public async Task FireAsyncReactionFailedSubscriberExceptionIsIgnored()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
@@ -476,7 +476,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task FireAsync_throws_when_reentered_from_StateChanged_handler()
+    public async Task FireAsyncThrowsWhenReenteredFromStateChangedHandler()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
@@ -510,7 +510,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task FireAsync_unhandled_trigger_invokes_OnUnhandled()
+    public async Task FireAsyncUnhandledTriggerInvokesOnUnhandled()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
@@ -535,7 +535,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task FireAsync_unhandled_trigger_with_null_OnUnhandled_is_silent()
+    public async Task FireAsyncUnhandledTriggerWithNullOnUnhandledIsSilent()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
@@ -558,7 +558,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task FireAsync_returns_when_transition_has_no_post_transition_async_work()
+    public async Task FireAsyncReturnsWhenTransitionHasNoPostTransitionAsyncWork()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
@@ -581,7 +581,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task FireAsync_external_transition_to_same_leaf_runs_async_lifecycle_and_reaction()
+    public async Task FireAsyncExternalTransitionToSameLeafRunsAsyncLifecycleAndReaction()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>()
@@ -622,7 +622,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public void Internal_transition_runs_reaction_but_skips_async_lifecycle_hooks()
+    public void InternalTransitionRunsReactionButSkipsAsyncLifecycleHooks()
     {
         var syncContext = new RecordingSynchronizationContext();
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
@@ -656,7 +656,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task Dynamic_transition_resolved_to_current_leaf_skips_async_lifecycle_but_runs_reaction()
+    public async Task DynamicTransitionResolvedToCurrentLeafSkipsAsyncLifecycleButRunsReaction()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
@@ -689,7 +689,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public void External_transition_with_only_async_lifecycle_schedules_pipeline()
+    public void ExternalTransitionWithOnlyAsyncLifecycleSchedulesPipeline()
     {
         var syncContext = new RecordingSynchronizationContext();
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
@@ -723,7 +723,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public async Task FireAsync_allows_async_trigger_from_post_transition_reaction()
+    public async Task FireAsyncAllowsAsyncTriggerFromPostTransitionReaction()
     {
         var actor = new ReentrantTestActor();
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, ReentrantTestActor>>();
@@ -761,7 +761,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public void Fire_unhandled_trigger_invokes_callback()
+    public void FireUnhandledTriggerInvokesCallback()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
@@ -782,7 +782,7 @@ public class AsyncTests
     }
 
     [Fact]
-    public void Fire_unhandled_with_default_callback_throws()
+    public void FireUnhandledWithDefaultCallbackThrows()
     {
         var map = new InternalEnumMap<FlatState, IStateConfiguration<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>>();
         map[FlatState.A] = new TestStateConfigurator<TestContext, IServiceProvider, FlatState, FlatTrigger, TestActor>();
